@@ -458,9 +458,9 @@ let deathKind = null;
 let vendingsOpened = 0; /* machines fully cracked open */
 let sleepBagGranted = false;
 const SLEEP_BAG_UNLOCK = 4; /* bag drops after 4 other machines opened */
-/* object phrases (PCs / servers / spam) — max 1 every 4s */
+/* object phrases (PCs / servers / spam) — max 1 every 3s */
 let objectPhraseCd = 0;
-const OBJECT_PHRASE_GAP = 4.0;
+const OBJECT_PHRASE_GAP = 3.0;
 /* giant wall kill-countdown: level 1 → 100, level 2 → 200, … */
 let wallQuota = 100;
 let wallQuotaMax = 100;
@@ -2355,7 +2355,7 @@ function throwBoomerang(big) {
 function emitPhrase(origin, phrase, opts = {}) {
   const deadly = !!opts.deadly;
   const isBoss = opts.kind === "boss";
-  /* PCs / servers / generic object phrases: 1 every 4 seconds globally */
+  /* PCs / servers / generic object phrases: 1 every 3 seconds globally */
   if (!isBoss && (opts.kind === "complaint" || opts.kind === "outage" || opts.kind === "phrase" || opts.kind === "spam")) {
     if (objectPhraseCd > 0) return null;
     objectPhraseCd = OBJECT_PHRASE_GAP;
