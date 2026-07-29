@@ -91,8 +91,8 @@ const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
 sun.position.set(14, 26, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
-sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
+sun.shadow.camera.left = -55; sun.shadow.camera.right = 55;
+sun.shadow.camera.top = 55; sun.shadow.camera.bottom = -55;
 sun.shadow.camera.far = 80;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0xeef2ff, 0xc9b89a, 0.85));
@@ -200,7 +200,7 @@ const SFX = {
 };
 
 /* ============================== OFFICE ============================== */
-const FLOOR_W = 64, FLOOR_D = 44;
+const FLOOR_W = 82, FLOOR_D = 58;
 {
   const floorTex = canvasTex(512, 512, (g) => {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
@@ -212,7 +212,7 @@ const FLOOR_W = 64, FLOOR_D = 44;
       g.beginPath(); g.moveTo(0, i * 64); g.lineTo(512, i * 64); g.stroke(); }
   });
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
-  floorTex.repeat.set(8, 6);
+  floorTex.repeat.set(10, 7);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D),
     new THREE.MeshLambertMaterial({ map: floorTex }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
@@ -235,7 +235,7 @@ const FLOOR_W = 64, FLOOR_D = 44;
   ceil.rotation.x = Math.PI / 2; ceil.position.y = wallH; scene.add(ceil);
   /* light panels */
   const panelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  for (let x = -24; x <= 24; x += 12) for (let z = -16; z <= 16; z += 8) {
+  for (let x = -36; x <= 36; x += 12) for (let z = -24; z <= 24; z += 8) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.6), panelMat);
     p.rotation.x = Math.PI / 2; p.position.set(x, wallH - 0.02, z);
     scene.add(p);
@@ -254,7 +254,7 @@ const FLOOR_W = 64, FLOOR_D = 44;
           if (Math.random() < 0.4) g.fillRect(wx, wy, 4, 5);
     }
   });
-  for (let z = -15; z <= 15; z += 10) {
+  for (let z = -25; z <= 25; z += 10) {
     const win = new THREE.Mesh(new THREE.PlaneGeometry(7, 3),
       new THREE.MeshBasicMaterial({ map: skyTex }));
     win.rotation.y = -Math.PI / 2;
@@ -352,10 +352,81 @@ function mkDeskRow(cx, cz) {
   }
   blockArea(cx, cz, 4.0, 1.6);
 }
-/* layout */
+/* layout — deep cubicle farm */
 mkCubiclePod(-20, -12); mkCubiclePod(-20, 2); mkCubiclePod(-20, 14);
 mkCubiclePod(-8, -14); mkCubiclePod(-8, 12);
+mkCubiclePod(-32, -18); mkCubiclePod(-32, -4); mkCubiclePod(-32, 10);
+mkCubiclePod(-20, 22); mkCubiclePod(-8, 22); mkCubiclePod(4, 22);
 mkDeskRow(6, -12); mkDeskRow(6, 12); mkDeskRow(16, -4);
+mkDeskRow(18, 20); mkDeskRow(28, 8); mkDeskRow(16, -20);
+
+/* vending machines */
+function mkVending(x, z, ry, bodyCol, glow, label) {
+  const g = new THREE.Group();
+  g.add(box(1.5, 2.7, 1.0, bodyCol, 0, 1.35, 0));
+  /* glass front with product grid */
+  const front = canvasTex(128, 224, (gg, w, h) => {
+    gg.fillStyle = "#0c0e14"; gg.fillRect(0, 0, w, h);
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) {
+      gg.fillStyle = pick(["#d43a2a", "#ffc93c", "#3a8ad4", "#7cff6a", "#ff8c2a", "#e878c8"]);
+      gg.fillRect(12 + c * 38, 14 + r * 40, 28, 26);
+      gg.fillStyle = "#c0c6cf"; gg.fillRect(8, 40 + r * 40, w - 16, 3); // spiral shelf
+    }
+  });
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.9),
+    new THREE.MeshBasicMaterial({ map: front }));
+  glass.position.set(-0.15, 1.5, 0.51);
+  g.add(glass);
+  /* lit header */
+  const head = canvasTex(128, 32, (gg, w, h) => {
+    gg.fillStyle = glow; gg.fillRect(0, 0, w, h);
+    gg.fillStyle = "#111"; gg.font = "bold 22px Arial Black"; gg.textAlign = "center"; gg.textBaseline = "middle";
+    gg.fillText(label, w / 2, h / 2 + 1);
+  });
+  const hm = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.34), new THREE.MeshBasicMaterial({ map: head }));
+  hm.position.set(0, 2.55, 0.51);
+  g.add(hm);
+  g.add(box(0.35, 0.5, 0.06, 0x14161a, 0.5, 1.6, 0.49));   // keypad
+  g.add(box(0.9, 0.35, 0.08, 0x14161a, -0.15, 0.45, 0.49)); // pickup flap
+  g.position.set(x, 0, z); g.rotation.y = ry;
+  scene.add(g);
+  blockArea(x, z, 1.0, 0.8);
+  return g;
+}
+mkVending(FLOOR_W / 2 - 1.4, -6, -Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
+mkVending(FLOOR_W / 2 - 1.4, -9.2, -Math.PI / 2, 0x2858b0, "#cfe4ff", "SNACKS");
+mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
+
+/* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
+{
+  const bx = -32, bz = -24;
+  /* round tables with chairs */
+  for (const [tx, tz] of [[bx, bz + 5], [bx + 6, bz + 4], [bx + 3, bz + 9]]) {
+    scene.add(cyl(1.0, 1.0, 0.08, 0xd8d4ca, tx, 1.0, tz, 16), cyl(0.08, 0.12, 1.0, 0x8a8f96, tx, 0.5, tz));
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.5;
+      scene.add(box(0.5, 0.85, 0.5, 0x2c2f36, tx + Math.cos(a) * 1.5, 0.42, tz + Math.sin(a) * 1.5));
+    }
+    blockArea(tx, tz, 1.1, 1.1);
+  }
+  /* counter along wall with microwave + coffee pot + fridge */
+  scene.add(box(7, 1.1, 1.2, 0xd8d4ca, bx + 2, 0.55, bz + 0.9));
+  scene.add(box(0.8, 0.5, 0.6, 0x2c3038, bx, 1.4, bz + 0.9));            // microwave
+  const mw = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.3), new THREE.MeshBasicMaterial({ color: 0x2a4a2a }));
+  mw.position.set(bx - 0.1, 1.4, bz + 1.21); scene.add(mw);
+  scene.add(cyl(0.16, 0.14, 0.3, 0x1c1c22, bx + 2.2, 1.35, bz + 0.9));   // coffee pot
+  scene.add(box(1.3, 2.5, 1.1, 0xbfc5cc, bx + 6.4, 1.25, bz + 1.0));     // fridge
+  scene.add(box(1.2, 0.06, 0.1, 0x8a8f96, bx + 6.4, 1.55, bz + 1.56));
+  blockArea(bx + 2, bz + 0.9, 3.6, 0.8); blockArea(bx + 6.4, bz + 1, 0.85, 0.75);
+  /* wall sign — bare outlined text, no box */
+  const sign = textSprite("BREAK ROOM", { size: 48, color: "#8fd1ff", strokeW: 6 });
+  sign.position.set(bx + 3, 4.2, bz + 0.2);
+  sign.scale.multiplyScalar(1.6);
+  scene.add(sign);
+  /* water cooler */
+  scene.add(cyl(0.28, 0.28, 0.9, 0x9fd8ff, bx + 9.5, 1.35, bz + 1, 10, { transparent: true, opacity: 0.7 }));
+  scene.add(box(0.5, 0.9, 0.5, 0xe8e8e8, bx + 9.5, 0.45, bz + 1));
+}
 /* kitchenette (corner +x -z) */
 {
   const kx = 26, kz = -17;
@@ -403,7 +474,7 @@ mkDeskRow(6, -12); mkDeskRow(6, 12); mkDeskRow(16, -4);
   blockArea(cx + 5, cz, 3, 1.4);
 }
 /* server racks along -z wall */
-for (let x = 14; x <= 26; x += 3.2) {
+for (let x = 14; x <= 36; x += 3.2) {
   const r = box(2.6, 4.4, 1.1, 0x1c2026, x, 2.2, -FLOOR_D / 2 + 0.7);
   scene.add(r);
   for (let i = 0; i < 10; i++) {
@@ -735,33 +806,70 @@ let purgeCooldown = 0;
 /* ============================== ENEMIES ============================== */
 const enemies = [];
 function spamLabelTex() {
-  return canvasTex(512, 256, (g, w, h) => {
-    g.fillStyle = "#0a2f8c"; g.fillRect(0, 0, w, h);
-    g.strokeStyle = "#ffd200"; g.lineWidth = 10; g.strokeRect(14, 14, w - 28, h - 28);
+  /* modeled on the real can: deep navy label, yellow serif SPAM®, burger art */
+  const t = canvasTex(512, 256, (g, w, h) => {
+    g.fillStyle = "#04246b"; g.fillRect(0, 0, w, h);
+    /* thin yellow pinstripes near top/bottom like the real label edge */
+    g.fillStyle = "#ffd200"; g.fillRect(0, 6, w, 5); g.fillRect(0, h - 11, w, 5);
+    /* SPAM wordmark: heavy serif-ish, slight italic */
     g.save();
-    g.translate(w / 2, h / 2); g.transform(1, 0, -0.22, 1, 0, 0);
-    g.fillStyle = "#ffd200"; g.font = "900 150px Arial Black"; g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText("SPAM", 0, 8);
+    g.translate(w / 2, 78); g.transform(1, 0, -0.08, 1, 0, 0);
+    g.fillStyle = "#ffd200";
+    g.font = "900 96px Georgia, 'Times New Roman', serif";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("SPAM", 0, 0);
+    g.font = "bold 22px Georgia"; g.fillText("®", 152, -30);
     g.restore();
-    g.fillStyle = "#ffd200"; g.font = "bold 26px Arial";
-    g.fillText("100% BOT-FED SLOP", w / 2 - 130, h - 36);
+    g.fillStyle = "#ffd200"; g.font = "italic bold 22px Georgia"; g.textAlign = "center";
+    g.fillText("Classic", w / 2 + 120, 128);
+    /* burger art, centered below the wordmark */
+    const bx = w / 2, by = 190;
+    g.fillStyle = "#3f7a2f";                                    // lettuce ruffle
+    for (let i = -4; i <= 4; i++) { g.beginPath(); g.ellipse(bx + i * 22, by + 28, 14, 9, 0, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = "#8a4a2a"; g.beginPath(); g.ellipse(bx, by + 20, 95, 16, 0, 0, Math.PI * 2); g.fill();  // patty
+    g.fillStyle = "#ffc93c"; g.beginPath(); g.ellipse(bx, by + 8, 88, 10, 0, 0, Math.PI * 2); g.fill();   // cheese
+    g.fillStyle = "#d43a2a"; g.beginPath(); g.ellipse(bx - 30, by, 34, 9, 0, 0, Math.PI * 2); g.fill();   // tomato
+    g.beginPath(); g.ellipse(bx + 34, by, 34, 9, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#e8c47e"; g.beginPath(); g.ellipse(bx, by - 22, 92, 26, 0, 0, Math.PI); g.fill();      // bun dome (draw upper half)
+    g.beginPath(); g.ellipse(bx, by - 20, 92, 12, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#fff3d8";                                    // sesame seeds
+    for (let i = 0; i < 22; i++) { g.beginPath(); g.ellipse(bx + rand(-75, 75), by - 28 + rand(-10, 8), 3, 2, rand(0, 3), 0, Math.PI * 2); g.fill(); }
+    /* white round inspection stamp */
+    g.fillStyle = "#fff"; g.beginPath(); g.arc(w - 60, 92, 30, 0, Math.PI * 2); g.fill();
+    g.fillStyle = "#04246b"; g.font = "bold 11px Arial"; g.textAlign = "center";
+    g.fillText("U.S.", w - 60, 84); g.fillText("INSPECTED", w - 60, 96); g.fillText("BOT-FED", w - 60, 108);
+    /* net wt */
+    g.fillStyle = "#fff"; g.font = "bold 16px Arial"; g.textAlign = "left";
+    g.fillText("NET WT 12 OZ (340g)", 20, h - 24);
   });
+  t.wrapS = THREE.RepeatWrapping;
+  t.repeat.set(2, 1); /* label reads on front AND back */
+  return t;
 }
 const SPAM_TEX = spamLabelTex();
 function buildSpammer() {
   const g = new THREE.Group();
-  /* rounded tin, wider than tall+deep, with silver lips */
-  const tin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.95, 20),
+  const GOLD = 0xcfa93c, GOLD_D = 0xa8842c;
+  /* squarish rounded tin like the real can: wider than deep, GOLD rims */
+  const tin = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 0.95, 24),
     new THREE.MeshLambertMaterial({ map: SPAM_TEX }));
-  tin.scale.set(1.25, 1, 0.85);
+  tin.scale.set(1.35, 1, 0.9);
   tin.position.y = 1.0;
   tin.castShadow = true;
   g.add(tin);
   for (const y of [0.5, 1.5]) {
-    const lip = cyl(0.66, 0.66, 0.09, 0xc9ced4, 0, y, 0, 20);
-    lip.scale.set(1.27, 1, 0.87);
+    const lip = cyl(0.66, 0.66, 0.1, GOLD, 0, y, 0, 24);
+    lip.scale.set(1.37, 1, 0.92);
     g.add(lip);
   }
+  /* embossed gold lid + pull ring */
+  const lid = cyl(0.6, 0.6, 0.05, GOLD, 0, 1.56, 0, 24);
+  lid.scale.set(1.3, 1, 0.86);
+  g.add(lid);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.025, 6, 12), mat(GOLD_D));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(0.45, 1.62, 0);
+  g.add(ring);
   /* angry face on the silver TOP band */
   const faceTex = canvasTex(128, 64, (g2, w, h) => {
     g2.clearRect(0, 0, w, h);
@@ -1253,7 +1361,8 @@ function update(dt) {
   }
   squash += (1 - squash) * Math.min(1, dt * 10);
   pig.position.y = pigY;
-  pig.rotation.y = yaw + Math.PI;
+  /* face the CAMERA — the whole point is seeing the meme face */
+  pig.rotation.y = yaw;
   /* waddle + squash-stretch */
   const waddle = moving ? Math.sin(t * 11) : 0;
   pig.rotation.z = waddle * 0.09;
