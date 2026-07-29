@@ -76,9 +76,9 @@ document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xdfe4ea);
-scene.fog = new THREE.Fog(0xdfe4ea, 55, 110);
+scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 280);
 
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
@@ -91,8 +91,8 @@ const sun = new THREE.DirectionalLight(0xfff4e0, 2.1);
 sun.position.set(14, 26, 10);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -55; sun.shadow.camera.right = 55;
-sun.shadow.camera.top = 55; sun.shadow.camera.bottom = -55;
+sun.shadow.camera.left = -80; sun.shadow.camera.right = 80;
+sun.shadow.camera.top = 80; sun.shadow.camera.bottom = -80;
 sun.shadow.camera.far = 80;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0xeef2ff, 0xc9b89a, 0.85));
@@ -196,7 +196,14 @@ function noiseBurst(dur = 0.25, vol = 0.16) {
 const SFX = {
   throw: () => beep(520, 0.12, "sawtooth", 0.06, -220),
   catch: () => beep(1250, 0.05, "square", 0.05),
-  shoot: () => { beep(180, 0.07, "sawtooth", 0.09, -60); noiseBurst(0.06, 0.07); },
+  shoot: () => {
+    /* hard rifle report: deep boom + crack + shell ring */
+    noiseBurst(0.18, 0.28);
+    beep(90, 0.16, "sawtooth", 0.16, -40);
+    beep(220, 0.08, "square", 0.12, -120);
+    beep(70, 0.22, "triangle", 0.1, -20);
+    setTimeout(() => beep(1400, 0.04, "square", 0.04, -600), 40);
+  },
   lock:  () => beep(880, 0.07, "square", 0.06, 160),
   hit:   () => beep(220, 0.08, "square", 0.08, -80),
   boom:  () => { noiseBurst(0.3, 0.2); beep(90, 0.25, "sawtooth", 0.1, -50); },
@@ -208,7 +215,7 @@ const SFX = {
 };
 
 /* ============================== OFFICE ============================== */
-const FLOOR_W = 82, FLOOR_D = 58;
+const FLOOR_W = 120, FLOOR_D = 90;
 {
   const floorTex = canvasTex(512, 512, (g) => {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
@@ -220,7 +227,7 @@ const FLOOR_W = 82, FLOOR_D = 58;
       g.beginPath(); g.moveTo(0, i * 64); g.lineTo(512, i * 64); g.stroke(); }
   });
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
-  floorTex.repeat.set(10, 7);
+  floorTex.repeat.set(14, 11);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D),
     new THREE.MeshLambertMaterial({ map: floorTex }));
   floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
@@ -243,7 +250,7 @@ const FLOOR_W = 82, FLOOR_D = 58;
   ceil.rotation.x = Math.PI / 2; ceil.position.y = wallH; scene.add(ceil);
   /* light panels */
   const panelMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  for (let x = -36; x <= 36; x += 12) for (let z = -24; z <= 24; z += 8) {
+  for (let x = -54; x <= 54; x += 12) for (let z = -40; z <= 40; z += 10) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.6), panelMat);
     p.rotation.x = Math.PI / 2; p.position.set(x, wallH - 0.02, z);
     scene.add(p);
@@ -262,7 +269,7 @@ const FLOOR_W = 82, FLOOR_D = 58;
           if (Math.random() < 0.4) g.fillRect(wx, wy, 4, 5);
     }
   });
-  for (let z = -25; z <= 25; z += 10) {
+  for (let z = -40; z <= 40; z += 10) {
     const win = new THREE.Mesh(new THREE.PlaneGeometry(7, 3),
       new THREE.MeshBasicMaterial({ map: skyTex }));
     win.rotation.y = -Math.PI / 2;
@@ -291,10 +298,10 @@ const FLOOR_W = 82, FLOOR_D = 58;
   const xa = box(0.5, 3.4, 0.5, 0x111111); xa.rotation.z = Math.PI / 4;
   const xb = box(0.5, 3.4, 0.5, 0x111111); xb.rotation.z = -Math.PI / 4;
   xg.add(xa, xb);
-  xg.position.set(10, 5.6, 0);
+  xg.position.set(0, 5.6, 0);
   scene.add(xg);
-  const hang1 = box(0.06, 1.3, 0.06, 0x333333, 10 - 0.9, 6.6, 0);
-  const hang2 = box(0.06, 1.3, 0.06, 0x333333, 10 + 0.9, 6.6, 0);
+  const hang1 = box(0.06, 1.3, 0.06, 0x333333, -0.9, 6.6, 0);
+  const hang2 = box(0.06, 1.3, 0.06, 0x333333, 0.9, 6.6, 0);
   scene.add(hang1, hang2);
 }
 
@@ -383,18 +390,20 @@ function mkDeskRow(cx, cz) {
   }
   blockArea(cx, cz, 4.0, 1.6);
 }
-/* layout — deep cubicle farm: tall half-height walls, more large pods */
-/* large pods (bigger footprint, taller partitions) */
-mkCubiclePod(-22, -10, true); mkCubiclePod(-22, 4, true); mkCubiclePod(-22, 16, true);
-mkCubiclePod(-8, -12, true); mkCubiclePod(-8, 10, true); mkCubiclePod(-8, 22, true);
-mkCubiclePod(-34, -16, true); mkCubiclePod(-34, 0, true); mkCubiclePod(-34, 14, true);
-mkCubiclePod(4, -14, true); mkCubiclePod(4, 8, true); mkCubiclePod(4, 20, true);
-/* standard tall pods filling the mid floor */
-mkCubiclePod(-22, -22); mkCubiclePod(-8, -22); mkCubiclePod(16, -14);
-mkCubiclePod(16, 2); mkCubiclePod(16, 16); mkCubiclePod(28, -6);
-mkCubiclePod(28, 10); mkCubiclePod(28, 20);
-/* a few open desk rows near the lobby / hanging X */
-mkDeskRow(12, -4); mkDeskRow(20, -20);
+/* layout — larger floor, pods on the perimeter, big open plaza in the center */
+/* west wing large pods */
+mkCubiclePod(-42, -28, true); mkCubiclePod(-42, -8, true); mkCubiclePod(-42, 12, true); mkCubiclePod(-42, 30, true);
+mkCubiclePod(-28, -30, true); mkCubiclePod(-28, 28, true);
+/* east wing */
+mkCubiclePod(36, -26, true); mkCubiclePod(36, -6, true); mkCubiclePod(36, 14, true); mkCubiclePod(36, 32, true);
+mkCubiclePod(22, -30, true); mkCubiclePod(22, 30, true);
+/* north / south clusters (leave center open around 0,0 → lobby) */
+mkCubiclePod(-14, -32, true); mkCubiclePod(6, -32, true);
+mkCubiclePod(-14, 32, true); mkCubiclePod(6, 32, true);
+/* sparse standard pods off the open lanes */
+mkCubiclePod(-28, 8); mkCubiclePod(-28, -16); mkCubiclePod(22, 8); mkCubiclePod(22, -12);
+/* a couple desk rows on the edges only */
+mkDeskRow(-48, 0); mkDeskRow(48, 0); mkDeskRow(0, -38);
 
 /* vending machines */
 function mkVending(x, z, ry, bodyCol, glow, label) {
@@ -435,7 +444,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
-  const bx = -32, bz = -24;
+  const bx = -48, bz = -36;
   /* round tables with chairs */
   for (const [tx, tz] of [[bx, bz + 5], [bx + 6, bz + 4], [bx + 3, bz + 9]]) {
     scene.add(cyl(1.0, 1.0, 0.08, 0xd8d4ca, tx, 1.0, tz, 16), cyl(0.08, 0.12, 1.0, 0x8a8f96, tx, 0.5, tz));
@@ -465,7 +474,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
 }
 /* kitchenette (corner +x -z) */
 {
-  const kx = 26, kz = -17;
+  const kx = 42, kz = -28;
   scene.add(box(6, 1.1, 1.2, 0xd8d4ca, kx, 0.55, kz));               // counter
   scene.add(box(1.2, 2.4, 1.2, 0xbfc5cc, kx - 4.2, 1.2, kz));        // fridge
   scene.add(box(0.5, 0.55, 0.45, 0x22262c, kx + 1.4, 1.4, kz));      // coffee machine
@@ -475,7 +484,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
 }
 /* lounge (corner +x +z) */
 {
-  const lx = 24, lz = 15;
+  const lx = 40, lz = 24;
   const couch = (x, z, ry) => {
     const g = new THREE.Group();
     g.add(box(2.6, 0.5, 1.1, 0x4a5a78, 0, 0.35, 0));
@@ -493,7 +502,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
 }
 /* conference room (glass, -x +z corner) */
 {
-  const cx = -26, cz = 16;
+  const cx = -40, cz = 24;
   const glass = new THREE.MeshLambertMaterial({ color: 0xaad4ee, transparent: true, opacity: 0.18 });
   const gw = (w, x, z, ry) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, 3, 0.08), glass);
@@ -510,7 +519,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
   blockArea(cx + 5, cz, 3, 1.4);
 }
 /* server racks along -z wall */
-for (let x = 14; x <= 36; x += 3.2) {
+for (let x = 20; x <= 52; x += 3.2) {
   const r = box(2.6, 4.4, 1.1, 0x1c2026, x, 2.2, -FLOOR_D / 2 + 0.7);
   scene.add(r);
   for (let i = 0; i < 10; i++) {
@@ -523,7 +532,7 @@ for (let x = 14; x <= 36; x += 3.2) {
 }
 /* small potted plants scattered */
 for (let i = 0; i < 6; i++) {
-  const px = rand(-28, 28), pz = rand(-18, 18);
+  const px = rand(-48, 48), pz = rand(-36, 36);
   scene.add(cyl(0.22, 0.3, 0.4, 0xb06a3a, px, 0.2, pz), sph(0.45, 0x3f7a3f, px, 0.8, pz));
 }
 
@@ -785,31 +794,27 @@ const pigParts = {};
   const headG = new THREE.Group();
   const head = sph(0.42, PINK, 0, 0, 0); head.scale.set(1.0, 0.92, 0.95);
   headG.add(head);
-  /* wide flat snout, oval */
-  const snout = cyl(0.2, 0.22, 0.24, PINK, 0, -0.06, 0.42);
-  snout.rotation.x = Math.PI / 2; snout.scale.x = 1.5;
-  const snoutCap = cyl(0.2, 0.2, 0.03, PINKD, 0, -0.06, 0.55);
-  snoutCap.rotation.x = Math.PI / 2; snoutCap.scale.x = 1.5;
-  headG.add(snout, snoutCap);
-  /* meme face photo (background removed) on a disc under the hood */
+  /* man-face photo with pig snout (bg removed) — primary face of the hero */
   const faceMat = new THREE.MeshLambertMaterial({
-    color: 0xffffff, transparent: true, alphaTest: 0.12, depthWrite: false, side: THREE.DoubleSide,
+    color: 0xffffff, transparent: true, alphaTest: 0.08, depthWrite: false, side: THREE.DoubleSide,
   });
-  const face = new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), faceMat);
-  face.position.set(0, 0.08, 0.34);
-  face.scale.set(1.05, 1.2, 1);
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.48, 32), faceMat);
+  face.position.set(0, 0.06, 0.36);
+  face.scale.set(1.12, 1.28, 1);
   headG.add(face);
   new THREE.TextureLoader().load("pig-face.png", (tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    tex.anisotropy = 8;
     faceMat.map = tex;
     faceMat.needsUpdate = true;
   });
+  /* subtle 3D snout bridge under the photo snout so it catches light in profile */
+  const snout = cyl(0.12, 0.14, 0.14, PINK, 0, -0.08, 0.48);
+  snout.rotation.x = Math.PI / 2; snout.scale.x = 1.35;
+  snout.material = mat(PINK, { transparent: true, opacity: 0.85 });
+  headG.add(snout);
   for (const s of [-1, 1]) {
-    const nos = cyl(0.045, 0.045, 0.04, 0x6e3a44, 0.11 * s, -0.06, 0.57);
-    nos.rotation.x = Math.PI / 2; nos.scale.y = 1;
-    nos.scale.set(1, 1, 1.6);
-    headG.add(nos);
+    /* no extra 3D nostrils — the photo has the pig nose */
     /* floppy ears poking from hood */
     const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 4), mat(PINK));
     ear.position.set(0.3 * s, 0.42, 0.05); ear.rotation.z = -0.6 * s; ear.rotation.x = 0.5;
@@ -877,17 +882,16 @@ function buildRifle() {
   g.add(scope);
   return g;
 }
-const rifleHeld = buildRifle();
-/* buildRifle is modeled along +X; rotate so barrel aims along pig +Z (across the bow / snout-forward) */
-rifleHeld.rotation.y = -Math.PI / 2;
-rifleHeld.position.set(0.48, 0.78, 0.55);
+/* rifle always visible, permanently strapped on the back, barrel facing backwards */
+const rifleHeld = buildRifle(); /* fire math only — never shown on the front */
 rifleHeld.visible = false;
 pig.add(rifleHeld);
 const rifleSlung = buildRifle();
-/* slung across the back, still snout-aligned when visible briefly */
-rifleSlung.rotation.set(0.2, -Math.PI / 2, 0.15);
-rifleSlung.position.set(0.15, 1.05, -0.15);
-rifleSlung.scale.setScalar(0.9);
+/* +X barrel rotated to -Z (back of pig). Always on. */
+rifleSlung.rotation.set(0.12, Math.PI / 2, 0.08);
+rifleSlung.position.set(0.12, 0.95, -0.62);
+rifleSlung.scale.setScalar(1.05);
+rifleSlung.visible = true;
 pig.add(rifleSlung);
 
 /* ============================== BOOMERANG ============================== */
@@ -930,7 +934,7 @@ const purgeBtn = new THREE.Group();
   const t1 = textSprite("BOT PURGE", { size: 60, color: "#ff5040", strokeW: 8 });
   t1.position.y = 1.7; t1.scale.multiplyScalar(1.2);
   purgeBtn.add(t1);
-  purgeBtn.position.set(-14, 0, 6);
+  purgeBtn.position.set(-10, 0, 10);
   scene.add(purgeBtn);
 }
 let purgeCooldown = 0;
@@ -1104,7 +1108,7 @@ function buildBot(variant) {
 function spawnEnemy(type) {
   let e;
   if (type === "spammer") {
-    e = { type, hp: 2, speed: rand(2.2, 2.9) + wave * 0.12, mesh: buildSpammer(), shootT: rand(0.5, 1.5), r: 0.9, zig: rand(0, 6.28) };
+    e = { type, hp: 2, speed: rand(2.2, 2.9) + wave * 0.12, mesh: buildSpammer(), shootT: rand(2.5, 4.5), r: 0.9, zig: rand(0, 6.28) };
   } else {
     const variant = pick(BOT_VARIANTS);
     e = {
@@ -1113,6 +1117,20 @@ function spawnEnemy(type) {
       speed: (variant === "scout" ? 2.4 : variant === "heavy" ? 1.0 : 1.5) + wave * 0.08,
       shootT: rand(2, 4),
     };
+    /* small stationary nameplate (bots do not throw text) */
+    const botTag = textSprite(
+      variant === "heavy" ? "HEAVY" : variant === "scout" ? "SCOUT" : "BOT",
+      { size: 26, color: variant === "heavy" ? "#ff8c2a" : "#ff6a6a", strokeW: 4 }
+    );
+    botTag.position.set(0, variant === "heavy" ? 2.85 : 2.45, 0);
+    botTag.scale.multiplyScalar(0.55);
+    e.mesh.add(botTag);
+  }
+  if (e.type === "spammer") {
+    const spamTag = textSprite("SPAM", { size: 22, color: "#ffd200", strokeW: 4 });
+    spamTag.position.set(0, 2.15, 0);
+    spamTag.scale.multiplyScalar(0.45);
+    e.mesh.add(spamTag);
   }
   /* spawn at perimeter, away from player */
   let x, z, tries = 0;
@@ -1120,7 +1138,7 @@ function spawnEnemy(type) {
     const side = (Math.random() * 4) | 0;
     x = side < 2 ? (side === 0 ? -1 : 1) * (FLOOR_W / 2 - 2) : rand(-FLOOR_W / 2 + 3, FLOOR_W / 2 - 3);
     z = side < 2 ? rand(-FLOOR_D / 2 + 3, FLOOR_D / 2 - 3) : (side === 2 ? 1 : -1) * (FLOOR_D / 2 - 2);
-  } while (++tries < 10 && Math.hypot(x - pig.position.x, z - pig.position.z) < 12);
+  } while (++tries < 10 && Math.hypot(x - pig.position.x, z - pig.position.z) < 14);
   e.mesh.position.set(x, 0, z);
   e.walk = rand(0, 6.28);
   scene.add(e.mesh);
@@ -1200,8 +1218,8 @@ addEventListener("keydown", e => {
     weaponIdx = 1 - weaponIdx;
     $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
     $("chargeLabel").textContent = weaponIdx ? "LOCK-ON" : "X CHARGE";
-    rifleHeld.visible = weaponIdx === 1;
-    rifleSlung.visible = weaponIdx === 0;
+    rifleHeld.visible = false;
+    rifleSlung.visible = true; /* always on back, facing backwards */
     locked = false; lockTarget = null; lockT = 0;
     beep(500, 0.05);
   }
@@ -1304,22 +1322,26 @@ function fireRifle() {
   if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
   ammo--;
   $("ammoV").textContent = ammo;
-  rifleCd = 0.55;
+  rifleCd = 0.38;
   SFX.shoot();
-  rifleHeld.visible = true;
-  setTimeout(() => { if (weaponIdx === 0) rifleHeld.visible = false; }, 250);
-  shake = Math.max(shake, 0.12);
+  rifleHeld.visible = false;
+  rifleSlung.visible = true;
+  /* kick the slung rifle slightly so the shot reads on the model */
+  rifleSlung.rotation.x = 0.35;
+  setTimeout(() => { rifleSlung.rotation.x = 0.12; }, 90);
+  shake = Math.max(shake, 0.28);
+  hitstop = Math.max(hitstop, 0.03);
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const dir = aimDir();
   let target = null;
   if (locked && lockTarget && enemies.includes(lockTarget)) target = lockTarget;
   else {
-    /* hitscan: nearest enemy within a cone */
-    let best = 0.25;
+    /* hitscan: wider cone, longer range */
+    let best = 0.38;
     for (const e of enemies) {
       const to = e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin);
       const dist = to.length();
-      if (dist > 45) continue;
+      if (dist > 55) continue;
       const ang = to.normalize().angleTo(dir);
       if (ang < best) { best = ang; target = e; }
     }
@@ -1329,15 +1351,15 @@ function fireRifle() {
     : origin.clone().add(dir.clone().multiplyScalar(40));
   /* tracer */
   const len = origin.distanceTo(end);
-  const tr = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, len),
-    new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true }));
+  const tr = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, len),
+    new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true }));
   tr.position.copy(origin).lerp(end, 0.5);
   tr.lookAt(end);
   tracers.push({ mesh: tr, life: 0.12 });
   scene.add(tr);
   if (target) {
     if (target.type === "spammer" && locked && target === lockTarget) demonetize(target);
-    else damage(target, 2, end);
+    else damage(target, 5, end); /* hard-hitting rifle */
   }
   locked = false; lockTarget = null; lockT = 0;
 }
@@ -1672,18 +1694,18 @@ function update(dt) {
       const ua = e.mesh.userData;
       if (ua["arm-1"]) ua["arm-1"].rotation.x = Math.sin(e.walk) * 0.6;
       if (ua["arm1"]) ua["arm1"].rotation.x = -Math.sin(e.walk) * 0.6;
-      /* throw spam text */
+      /* throw spam text — small & infrequent */
       e.shootT -= dt;
-      if (e.shootT <= 0 && dist < 42) {
-        e.shootT = rand(1.5, 2.7);
+      if (e.shootT <= 0 && dist < 28) {
+        e.shootT = rand(3.8, 6.2);
         const phrase = pick(SPAM_PHRASES);
-        const sp = textSprite(phrase, { size: 52, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 7 });
+        const sp = textSprite(phrase, { size: 28, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 4 });
         sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 1.5, 0));
-        sp.scale.multiplyScalar(0.4);
-        const vel = pig.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(sp.position).normalize().multiplyScalar(7);
-        spamTexts.push({ sprite: sp, vel, dist: 0, life: 5, baseAspect: sp.scale.x / sp.scale.y });
+        sp.scale.multiplyScalar(0.22);
+        const vel = pig.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(sp.position).normalize().multiplyScalar(6);
+        spamTexts.push({ sprite: sp, vel, dist: 0, life: 3.5, baseAspect: sp.scale.x / sp.scale.y });
         scene.add(sp);
-        beep(rand(500, 900), 0.06, "square", 0.04);
+        beep(rand(500, 900), 0.05, "square", 0.03);
       }
     } else {
       e.mesh.position.addScaledVector(toP, e.speed * dt);
@@ -1730,8 +1752,8 @@ function update(dt) {
     s.sprite.position.addScaledVector(s.vel, dt);
     s.dist += s.vel.length() * dt;
     s.life -= dt;
-    /* grows as it travels */
-    const sc = 0.4 + s.dist * 0.12;
+    /* slight grow only — stay small */
+    const sc = 0.22 + s.dist * 0.025;
     s.sprite.scale.set(s.baseAspect * sc, sc, 1);
     s.sprite.material.rotation = Math.sin(t * 6 + i) * 0.2;
     if (s.sprite.position.distanceTo(pig.position.clone().add(new THREE.Vector3(0, 1, 0))) < 0.9 + sc * 0.2) {
