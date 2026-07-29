@@ -2060,14 +2060,14 @@ function emitPhrase(origin, phrase, opts = {}) {
   const isPC = opts.kind === "complaint" || opts.kind === "outage";
   /* boss + computer phrases +30% larger; others keep current */
   let fontSize;
-  if (isBoss) fontSize = long ? 81 : 94;
+  if (isBoss) fontSize = long ? 110 : 128;
   else if (isPC) fontSize = long ? 44 : 44;
   else if (deadly) fontSize = long ? 36 : 43;
   else fontSize = 34;
   const sp = textSprite(phrase, {
     size: fontSize,
     color,
-    strokeW: isBoss ? 14 : isPC ? 8 : deadly ? 7 : 5,
+    strokeW: isBoss ? 18 : isPC ? 8 : deadly ? 7 : 5,
     maxWidth: 0, /* force single line for boss + object phrases */
   });
   /* readable mid-height: above pig/desks, not up in the ceiling */
@@ -2081,7 +2081,7 @@ function emitPhrase(origin, phrase, opts = {}) {
   }
   sp.position.copy(pos);
   sp.scale.multiplyScalar(
-    isBoss ? (long ? 0.86 : 0.96) :
+    isBoss ? (long ? 1.15 : 1.28) :
     isPC ? 0.38 :
     deadly ? (long ? 0.34 : 0.38) : 0.29
   );
