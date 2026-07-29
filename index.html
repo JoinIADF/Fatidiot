@@ -37,7 +37,7 @@
 <div id="hud">
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox">WAVE<br><span id="waveV">1</span></div>
-  <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span></div>
+  <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span><br>RIFLE AMMO <span id="ammoV">6</span></div>
   <div id="lives" class="hudBox">🐷🐷🐷</div>
   <div id="chargeWrap" class="hudBox">
     <div id="chargeLabel">X CHARGE</div>
@@ -603,6 +603,7 @@ const grok = new THREE.Group();
   const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.15, 0.5, 24, 1, true),
     new THREE.MeshLambertMaterial({ map: rimTex, side: THREE.DoubleSide }));
   rim.position.y = 0.25; rim.castShadow = true;
+  rim.rotation.y = Math.PI; /* GROK reads on the front, facing the floor */
   grok.add(rim);
   grok.add(cyl(1.0, 1.0, 0.22, 0x9c3240, 0, 0.12, 0, 24)); // cushion
   /* dog: curled shiba */
@@ -685,14 +686,51 @@ const pigParts = {};
   const snoutCap = cyl(0.2, 0.2, 0.03, PINKD, 0, -0.06, 0.55);
   snoutCap.rotation.x = Math.PI / 2; snoutCap.scale.x = 1.5;
   headG.add(snout, snoutCap);
+  /* painted human-ish meme face on a disc under the hood (skin, squint, brows) */
+  const faceTex = canvasTex(256, 256, (g2, w, h) => {
+    const cx = w / 2, cyv = h / 2;
+    const rad = g2.createRadialGradient(cx, cyv - 20, 30, cx, cyv, 128);
+    rad.addColorStop(0, "#e3b391"); rad.addColorStop(0.75, "#d29f7c"); rad.addColorStop(1, "#b98a6a");
+    g2.fillStyle = rad; g2.fillRect(0, 0, w, h);
+    /* forehead creases */
+    g2.strokeStyle = "rgba(120,80,60,0.5)"; g2.lineWidth = 3;
+    for (const yy of [52, 66]) { g2.beginPath(); g2.moveTo(70, yy + 6); g2.quadraticCurveTo(cx, yy - 6, w - 70, yy + 6); g2.stroke(); }
+    /* brows: heavy, low, serious */
+    g2.strokeStyle = "#6e4a32"; g2.lineWidth = 10; g2.lineCap = "round";
+    g2.beginPath(); g2.moveTo(58, 102); g2.lineTo(112, 96); g2.stroke();
+    g2.beginPath(); g2.moveTo(w - 58, 102); g2.lineTo(w - 112, 96); g2.stroke();
+    /* squinting eyes: narrow slits with dark lash line */
+    for (const s of [-1, 1]) {
+      const ex = cx + 46 * s;
+      g2.fillStyle = "#f2ead8";
+      g2.beginPath(); g2.ellipse(ex, 118, 22, 7, 0, 0, Math.PI * 2); g2.fill();
+      g2.fillStyle = "#4a3220";
+      g2.beginPath(); g2.ellipse(ex - 4 * s, 118, 7, 6, 0, 0, Math.PI * 2); g2.fill();
+      g2.strokeStyle = "#3a2818"; g2.lineWidth = 5;
+      g2.beginPath(); g2.moveTo(ex - 24, 114); g2.quadraticCurveTo(ex, 108, ex + 24, 114); g2.stroke();
+      /* lower squint crease */
+      g2.strokeStyle = "rgba(120,80,60,0.6)"; g2.lineWidth = 3;
+      g2.beginPath(); g2.moveTo(ex - 20, 130); g2.quadraticCurveTo(ex, 134, ex + 20, 130); g2.stroke();
+    }
+    /* cheek / nasolabial shading toward the snout */
+    g2.strokeStyle = "rgba(120,75,55,0.45)"; g2.lineWidth = 4;
+    g2.beginPath(); g2.moveTo(cx - 52, 156); g2.quadraticCurveTo(cx - 62, 186, cx - 44, 210); g2.stroke();
+    g2.beginPath(); g2.moveTo(cx + 52, 156); g2.quadraticCurveTo(cx + 62, 186, cx + 44, 210); g2.stroke();
+    /* edge vignette blends into hood/head */
+    const vg = g2.createRadialGradient(cx, cyv, 95, cx, cyv, 128);
+    vg.addColorStop(0, "rgba(150,105,80,0)"); vg.addColorStop(1, "rgba(115,80,60,0.85)");
+    g2.fillStyle = vg; g2.fillRect(0, 0, w, h);
+  });
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.37, 24),
+    new THREE.MeshLambertMaterial({ map: faceTex }));
+  face.position.set(0, 0.06, 0.33);
+  face.scale.y = 1.12;
+  headG.add(face);
   for (const s of [-1, 1]) {
     const nos = cyl(0.045, 0.045, 0.04, 0x6e3a44, 0.11 * s, -0.06, 0.57);
     nos.rotation.x = Math.PI / 2; nos.scale.y = 1;
     nos.scale.set(1, 1, 1.6);
     headG.add(nos);
-    /* SMALL eye + heavy lid: the sniper stare */
-    headG.add(sph(0.05, 0x201418, 0.2 * s, 0.14, 0.36));
-    headG.add(box(0.16, 0.05, 0.05, PINKD, 0.2 * s, 0.19, 0.37));
     /* floppy ears poking from hood */
     const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 4), mat(PINK));
     ear.position.set(0.3 * s, 0.42, 0.05); ear.rotation.z = -0.6 * s; ear.rotation.x = 0.5;
@@ -772,16 +810,27 @@ pig.add(rifleSlung);
 
 /* ============================== BOOMERANG ============================== */
 function buildBoomerang() {
+  /* black X.com logo: full stroke + broken stroke, on a thin white sticker edge */
   const g = new THREE.Group();
-  const m = new THREE.MeshBasicMaterial({ color: 0xbff4ff });
-  const a = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 0.1), m);
+  const black = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
+  const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  /* white backing X (slightly larger) so the black logo pops on any background */
+  for (const rz of [Math.PI / 4, -Math.PI / 4]) {
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.16, 0.06), white);
+    back.rotation.z = rz; back.position.z = -0.02;
+    g.add(back);
+  }
+  /* full diagonal stroke */
+  const a = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.08, 0.08), black);
   a.rotation.z = Math.PI / 4;
-  const b = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 0.1), m);
-  b.rotation.z = -Math.PI / 4;
-  const core = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.12), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  g.add(a, b, core);
-  const glow = new THREE.PointLight(0x8fe8ff, 3, 4);
-  g.add(glow);
+  g.add(a);
+  /* broken diagonal: two segments with the signature notch gap */
+  for (const off of [0.33, -0.33]) {
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.08), black);
+    seg.rotation.z = -Math.PI / 4;
+    seg.position.set(Math.SQRT1_2 * off * -1, Math.SQRT1_2 * off, 0);
+    g.add(seg);
+  }
   return g;
 }
 
@@ -793,11 +842,9 @@ const purgeBtn = new THREE.Group();
   purgeBtn.add(cap);
   purgeBtn.add(cyl(0.24, 0.24, 0.06, 0xf2f2f2, 0, 0.57, 0, 16));
   purgeBtn.userData.cap = cap;
-  const t1 = textSprite("PURGE", { size: 60, color: "#ff5040", strokeW: 8 });
+  const t1 = textSprite("BOT PURGE", { size: 60, color: "#ff5040", strokeW: 8 });
   t1.position.y = 1.7; t1.scale.multiplyScalar(1.2);
-  const t2 = textSprite("SHOOT ME", { size: 34, color: "#ffffff", strokeW: 5 });
-  t2.position.y = 1.1; t2.scale.multiplyScalar(0.7);
-  purgeBtn.add(t1, t2);
+  purgeBtn.add(t1);
   purgeBtn.position.set(-14, 0, 6);
   scene.add(purgeBtn);
 }
@@ -972,7 +1019,7 @@ function buildBot(variant) {
 function spawnEnemy(type) {
   let e;
   if (type === "spammer") {
-    e = { type, hp: 2, speed: rand(2.2, 2.9) + wave * 0.12, mesh: buildSpammer(), shootT: rand(1, 3), r: 0.9, zig: rand(0, 6.28) };
+    e = { type, hp: 2, speed: rand(2.2, 2.9) + wave * 0.12, mesh: buildSpammer(), shootT: rand(0.5, 1.5), r: 0.9, zig: rand(0, 6.28) };
   } else {
     const variant = pick(BOT_VARIANTS);
     e = {
@@ -1000,6 +1047,7 @@ const boomerangs = [];   // {mesh, dir, dist, maxDist, phase, speed, big, hitSet
 const bolts = [];        // enemy laser bolts {mesh, vel, life}
 const spamTexts = [];    // {sprite, vel, dist, life}
 const tracers = [];      // {mesh, life}
+const pickups = [];      // ammo drops {mesh, t}
 const particles = [];    // {mesh, vel, life, grav}
 const floatTexts = [];   // {sprite, life, vy}
 const rings = [];        // {mesh, life, grow}
@@ -1041,7 +1089,15 @@ let lives = 3, wave = 1, spawnQueue = 0, spawnT = 0, betweenT = 0;
 let invuln = 0, hitstop = 0, shake = 0;
 let weaponIdx = 0; // 0 boomerang, 1 rifle
 let charging = false, chargeT = 0, boomsOut = 0;
-let rifleCd = 0, lockTarget = null, lockT = 0, locked = false;
+let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 6;
+function say(text) {
+  try {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95; u.pitch = 0.6; u.volume = 1;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
 let yaw = 0, pitch = 0.32;
 const keys = {};
 let pigVel = new THREE.Vector3(), pigY = 0, pigVy = 0, onGround = true;
@@ -1079,7 +1135,9 @@ renderer.domElement.addEventListener("mousedown", e => {
     if (weaponIdx === 0) { charging = true; chargeT = 0; }
     else fireRifle();
   }
+  if (e.button === 2) fireRifle(); /* rifle always on right click */
 });
+addEventListener("contextmenu", e => e.preventDefault());
 addEventListener("mouseup", e => {
   if (mode === "play" && e.button === 0 && weaponIdx === 0 && charging) {
     throwBoomerang(chargeT > 0.45);
@@ -1105,9 +1163,11 @@ function startGame() {
   rifleHeld.visible = false; rifleSlung.visible = true;
   for (const e of enemies) scene.remove(e.mesh);
   enemies.length = 0;
-  for (const arr of [boomerangs, bolts, spamTexts, tracers, particles, floatTexts, rings])
+  for (const arr of [boomerangs, bolts, spamTexts, tracers, particles, floatTexts, rings, pickups])
     { for (const o of arr) scene.remove(o.mesh || o.sprite); arr.length = 0; }
   boomsOut = 0;
+  ammo = 6;
+  $("ammoV").textContent = ammo;
   pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
   overlay.classList.add("hidden");
   renderer.domElement.requestPointerLock();
@@ -1152,8 +1212,13 @@ function throwBoomerang(big) {
 }
 function fireRifle() {
   if (rifleCd > 0) return;
+  if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
+  ammo--;
+  $("ammoV").textContent = ammo;
   rifleCd = 0.55;
   SFX.shoot();
+  rifleHeld.visible = true;
+  setTimeout(() => { if (weaponIdx === 0) rifleHeld.visible = false; }, 250);
   shake = Math.max(shake, 0.12);
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const dir = aimDir();
@@ -1191,6 +1256,7 @@ function demonetize(e) {
   const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
   floatText(p, "DEMONETIZED", { size: 72, color: "#ffd200", strokeW: 10 }, 2.6);
   SFX.demon();
+  say("DE, monetized!");
   /* drain color then explode */
   e.dying = 0.45;
   e.speed = 0;
@@ -1228,6 +1294,18 @@ function killEnemy(e, silent = false) {
   if (e.demonBonus) pts += 150;
   score += pts;
   floatText(p, `+${pts}`, { size: 44, color: "#aef2b6", strokeW: 6 }, 1.1);
+  /* kills drop rifle ammo */
+  if (!silent && Math.random() < 0.65) {
+    const g = new THREE.Group();
+    g.add(box(0.22, 0.34, 0.14, 0x2c3038, 0, 0, 0));
+    g.add(box(0.24, 0.1, 0.16, 0xcfa93c, 0, 0.14, 0));
+    const tag = textSprite("AMMO", { size: 30, color: "#ffe27a", strokeW: 5 });
+    tag.position.y = 0.6; tag.scale.multiplyScalar(0.55);
+    g.add(tag);
+    g.position.set(e.mesh.position.x, 0.4, e.mesh.position.z);
+    pickups.push({ mesh: g, t: rand(0, 6) });
+    scene.add(g);
+  }
   updateHud();
 }
 function doPurge() {
@@ -1314,8 +1392,10 @@ function update(dt) {
     const grow = Math.min(1, (4.5 - rantLife) * 3);
     const fade = rantLife < 0.5 ? Math.max(0.001, rantLife * 2) : 1;
     const aspect = rantSprite.material.map.image.width / rantSprite.material.map.image.height;
-    const s = 3.2 * grow * fade;
+    /* cap total width so long sentences stay readable on screen */
+    const s = Math.min(2.6, 26 / aspect) * grow * fade;
     rantSprite.scale.set(aspect * s, s, 1);
+    rantSprite.position.y = 6.0 + (4.5 - rantLife) * 0.15;
     if (rantLife <= 0) { scene.remove(rantSprite); rantSprite = null; }
   }
   /* Grok breathing + zzz */
@@ -1385,9 +1465,25 @@ function update(dt) {
     : `${Math.round(lockT / 0.5 * 100)}%`;
   $("chargeFill").style.background = weaponIdx === 0 ? (chargeT > 0.45 ? "#ffd94a" : "#6cf") : (locked ? "#ff5040" : "#ffd200");
 
-  /* rifle lock-on */
+  /* ammo pickups */
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    const pu = pickups[i];
+    pu.t += dt;
+    pu.mesh.rotation.y += dt * 3;
+    pu.mesh.position.y = 0.4 + Math.sin(pu.t * 3) * 0.12;
+    if (pu.mesh.position.distanceTo(pig.position) < 1.3) {
+      ammo += 2;
+      $("ammoV").textContent = ammo;
+      SFX.pickup();
+      floatText(pu.mesh.position.clone(), "+2 AMMO", { size: 36, color: "#ffe27a", strokeW: 5 }, 0.9);
+      scene.remove(pu.mesh);
+      pickups.splice(i, 1);
+    }
+  }
+
+  /* rifle lock-on (always active — rifle fires on right click in any mode) */
   rifleCd = Math.max(0, rifleCd - dt);
-  if (weaponIdx === 1) {
+  {
     const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
     const dir = aimDir();
     let best = 0.22, cand = null;
@@ -1404,9 +1500,6 @@ function update(dt) {
     } else { lockTarget = cand; lockT = 0; locked = false; }
     $("crosshair").textContent = locked ? "[ ⊕ ]" : lockTarget ? "[ + ]" : "+";
     $("crosshair").style.color = locked ? "#ff5040" : "#4ff";
-  } else {
-    $("crosshair").textContent = "+";
-    $("crosshair").style.color = "#4ff";
   }
 
   /* --- boomerangs --- */
@@ -1480,8 +1573,8 @@ function update(dt) {
       if (ua["arm1"]) ua["arm1"].rotation.x = -Math.sin(e.walk) * 0.6;
       /* throw spam text */
       e.shootT -= dt;
-      if (e.shootT <= 0 && dist < 26) {
-        e.shootT = rand(2.2, 3.6);
+      if (e.shootT <= 0 && dist < 42) {
+        e.shootT = rand(1.5, 2.7);
         const phrase = pick(SPAM_PHRASES);
         const sp = textSprite(phrase, { size: 52, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 7 });
         sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 1.5, 0));
@@ -1640,7 +1733,7 @@ renderer.setAnimationLoop(() => {
   updateFx(dt);
   updateCamera(dt);
   /* lock bracket follows target */
-  if (mode === "play" && weaponIdx === 1 && lockTarget && enemies.includes(lockTarget)) {
+  if (mode === "play" && lockTarget && enemies.includes(lockTarget)) {
     lockBracket.visible = true;
     lockBracket.position.copy(lockTarget.mesh.position).add(new THREE.Vector3(0, 1.2, 0));
     const p = locked ? 1 : lockT / 0.5;
