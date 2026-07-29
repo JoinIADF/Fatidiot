@@ -434,8 +434,9 @@ const windowZones = [];
 const bossHitbox = { x: 0, z: 0, hw: 6.2, hd: 4.8, enraged: false, stormT: 0, phraseT: 0 };
 let speedBoost = 0;
 let deathKind = null;
-let vendingsOpened = 0; /* non-sleep machines cracked open */
-const SLEEP_BAG_UNLOCK = 3;
+let vendingsOpened = 0; /* machines fully cracked open */
+let sleepBagGranted = false;
+const SLEEP_BAG_UNLOCK = 4; /* bag drops after 4 other machines opened */
 /* object phrases (PCs / servers / spam) — max 1 every 4s */
 let objectPhraseCd = 0;
 const OBJECT_PHRASE_GAP = 4.0;
@@ -835,9 +836,7 @@ function mkVending(x, z, ry, bodyCol, glow, label) {
   blockArea(x, z, 1.0, 0.8);
   const vm = {
     mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label,
-    kind: /sleep/i.test(label || "") ? "sleepbag"
-      : /sushi/i.test(label || "") ? "sushi"
-      : "rx",
+    kind: /sushi/i.test(label || "") ? "sushi" : "rx",
   };
   vendingMachines.push(vm);
   g.userData.vending = vm;
@@ -853,7 +852,7 @@ mkVending(-FLOOR_W / 2 + 1.4, -18, Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
 mkVending(-FLOOR_W / 2 + 1.4, -8, Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
 mkVending(-FLOOR_W / 2 + 1.4, 6, Math.PI / 2, 0x2858b0, "#cfe4ff", "RX");
 mkVending(10, -FLOOR_D / 2 + 3, 0, 0xb06a28, "#ffe4cf", "RX");
-mkVending(-10, -FLOOR_D / 2 + 3, 0, 0x3a2a6a, "#e8e0ff", "SLEEP BAG");
+mkVending(-10, -FLOOR_D / 2 + 3, 0, 0xb02828, "#ffdddd", "SNACKS");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -1888,6 +1887,7 @@ function startGame() {
   speedBoost = 0; deathKind = null;
   levelUpT = 0;
   vendingsOpened = 0;
+  sleepBagGranted = false;
   objectPhraseCd = 0;
   setWallQuota(100);
   bossHitbox.enraged = false; bossHitbox.stormT = 0; bossHitbox.phraseT = 0;
@@ -2275,20 +2275,6 @@ function dropPill(vmOrX, zMaybe) {
 }
 function hitVending(vm) {
   if (!vm || vm.dead) return false;
-  /* sleep bag locked until 3 other machines opened */
-  if (vm.kind === "sleepbag" && vendingsOpened < SLEEP_BAG_UNLOCK) {
-    SFX.vending();
-    const need = SLEEP_BAG_UNLOCK - vendingsOpened;
-    floatText(
-      new THREE.Vector3(vm.x, 2.2, vm.z),
-      need === 1 ? "OPEN 1 MORE MACHINE" : `OPEN ${need} MORE MACHINES`,
-      { size: 34, color: "#c9a0ff", strokeW: 6 },
-      1.0
-    );
-    showMsg(`Sleep bag locked — crack ${need} more vending machine${need > 1 ? "s" : ""}`);
-    shake = Math.max(shake, 0.1);
-    return true;
-  }
   vm.hp--;
   SFX.vending();
   const fx = Math.sin(vm.ry || 0), fz = Math.cos(vm.ry || 0);
@@ -2305,12 +2291,19 @@ function hitVending(vm) {
   if (vm.hp <= 0) {
     /* 2nd shot: dump goods */
     vm.dead = true;
-    if (vm.kind !== "sleepbag") {
-      vendingsOpened++;
-      if (vendingsOpened === SLEEP_BAG_UNLOCK) {
-        showMsg("SLEEP BAG UNLOCKED");
-        floatText(new THREE.Vector3(vm.x, 2.4, vm.z), "SLEEP BAG READY", { size: 36, color: "#c9a0ff", strokeW: 6 }, 1.2);
-      }
+    vendingsOpened++;
+    /*
+      Sleeping bag is random: after 4 machines are opened, the NEXT machine
+      you crack drops a sleep bag (no labeled SLEEP BAG machine).
+    */
+    const dropSleep = !sleepBagGranted && vendingsOpened > SLEEP_BAG_UNLOCK;
+    if (dropSleep) {
+      sleepBagGranted = true;
+      vm.kind = "sleepbag";
+      showMsg("SLEEP BAG!");
+    } else if (vendingsOpened === SLEEP_BAG_UNLOCK) {
+      showMsg("Something rattles in the machines…");
+      floatText(new THREE.Vector3(vm.x, 2.4, vm.z), "??? READY", { size: 36, color: "#c9a0ff", strokeW: 6 }, 1.2);
     }
     SFX.boom();
     const isSushi = vm.kind === "sushi";
