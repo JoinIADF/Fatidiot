@@ -30,6 +30,9 @@
   #overlay p { font-size: 16px; line-height: 1.7; color: #cfd6e0; }
   #overlay .go { color: #ffd94a; font-size: 26px; margin-top: 18px; }
   #overlay.death-weekend h1 { color: #ff4a4a; font-size: 44px; }
+  #overlay.death-sleep { background: rgba(12, 8, 28, 0.92) !important; }
+  #overlay.death-sleep h1 { color: #c9a0ff; font-size: 40px; text-shadow: 0 0 20px rgba(180,120,255,0.5); }
+  #overlay.death-sleep .death-sub { color: #e8d8ff; font-size: 22px; max-width: 560px; margin: 12px auto; line-height: 1.45; }
   /* —— WINDOW ESCAPE: full-screen cinematic death —— */
   #overlay.death-escape {
     background: #000 !important;
@@ -396,24 +399,20 @@ const X_COMPLAINTS = [
   "I paid for checkmark and got homework", "timeline needs a kitchen sink", "ban the bots (not me)"
 ];
 const BOSS_KILL_PHRASES = [
+  "No one goes home this weekend!",
+  "Cancel your plans, the server is out again!",
+  "Grab a sleeping bag from the vending machine, you're going to need it!",
   "Fa'tidiot, get back here and fix my company now!",
   "Who let the hog have a rifle?!",
-  "That was my favorite plant.",
-  "I was in a meeting with myself.",
-  "The board is watching. I'm the board.",
-  "Stop shooting my glass ego!",
-  "Do you know who I am? Neither do I.",
-  "Sleep is a skill issue.",
   "Your PTO was a social construct.",
   "Ship it or ship out, bacon.",
   "I invented weekends. I can uninvent them.",
+  "Sleep is a skill issue.",
   "The algorithm is crying. Make it stop.",
   "Bots pay rent. You don't.",
-  "I will reply-guy your dreams.",
   "Kitchen sink? I sold it for compute.",
-  "Touch grass? Touch this KPI.",
-  "You're not fired. You're outdoored.",
-  "My therapists are the shareholders.",
+  "That was my favorite plant.",
+  "Do you know who I am? Neither do I.",
   "Come back. The timeline needs a hog.",
   "I see you. And your commit history."
 ]
@@ -820,24 +819,25 @@ function mkVending(x, z, ry, bodyCol, glow, label) {
   blockArea(x, z, 1.0, 0.8);
   const vm = {
     mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label,
-    kind: /sushi/i.test(label || "") ? "sushi" : "rx",
+    kind: /sleep/i.test(label || "") ? "sleepbag"
+      : /sushi/i.test(label || "") ? "sushi"
+      : "rx",
   };
   vendingMachines.push(vm);
   g.userData.vending = vm;
   return g;
 }
+/* exactly 10 machines: RX / SUSHI / SODA / COFFEE + one SLEEP BAG */
 mkVending(FLOOR_W / 2 - 1.4, -6, -Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
 mkVending(FLOOR_W / 2 - 1.4, -9.2, -Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
 mkVending(FLOOR_W / 2 - 1.4, -12.4, -Math.PI / 2, 0xb06a28, "#ffe4cf", "RX");
-mkVending(FLOOR_W / 2 - 1.4, 8, -Math.PI / 2, 0xc04040, "#ffe0e0", "SUSHI");
-mkVending(FLOOR_W / 2 - 1.4, 14, -Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
-mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
-mkVending(-FLOOR_W / 2 + 1.4, -18, Math.PI / 2, 0xb02850, "#ffd8e8", "RX");
-mkVending(-FLOOR_W / 2 + 1.4, -8, Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
-mkVending(-FLOOR_W / 2 + 1.4, 6, Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
-mkVending(-FLOOR_W / 2 + 1.4, 16, Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
+mkVending(FLOOR_W / 2 - 1.4, 8, -Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
+mkVending(FLOOR_W / 2 - 1.4, 14, -Math.PI / 2, 0xb02850, "#ffd8e8", "RX");
+mkVending(-FLOOR_W / 2 + 1.4, -18, Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
+mkVending(-FLOOR_W / 2 + 1.4, -8, Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
+mkVending(-FLOOR_W / 2 + 1.4, 6, Math.PI / 2, 0x2858b0, "#cfe4ff", "RX");
 mkVending(10, -FLOOR_D / 2 + 3, 0, 0xb06a28, "#ffe4cf", "RX");
-mkVending(-10, -FLOOR_D / 2 + 3, 0, 0x1a8a5a, "#d8ffe8", "SUSHI");
+mkVending(-10, -FLOOR_D / 2 + 3, 0, 0x3a2a6a, "#e8e0ff", "SLEEP BAG");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -1053,13 +1053,13 @@ for (const c of computers) {
 
 /* Elon rant text */
 const RANTS = [
+  "No one goes home this weekend!",
+  "Cancel your plans, the server is out again!",
+  "Grab a sleeping bag from the vending machine, you're going to need it!",
   "Nobody leaves until the timeline is pure.",
   "Sleeping bags are free. Weekends are not.",
   "Why is there still spam. Why.",
-  "The algorithm is fine. You are not.",
   "PTO means Please Try Overtime.",
-  "I sold the kitchen sink for GPU hours.",
-  "That window is decorative. Mostly.",
   "Ship it before Sunday or ship your resume.",
   "Bots are employees. You're a vibe.",
   "If you can read this, you're still on the clock."
@@ -1854,6 +1854,10 @@ addEventListener("mouseup", e => {
 });
 overlay.addEventListener("click", () => {
   ac();
+  if (mode === "over" && deathKind === "sleep") {
+    resumeFromSleep();
+    return;
+  }
   if (mode === "title" || mode === "over") startGame();
 });
 document.addEventListener("pointerlockchange", () => {
@@ -1884,7 +1888,7 @@ function startGame() {
       if (grok.userData.dog.userData.head) grok.userData.dog.userData.head.rotation.z = 0;
     }
   }
-  overlay.classList.remove("death-weekend", "death-escape");
+  overlay.classList.remove("death-weekend", "death-escape", "death-sleep");
   overlay.querySelectorAll(".escape-stage, .escape-bg, .escape-flash").forEach(n => n.remove());
   weaponIdx = 0;
   $("weaponV").textContent = "X BOOMERANG";
@@ -2047,7 +2051,7 @@ function emitPhrase(origin, phrase, opts = {}) {
   /* readable mid-height: above pig/desks, not up in the ceiling */
   const pos = origin.clone();
   if (isBoss) {
-    pos.y = 3.35; /* fixed band above office door / pig, below lights */
+    pos.y = 3.95; /* a bit higher — readable over pig, under ceiling */
   } else if (isPC) {
     pos.y = Math.max(origin.y + 1.4, 3.1);
   } else {
@@ -2172,17 +2176,46 @@ function mkSushi() {
   g.scale.setScalar(1.2);
   return g;
 }
+function mkSleepingBag() {
+  const g = new THREE.Group();
+  /* rolled sleeping bag */
+  const roll = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.28, 0.85, 14),
+    new THREE.MeshLambertMaterial({ color: 0x3a6a4a })
+  );
+  roll.rotation.z = Math.PI / 2;
+  roll.position.y = 0.28;
+  g.add(roll);
+  /* straps */
+  g.add(box(0.9, 0.06, 0.08, 0x2a2a2a, 0, 0.28, 0.22));
+  g.add(box(0.9, 0.06, 0.08, 0x2a2a2a, 0, 0.28, -0.22));
+  /* orange stuff-sack ends */
+  g.add(cyl(0.3, 0.3, 0.1, 0xff8c2a, -0.42, 0.28, 0, 12));
+  g.add(cyl(0.3, 0.3, 0.1, 0xff8c2a, 0.42, 0.28, 0, 12));
+  g.children[g.children.length - 1].rotation.z = Math.PI / 2;
+  g.children[g.children.length - 2].rotation.z = Math.PI / 2;
+  const tag = textSprite("SLEEP", { size: 40, color: "#c9a0ff", strokeW: 7 });
+  tag.scale.multiplyScalar(0.42);
+  tag.position.set(0, 0.85, 0);
+  g.add(tag);
+  g.scale.setScalar(1.25);
+  return g;
+}
 function dropPill(vmOrX, zMaybe) {
-  /* dropPill(vm) — RX speed or SUSHI heal */
+  /* dropPill(vm) — RX / SUSHI / SLEEP BAG */
   let x, z, ry = 0, kind = "pill";
   if (typeof vmOrX === "object" && vmOrX && vmOrX.x != null) {
     x = vmOrX.x; z = vmOrX.z; ry = vmOrX.ry || 0;
-    kind = vmOrX.kind === "sushi" ? "sushi" : "pill";
+    if (vmOrX.kind === "sushi") kind = "sushi";
+    else if (vmOrX.kind === "sleepbag") kind = "sleepbag";
+    else kind = "pill";
   } else {
     x = vmOrX; z = zMaybe; ry = 0;
   }
   const fx = Math.sin(ry), fz = Math.cos(ry);
-  const g = kind === "sushi" ? mkSushi() : mkRxBottle();
+  const g = kind === "sushi" ? mkSushi()
+    : kind === "sleepbag" ? mkSleepingBag()
+    : mkRxBottle();
   /* spawn at pickup flap height, just in front of glass */
   const flapY = 0.55;
   const start = new THREE.Vector3(x + fx * 0.55, flapY, z + fz * 0.55);
@@ -2209,6 +2242,9 @@ function dropPill(vmOrX, zMaybe) {
   if (kind === "sushi") {
     burst(start, 0x7CFFB0, 8, 3);
     SFX.pickup();
+  } else if (kind === "sleepbag") {
+    burst(start, 0xc9a0ff, 10, 4);
+    SFX.pickup();
   } else {
     spitPills(start.clone().add(new THREE.Vector3(fx * 0.2, 0.1, fz * 0.2)), 8);
     SFX.pill();
@@ -2234,14 +2270,15 @@ function hitVending(vm) {
     vm.dead = true;
     SFX.boom();
     const isSushi = vm.kind === "sushi";
-    burst(new THREE.Vector3(vm.x, 1.5, vm.z), isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
-    if (!isSushi) spitPills(flap, 18);
-    const n = isSushi ? 3 : 4;
+    const isSleep = vm.kind === "sleepbag";
+    burst(new THREE.Vector3(vm.x, 1.5, vm.z), isSleep ? 0xc9a0ff : isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
+    if (!isSushi && !isSleep) spitPills(flap, 18);
+    const n = isSleep ? 1 : isSushi ? 3 : 4;
     for (let i = 0; i < n; i++) setTimeout(() => dropPill(vm), i * 70);
     floatText(
       flap.clone().add(new THREE.Vector3(0, 1.2, 0)),
-      isSushi ? "SUSHI HEAL!" : "RX DROP!",
-      { size: 40, color: isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
+      isSleep ? "SLEEP BAG!" : isSushi ? "SUSHI HEAL!" : "RX DROP!",
+      { size: 40, color: isSleep ? "#c9a0ff" : isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
       1.1
     );
     score += 40; updateHud();
@@ -2340,8 +2377,8 @@ function hitBossOffice(point) {
   SFX.hit();
   burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
   const origin = point
-    ? new THREE.Vector3(point.x, 3.35, point.z)
-    : new THREE.Vector3(bossHitbox.x, 3.35, bossHitbox.z + 3.5);
+    ? new THREE.Vector3(point.x, 3.95, point.z)
+    : new THREE.Vector3(bossHitbox.x, 3.95, bossHitbox.z + 3.5);
   emitPhrase(origin, pick(BOSS_KILL_PHRASES), {
     deadly: true, color: "#4caf6a", speed: 3.8, life: 7.5, kind: "boss"
   });
@@ -2523,6 +2560,31 @@ function hurtPlayer() {
   updateHud();
   if (lives <= 0) gameOver();
 }
+function triggerSleepRest() {
+  if (mode !== "play") return;
+  gameOver("sleep");
+}
+function resumeFromSleep() {
+  /* skip to next level — keep score/lives/ammo */
+  deathKind = null;
+  overlay.classList.add("hidden");
+  overlay.classList.remove("death-sleep", "death-weekend", "death-escape");
+  mode = "play";
+  /* clear field for the new trick */
+  for (const e of enemies) scene.remove(e.mesh);
+  enemies.length = 0;
+  for (const arr of [boomerangs, bolts, spamTexts, tracers, particles, floatTexts, rings, pickups]) {
+    for (const o of arr) scene.remove(o.mesh || o.sprite);
+    arr.length = 0;
+  }
+  boomsOut = 0;
+  levelUpT = 0;
+  levelUp();
+  invuln = 2.0;
+  pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
+  renderer.domElement.requestPointerLock();
+  updateHud();
+}
 function gameOver(kind = "normal") {
   if (mode === "over") return;
   mode = "over";
@@ -2531,7 +2593,7 @@ function gameOver(kind = "normal") {
   if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
   const rank = score >= 6000 ? "X COMMANDO ELITE" : score >= 3000 ? "CHIEF BAN OFFICER" :
                score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
-  overlay.classList.remove("death-weekend", "death-escape");
+  overlay.classList.remove("death-weekend", "death-escape", "death-sleep");
   if (kind !== "escape") {
     overlay.querySelectorAll(".escape-stage, .escape-bg, .escape-flash").forEach(n => n.remove());
   }
@@ -2542,6 +2604,14 @@ function gameOver(kind = "normal") {
       `<div class="death-sub">A CEO phrase hit you. Your Saturday is now a standup.</div>
        SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b>`;
     SFX.weekend();
+  } else if (kind === "sleep") {
+    overlay.classList.add("death-sleep");
+    overlay.querySelector("h1").textContent = "REST & RECHARGE";
+    overlay.querySelector("p").innerHTML =
+      `<div class="death-sub">rest and recharge, the bots have a new trick up their sleeves</div>
+       LEVEL ${wave} cleared early &nbsp;·&nbsp; SCORE: ${score}<br>
+       <span style="opacity:.85">Click to face the next level…</span>`;
+    SFX.wave();
   } else if (kind === "escape") {
     overlay.classList.add("death-escape");
     /* rebuild full-screen freefall stage every time */
@@ -2636,7 +2706,7 @@ function update(dt) {
     if (bossHitbox.phraseT <= 0) {
       /* fewer, slower phrases */
       bossHitbox.phraseT = rand(2.0, 3.2);
-      emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 3.35, 0)), pick(BOSS_KILL_PHRASES),
+      emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 3.95, 0)), pick(BOSS_KILL_PHRASES),
         { deadly: true, color: "#4caf6a", speed: 3.6, life: 7.5, kind: "boss" });
     }
     if (bossHitbox.stormT <= 0) {
@@ -2659,7 +2729,7 @@ function update(dt) {
     });
     rantSprite.scale.multiplyScalar(0.42);
     /* one clean line above the CEO door */
-    rantSprite.position.set(bossOffice.x, 3.5, bossOffice.z + 5.2);
+    rantSprite.position.set(bossOffice.x, 3.95, bossOffice.z + 5.2);
     scene.add(rantSprite);
     rantIdx++; rantLife = 3.8; rantTimer = 8.5;
     eu.rage = 2.2;
@@ -2820,10 +2890,10 @@ function update(dt) {
       }
     } else {
       pu.mesh.rotation.y += dt * (pu.kind === "pill" ? 2.2 : 3);
-      const bob = (pu.kind === "pill" || pu.kind === "sushi") ? 0.55 : 0.4;
+      const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag") ? 0.55 : 0.4;
       pu.mesh.position.y = bob + Math.sin(pu.t * 3) * 0.12;
     }
-    const grabR = (pu.kind === "pill" || pu.kind === "sushi") ? 1.6 : 1.3;
+    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag") ? 1.6 : 1.3;
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "pill") {
         speedBoost = Math.min(12, speedBoost + 5.5);
@@ -2843,6 +2913,12 @@ function update(dt) {
         SFX.pickup();
         SFX.pill();
         updateHud();
+      } else if (pu.kind === "sleepbag") {
+        SFX.pickup();
+        scene.remove(pu.mesh);
+        pickups.splice(i, 1);
+        triggerSleepRest();
+        continue;
       } else {
         const got = pu.amount || 2;
         ammo += got;
