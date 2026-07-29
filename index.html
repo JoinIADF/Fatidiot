@@ -1731,36 +1731,64 @@ function say(text, opts = {}) {
     return u;
   } catch (e) { return null; }
 }
-/* Drill-sergeant bark: "dee-MAH-nuh-tyzd" — clear, deep, under 2s */
+/* Drill-sergeant bark — pre-recorded human neural voice, processed deep/commanding */
+let _demonAudio = null;
 let _demonVoiceTimer = 0;
+function getDemonAudio() {
+  if (_demonAudio) return _demonAudio;
+  const a = new Audio("./demonetized.mp3");
+  a.preload = "auto";
+  a.volume = 1;
+  _demonAudio = a;
+  return a;
+}
 function sayDemonetized() {
   try {
-    if (typeof speechSynthesis === "undefined") return;
-    speechSynthesis.cancel();
+    /* stop any browser TTS so it doesn't robot-overdub */
+    try { if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel(); } catch (e) {}
     if (_demonVoiceTimer) { clearTimeout(_demonVoiceTimer); _demonVoiceTimer = 0; }
-    /* Force voice list load (Chrome) */
-    const voices = speechSynthesis.getVoices() || [];
-    const voice = pickDeepVoice();
-    /*
-      Phonetic for "demonetized" stress: dee-MAH-nuh-tyzd
-      Spelling tuned so engines do NOT say "demon" or "dee mon eh".
-      "Dee mahnuh tized" ≈ /diː ˈmɑːnə taɪzd/
-    */
-    const phonetic = "Dee mahnuh tized";
-    const u = new SpeechSynthesisUtterance(phonetic);
-    u.lang = "en-US";
-    /* Fast bark — whole line must finish ≤ ~1.5–2s */
-    u.rate = 1.35;
-    u.pitch = 0.01;   /* floor = deepest */
-    u.volume = 1;
-    if (voice) {
-      u.voice = voice;
-      if (voice.lang) u.lang = voice.lang;
-    }
-    speechSynthesis.speak(u);
-    /* hard cap: cut off after 2s max */
+
+    const a = getDemonAudio();
+    try { a.pause(); a.currentTime = 0; } catch (e) {}
+    /* slight rate variance so it doesn't feel identical every kill */
+    a.playbackRate = 0.92 + Math.random() * 0.08; /* ~0.92–1.0 = deeper/stronger */
+    a.volume = 1;
+
+    /* route through Web Audio for body + presence (drill-sergeant chest) */
+    try {
+      ensureAudio();
+      if (!a._wired && AC) {
+        const src = AC.createMediaElementSource(a);
+        const filt = AC.createBiquadFilter();
+        filt.type = "lowshelf";
+        filt.frequency.value = 220;
+        filt.gain.value = 6; /* more chest */
+        const peaking = AC.createBiquadFilter();
+        peaking.type = "peaking";
+        peaking.frequency.value = 1200;
+        peaking.Q.value = 0.8;
+        peaking.gain.value = 3; /* bark presence */
+        const gain = AC.createGain();
+        gain.gain.value = 2.2;
+        src.connect(filt); filt.connect(peaking); peaking.connect(gain); gain.connect(AC.destination);
+        a._wired = true;
+      }
+    } catch (e) { /* MediaElementSource can only wire once; plain play still works */ }
+
+    const p = a.play();
+    if (p && p.catch) p.catch(() => {
+      /* autoplay policy / missing file — last-resort short bark via TTS */
+      try {
+        const u = new SpeechSynthesisUtterance("Dee mahnuh tized");
+        u.rate = 1.25; u.pitch = 0.1; u.volume = 1; u.lang = "en-US";
+        const v = pickDeepVoice(); if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e2) {}
+    });
+
+    /* hard cap 2s */
     _demonVoiceTimer = setTimeout(() => {
-      try { speechSynthesis.cancel(); } catch (e) {}
+      try { a.pause(); a.currentTime = 0; } catch (e) {}
       _demonVoiceTimer = 0;
     }, 2000);
   } catch (e) {}
