@@ -161,6 +161,14 @@ function canvasTex(w, h, draw) {
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[(Math.random() * a.length) | 0];
 
+/* X.com logo for boomerang (transparent PNG) */
+const X_LOGO_TEX = (() => {
+  const t = new THREE.TextureLoader().load("x-logo.png");
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+})();
+
 /* ============================== AUDIO ============================== */
 let AC = null;
 function ac() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return AC; }
@@ -328,22 +336,45 @@ function mkDesk(x, z, ry = 0, clutterSeed = Math.random()) {
   scene.add(g);
   return g;
 }
-function mkCubiclePod(cx, cz) {
-  /* pinwheel of 4 desks with partitions */
-  const wallM = mat(0xb9bcc4);
+function mkCubiclePod(cx, cz, large = false) {
+  /* pinwheel of 4 desks; partitions rise ~halfway to the 7u ceiling */
+  const wallM = mat(large ? 0xaeb3bb : 0xb9bcc4);
+  const wallH = large ? 3.6 : 3.4;          // halfway-ish to ceiling (7)
+  const arm = large ? 2.05 : 1.75;          // desk offset from center
+  const wallW = large ? 4.4 : 3.9;
+  const wallT = large ? 0.14 : 0.12;
+  const wallR = large ? 2.15 : 1.9;         // partition distance from center
   for (let i = 0; i < 4; i++) {
     const a = (i * Math.PI) / 2;
-    const dx = Math.cos(a) * 1.6, dz = Math.sin(a) * 1.6;
+    const dx = Math.cos(a) * arm, dz = Math.sin(a) * arm;
     mkDesk(cx + dx, cz + dz, -a + Math.PI / 2);
-    const p = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.5, 0.1), wallM);
-    p.position.set(cx + Math.cos(a + Math.PI / 4) * 1.7, 0.75, cz + Math.sin(a + Math.PI / 4) * 1.7);
+    const p = new THREE.Mesh(new THREE.BoxGeometry(wallW, wallH, wallT), wallM);
+    p.position.set(
+      cx + Math.cos(a + Math.PI / 4) * wallR,
+      wallH / 2,
+      cz + Math.sin(a + Math.PI / 4) * wallR
+    );
     p.rotation.y = -(a + Math.PI / 4);
     p.castShadow = p.receiveShadow = true;
-    p.add(new THREE.Mesh(new THREE.BoxGeometry(3.42, 0.08, 0.14), mat(0x8f939c)));
-    p.children[0].position.y = 0.75;
+    /* top cap rail */
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(wallW + 0.08, 0.1, wallT + 0.06), mat(0x8f939c));
+    cap.position.y = wallH / 2;
+    p.add(cap);
+    /* frosted glass upper band so tall walls don't fully block sightlines */
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(wallW - 0.3, wallH * 0.35, 0.04),
+      new THREE.MeshLambertMaterial({ color: 0xc5d8e8, transparent: true, opacity: 0.22 })
+    );
+    glass.position.set(0, wallH * 0.18, wallT * 0.6);
+    p.add(glass);
     scene.add(p);
   }
-  blockArea(cx, cz, 3.0, 3.0);
+  /* center pole / shared power column for large pods */
+  if (large) {
+    scene.add(cyl(0.12, 0.16, wallH, 0x6a6e74, cx, wallH / 2, cz, 8));
+    scene.add(box(0.5, 0.08, 0.5, 0x55585c, cx, wallH, cz));
+  }
+  blockArea(cx, cz, large ? 3.6 : 3.2, large ? 3.6 : 3.2);
 }
 function mkDeskRow(cx, cz) {
   for (let i = -1; i <= 1; i++) {
@@ -352,13 +383,18 @@ function mkDeskRow(cx, cz) {
   }
   blockArea(cx, cz, 4.0, 1.6);
 }
-/* layout — deep cubicle farm */
-mkCubiclePod(-20, -12); mkCubiclePod(-20, 2); mkCubiclePod(-20, 14);
-mkCubiclePod(-8, -14); mkCubiclePod(-8, 12);
-mkCubiclePod(-32, -18); mkCubiclePod(-32, -4); mkCubiclePod(-32, 10);
-mkCubiclePod(-20, 22); mkCubiclePod(-8, 22); mkCubiclePod(4, 22);
-mkDeskRow(6, -12); mkDeskRow(6, 12); mkDeskRow(16, -4);
-mkDeskRow(18, 20); mkDeskRow(28, 8); mkDeskRow(16, -20);
+/* layout — deep cubicle farm: tall half-height walls, more large pods */
+/* large pods (bigger footprint, taller partitions) */
+mkCubiclePod(-22, -10, true); mkCubiclePod(-22, 4, true); mkCubiclePod(-22, 16, true);
+mkCubiclePod(-8, -12, true); mkCubiclePod(-8, 10, true); mkCubiclePod(-8, 22, true);
+mkCubiclePod(-34, -16, true); mkCubiclePod(-34, 0, true); mkCubiclePod(-34, 14, true);
+mkCubiclePod(4, -14, true); mkCubiclePod(4, 8, true); mkCubiclePod(4, 20, true);
+/* standard tall pods filling the mid floor */
+mkCubiclePod(-22, -22); mkCubiclePod(-8, -22); mkCubiclePod(16, -14);
+mkCubiclePod(16, 2); mkCubiclePod(16, 16); mkCubiclePod(28, -6);
+mkCubiclePod(28, 10); mkCubiclePod(28, 20);
+/* a few open desk rows near the lobby / hanging X */
+mkDeskRow(12, -4); mkDeskRow(20, -20);
 
 /* vending machines */
 function mkVending(x, z, ry, bodyCol, glow, label) {
@@ -856,29 +892,32 @@ pig.add(rifleSlung);
 
 /* ============================== BOOMERANG ============================== */
 function buildBoomerang() {
-  /* black X.com logo: full stroke + broken stroke, on a thin white sticker edge */
+  /* real X.com logo texture (bg removed), double-sided flat X that spins */
   const g = new THREE.Group();
-  const black = new THREE.MeshBasicMaterial({ color: 0x0a0a0a });
-  const white = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  /* white backing X (slightly larger) so the black logo pops on any background */
-  for (const rz of [Math.PI / 4, -Math.PI / 4]) {
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.3, 1.16, 0.06), white);
-    back.rotation.z = rz; back.position.z = -0.02;
-    g.add(back);
-  }
-  /* full diagonal stroke */
-  const a = new THREE.Mesh(new THREE.BoxGeometry(0.22, 1.08, 0.08), black);
-  a.rotation.z = Math.PI / 4;
-  g.add(a);
-  /* broken diagonal: two segments with the signature notch gap */
-  for (const off of [0.33, -0.33]) {
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.42, 0.08), black);
-    seg.rotation.z = -Math.PI / 4;
-    seg.position.set(Math.SQRT1_2 * off * -1, Math.SQRT1_2 * off, 0);
-    g.add(seg);
-  }
+  const mat = new THREE.MeshBasicMaterial({
+    map: X_LOGO_TEX,
+    transparent: true,
+    alphaTest: 0.08,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  /* slight dual-plane thickness so it reads in motion */
+  const geo = new THREE.PlaneGeometry(1.35, 1.35);
+  const front = new THREE.Mesh(geo, mat);
+  const back = new THREE.Mesh(geo, mat);
+  back.rotation.y = Math.PI;
+  back.position.z = -0.02;
+  front.position.z = 0.02;
+  g.add(front, back);
+  /* thin dark core so silhouette holds when edge-on */
+  const core = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.08, 0.06),
+    new THREE.MeshBasicMaterial({ color: 0x0a0a0a })
+  );
+  g.add(core);
   return g;
 }
+
 
 /* ============================== PURGE BUTTON ============================== */
 const purgeBtn = new THREE.Group();
