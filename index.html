@@ -2823,7 +2823,7 @@ function update(dt) {
       const bob = (pu.kind === "pill" || pu.kind === "sushi") ? 0.55 : 0.4;
       pu.mesh.position.y = bob + Math.sin(pu.t * 3) * 0.12;
     }
-    const grabR = pu.kind === "pill" ? 1.6 : 1.3;
+    const grabR = (pu.kind === "pill" || pu.kind === "sushi") ? 1.6 : 1.3;
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "pill") {
         speedBoost = Math.min(12, speedBoost + 5.5);
