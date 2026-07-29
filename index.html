@@ -1690,11 +1690,16 @@ function burst(pos, color, n = 14, speed = 5, grav = 12) {
     scene.add(m);
   }
 }
-function floatText(pos, text, opts = {}, scale = 1.6) {
+function floatText(pos, text, opts = {}, scale = 1.0) {
   const sp = textSprite(text, opts);
   sp.position.copy(pos);
-  sp.scale.multiplyScalar(scale);
-  floatTexts.push({ sprite: sp, life: 1.1, vy: 1.6 });
+  const sc = opts.worldScale != null ? opts.worldScale : scale;
+  sp.scale.multiplyScalar(sc);
+  floatTexts.push({
+    sprite: sp,
+    life: opts.life != null ? opts.life : 1.1,
+    vy: opts.vy != null ? opts.vy : 1.6,
+  });
   scene.add(sp);
 }
 function shockRing(pos, color = 0xff4030) {
@@ -2527,12 +2532,11 @@ function fireRifle() {
 function demonetize(e) {
   if (!e || e.dying != null) return;
   const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-  /* single clear DEMONETIZED stinger — not a double screen-wipe */
+  /* single clear DEMONETIZED stinger — readable, not a screen wipe */
   floatText(
-    p.clone().add(new THREE.Vector3(0, 0.85, 0)),
+    p.clone().add(new THREE.Vector3(0, 1.1, 0)),
     "DEMONETIZED",
-    { size: 52, color: "#ffd200", strokeW: 10 },
-    1.6
+    { size: 44, color: "#ffd200", strokeW: 8, life: 1.35, worldScale: 0.85, vy: 1.2 }
   );
   SFX.demon();
   SFX.boom();
