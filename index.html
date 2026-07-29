@@ -28,6 +28,11 @@
   #overlay h1 { font-size: 52px; color: #ffb6c6; -webkit-text-stroke: 2px #000; margin-bottom: 12px; }
   #overlay p { font-size: 16px; line-height: 1.7; color: #cfd6e0; }
   #overlay .go { color: #ffd94a; font-size: 26px; margin-top: 18px; }
+  #overlay.death-weekend h1 { color: #ff4a4a; font-size: 44px; }
+  #overlay.death-escape h1 { color: #7cffb0; font-size: 36px; }
+  #overlay .death-sub { font-size: 22px; color: #ffe08a; margin: 12px auto; max-width: 540px; line-height: 1.45; }
+  #overlay .fall-art { font-size: 72px; line-height: 1.1; margin: 14px 0; animation: fallBob 0.75s ease-in infinite alternate; display: block; }
+  @keyframes fallBob { from { transform: translateY(0) rotate(-8deg); } to { transform: translateY(22px) rotate(8deg); } }
   .hidden { display: none !important; }
   #vignette { position: fixed; inset: 0; pointer-events: none; opacity: 0;
     background: radial-gradient(ellipse at center, transparent 55%, rgba(255,0,0,0.55) 100%); }
@@ -51,10 +56,10 @@
   <h1>PIG COMMANDO 3D</h1>
   <p>The X offices are overrun. Bots march. Spammers shill.<br>
   You are the hooded hog. Clean it up.<br><br>
-  WASD / arrows — move &nbsp;·&nbsp; mouse — aim &nbsp;·&nbsp; SPACE — jump<br>
-  CLICK — throw X boomerang (hold to charge) &nbsp;·&nbsp; Q — swap to Demonetizer rifle<br>
-  Rifle: keep aim on a spammer to LOCK, then fire to DEMONETIZE.<br>
-  Shoot the red PURGE button to wipe every bot on the floor.</p>
+  WASD — move &nbsp;·&nbsp; mouse — aim &nbsp;·&nbsp; SPACE — jump<br>
+  CLICK — X boomerang &nbsp;·&nbsp; RIGHT CLICK — Demonetizer rifle<br>
+  Shoot vending machines for RX speed pills · shoot PCs for complaint spam<br>
+  Shoot the CEO office to enrage him (deadly phrases!) · jump out side windows to escape</p>
   <p class="go" id="overlayGo">CLICK TO ENLIST</p>
 </div>
 <script type="importmap">
@@ -183,46 +188,95 @@ function beep(freq, dur = 0.08, type = "square", vol = 0.07, slide = 0) {
   const a = ac(); if (!a) return;
   const o = a.createOscillator(), g = a.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, a.currentTime);
-  if (slide) o.frequency.linearRampToValueAtTime(freq + slide, a.currentTime + dur);
+  if (slide) o.frequency.linearRampToValueAtTime(Math.max(20, freq + slide), a.currentTime + dur);
   g.gain.setValueAtTime(vol, a.currentTime);
   g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
   o.connect(g); g.connect(a.destination);
-  o.start(); o.stop(a.currentTime + dur);
+  o.start(); o.stop(a.currentTime + dur + 0.02);
 }
-function noiseBurst(dur = 0.25, vol = 0.16) {
+function noiseBurst(dur = 0.25, vol = 0.16, lp = 1600, hp = 0) {
   const a = ac(); if (!a) return;
-  const n = a.sampleRate * dur;
+  const n = Math.max(1, (a.sampleRate * dur) | 0);
   const buf = a.createBuffer(1, n, a.sampleRate);
   const d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 1.4);
   const s = a.createBufferSource(); s.buffer = buf;
   const g = a.createGain(); g.gain.value = vol;
-  const f = a.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = 1600;
-  s.connect(f); f.connect(g); g.connect(a.destination); s.start();
+  let node = s;
+  if (hp > 0) {
+    const h = a.createBiquadFilter(); h.type = "highpass"; h.frequency.value = hp;
+    node.connect(h); node = h;
+  }
+  const f = a.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lp;
+  node.connect(f); f.connect(g); g.connect(a.destination); s.start();
+}
+function thump(freq = 60, dur = 0.2, vol = 0.18) {
+  const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(freq, a.currentTime);
+  o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * 0.35), a.currentTime + dur);
+  g.gain.setValueAtTime(vol, a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(); o.stop(a.currentTime + dur + 0.02);
 }
 const SFX = {
-  throw: () => beep(520, 0.12, "sawtooth", 0.06, -220),
-  catch: () => beep(1250, 0.05, "square", 0.05),
+  throw: () => { noiseBurst(0.08, 0.12, 4000, 400); beep(620, 0.14, "sawtooth", 0.1, -280); beep(980, 0.06, "square", 0.05, -200); },
+  catch: () => { beep(980, 0.05, "square", 0.07); beep(1400, 0.07, "triangle", 0.06, 200); noiseBurst(0.04, 0.06, 5000, 800); },
   shoot: () => {
-    /* hard rifle report: deep boom + crack + shell ring */
-    noiseBurst(0.18, 0.28);
-    beep(90, 0.16, "sawtooth", 0.16, -40);
-    beep(220, 0.08, "square", 0.12, -120);
-    beep(70, 0.22, "triangle", 0.1, -20);
-    setTimeout(() => beep(1400, 0.04, "square", 0.04, -600), 40);
+    noiseBurst(0.22, 0.34, 2200, 80); noiseBurst(0.08, 0.18, 8000, 1500);
+    thump(75, 0.22, 0.22); beep(180, 0.12, "sawtooth", 0.14, -90); beep(90, 0.2, "triangle", 0.12, -30);
+    setTimeout(() => beep(1600, 0.05, "square", 0.05, -700), 45);
+    setTimeout(() => noiseBurst(0.06, 0.08, 3000, 600), 70);
   },
-  lock:  () => beep(880, 0.07, "square", 0.06, 160),
-  hit:   () => beep(220, 0.08, "square", 0.08, -80),
-  boom:  () => { noiseBurst(0.3, 0.2); beep(90, 0.25, "sawtooth", 0.1, -50); },
-  demon: () => { beep(660, 0.1, "square", 0.08); setTimeout(() => beep(440, 0.12, "square", 0.08), 90); setTimeout(() => beep(220, 0.2, "sawtooth", 0.09), 180); },
-  hurt:  () => beep(140, 0.25, "sawtooth", 0.12, -70),
-  wave:  () => { beep(330, 0.1); setTimeout(() => beep(440, 0.1), 90); setTimeout(() => beep(550, 0.16), 180); },
-  purge: () => { noiseBurst(0.5, 0.22); beep(70, 0.5, "sawtooth", 0.12, -30); },
-  pickup:() => { beep(700, 0.06); setTimeout(() => beep(1050, 0.09), 60); },
+  lock:  () => { beep(720, 0.05, "square", 0.06, 120); beep(1100, 0.08, "triangle", 0.07, 200); },
+  hit:   () => { noiseBurst(0.07, 0.14, 2500, 200); beep(180, 0.09, "square", 0.1, -100); thump(110, 0.1, 0.1); },
+  boom:  () => { noiseBurst(0.4, 0.28, 1400, 40); noiseBurst(0.15, 0.16, 5000, 600); thump(55, 0.35, 0.24); beep(80, 0.3, "sawtooth", 0.12, -40); },
+  demon: () => {
+    noiseBurst(0.2, 0.16, 3000, 200); beep(880, 0.1, "square", 0.1);
+    setTimeout(() => beep(540, 0.12, "sawtooth", 0.1), 80);
+    setTimeout(() => { beep(220, 0.22, "triangle", 0.11); thump(70, 0.25, 0.14); }, 170);
+  },
+  hurt:  () => { noiseBurst(0.2, 0.18, 1800, 100); thump(90, 0.25, 0.16); beep(160, 0.28, "sawtooth", 0.14, -80); beep(90, 0.2, "triangle", 0.08, -30); },
+  wave:  () => { beep(330, 0.1, "square", 0.08); setTimeout(() => beep(440, 0.1, "square", 0.09), 90); setTimeout(() => beep(560, 0.14, "triangle", 0.1), 180); setTimeout(() => beep(720, 0.16, "sawtooth", 0.08), 280); },
+  purge: () => { noiseBurst(0.55, 0.3, 1200, 30); thump(50, 0.5, 0.26); beep(70, 0.5, "sawtooth", 0.14, -25); setTimeout(() => beep(40, 0.4, "triangle", 0.1), 120); },
+  pickup:() => { beep(660, 0.05, "square", 0.07); setTimeout(() => beep(990, 0.07, "triangle", 0.08), 50); setTimeout(() => beep(1320, 0.1, "square", 0.07), 110); },
+  pill: () => { beep(520, 0.05, "triangle", 0.07); beep(780, 0.08, "square", 0.08, 200); noiseBurst(0.05, 0.06, 4000, 500); },
+  glass: () => { noiseBurst(0.18, 0.22, 9000, 2000); beep(1800, 0.08, "square", 0.06, -900); beep(2400, 0.12, "triangle", 0.05, -1200); },
+  vending: () => { noiseBurst(0.12, 0.16, 3000, 300); thump(100, 0.12, 0.12); beep(200, 0.1, "square", 0.08, -60); },
+  bossRage: () => { thump(55, 0.3, 0.2); noiseBurst(0.25, 0.2, 1600, 80); beep(120, 0.3, "sawtooth", 0.14, -40); setTimeout(() => beep(90, 0.25, "triangle", 0.1), 100); },
+  escape: () => { noiseBurst(0.5, 0.22, 4000, 200); beep(400, 0.4, "sawtooth", 0.1, -300); setTimeout(() => beep(200, 0.5, "triangle", 0.1, -100), 150); },
+  weekend: () => { noiseBurst(0.4, 0.24, 1500, 50); thump(45, 0.5, 0.22); beep(100, 0.5, "sawtooth", 0.14, -50); setTimeout(() => beep(60, 0.6, "triangle", 0.12), 200); },
+  jump: () => { beep(280, 0.08, "square", 0.06, 160); noiseBurst(0.05, 0.06, 2000, 200); },
 };
 
 /* ============================== OFFICE ============================== */
 const FLOOR_W = 120, FLOOR_D = 90;
+const BOT_PHRASES = [
+  "follow for a follow", "F4F?", "like for like", "DM for promo rates",
+  "link in bio", "not a bot trust me", "engagement pod?", "ratio insurance",
+  "guaranteed growth", "buy followers $$$", "I am real human", "retweet this"
+];
+const X_COMPLAINTS = [
+  "algorithm hates me", "where is my blue check", "shadowbanned again",
+  "views are dead", "why did I get banned", "timeline is broken",
+  "ads every 2 posts", "Grok said what?!", "rate limited",
+  "community notes jumped me", "who unfollowed me", "this site is unusable"
+];
+const BOSS_KILL_PHRASES = [
+  "WEEKEND CANCELLED", "GET BACK TO WORK", "YOUR PTO IS DENIED",
+  "NO ONE LEAVES", "SHIP IT TONIGHT", "I SEE YOU", "OVERTIME IS MANDATORY",
+  "CLOSE THE LAPTOP? NEVER"
+];
+const vendingMachines = [];
+const computers = [];
+const windowZones = [];
+const bossHitbox = { x: 0, z: 0, hw: 6.2, hd: 4.8, enraged: false, stormT: 0, phraseT: 0 };
+let speedBoost = 0;
+let deathKind = null;
+
+
 {
   const floorTex = canvasTex(512, 512, (g) => {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
@@ -253,6 +307,27 @@ const FLOOR_W = 120, FLOOR_D = 90;
   mk(FLOOR_W, 0, FLOOR_D / 2, Math.PI);
   mk(FLOOR_D, -FLOOR_W / 2, 0, Math.PI / 2);
   mk(FLOOR_D, FLOOR_W / 2, 0, -Math.PI / 2);
+  /* jumpable exterior windows along side walls */
+  {
+    const winGlass = new THREE.MeshLambertMaterial({ color: 0x9ed0f0, transparent: true, opacity: 0.38, side: THREE.DoubleSide });
+    const placeWins = (side) => {
+      for (let z = -FLOOR_D / 2 + 10; z <= FLOOR_D / 2 - 10; z += 14) {
+        const x = side * (FLOOR_W / 2 - 0.05);
+        const frame = new THREE.Group();
+        frame.add(box(0.14, 2.5, 2.8, 0xd0d4da, 0, 2.7, 0));
+        const glass = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.1), winGlass);
+        glass.position.set(side * 0.08, 2.7, 0);
+        glass.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2;
+        frame.add(glass);
+        frame.add(box(0.08, 2.1, 0.08, 0xb8bcc4, side * 0.05, 2.7, 0));
+        frame.position.set(x, 0, z);
+        scene.add(frame);
+        windowZones.push({ x, z, hx: 1.5, hz: 1.6, side });
+      }
+    };
+    placeWins(-1);
+    placeWins(1);
+  }
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D), mat(0xf2f1ee));
   ceil.rotation.x = Math.PI / 2; ceil.position.y = wallH; scene.add(ceil);
   /* light panels */
@@ -348,6 +423,12 @@ function mkDesk(x, z, ry = 0, clutterSeed = Math.random()) {
   else g.add(cyl(0.1, 0.13, 0.22, 0xcc6a3a, 0.7, 1.22, -0.1), sph(0.16, 0x3f7a3f, 0.7, 1.4, -0.1)); // plant
   g.position.set(x, 0, z); g.rotation.y = ry;
   scene.add(g);
+  /* shootable computer — world-space aim point */
+  const mx = x + Math.sin(ry) * (-0.25);
+  const mz = z + Math.cos(ry) * (-0.25);
+  const comp = { mesh: mon, hp: 2, x: mx, y: 1.75, z: mz, cool: 0, dead: false, glow };
+  computers.push(comp);
+  mon.userData.computer = comp;
   return g;
 }
 function mkCubiclePod(cx, cz, large = false) {
@@ -443,11 +524,23 @@ function mkVending(x, z, ry, bodyCol, glow, label) {
   g.position.set(x, 0, z); g.rotation.y = ry;
   scene.add(g);
   blockArea(x, z, 1.0, 0.8);
+  const vm = { mesh: g, hp: 4, maxHp: 4, x, z, dead: false, label };
+  vendingMachines.push(vm);
+  g.userData.vending = vm;
   return g;
 }
 mkVending(FLOOR_W / 2 - 1.4, -6, -Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
 mkVending(FLOOR_W / 2 - 1.4, -9.2, -Math.PI / 2, 0x2858b0, "#cfe4ff", "SNACKS");
+mkVending(FLOOR_W / 2 - 1.4, -12.4, -Math.PI / 2, 0xb06a28, "#ffe4cf", "RX");
+mkVending(FLOOR_W / 2 - 1.4, 8, -Math.PI / 2, 0x9028b0, "#f0d8ff", "ENERGY");
+mkVending(FLOOR_W / 2 - 1.4, 14, -Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
 mkVending(-FLOOR_W / 2 + 1.4, -22, Math.PI / 2, 0x28a058, "#d8ffe4", "H2O");
+mkVending(-FLOOR_W / 2 + 1.4, -18, Math.PI / 2, 0xb02850, "#ffd8e8", "RX");
+mkVending(-FLOOR_W / 2 + 1.4, -8, Math.PI / 2, 0x2858b0, "#cfe4ff", "SNACKS");
+mkVending(-FLOOR_W / 2 + 1.4, 6, Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
+mkVending(-FLOOR_W / 2 + 1.4, 16, Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
+mkVending(10, -FLOOR_D / 2 + 3, 0, 0xb06a28, "#ffe4cf", "RX");
+mkVending(-10, -FLOOR_D / 2 + 3, 0, 0x9028b0, "#f0d8ff", "ENERGY");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -545,6 +638,8 @@ for (let i = 0; i < 6; i++) {
 
 /* ============================== BOSS OFFICE ============================== */
 const bossOffice = { x: 0, z: -FLOOR_D / 2 + 4 };
+bossHitbox.x = bossOffice.x;
+bossHitbox.z = bossOffice.z;
 {
   const ox = bossOffice.x, oz = bossOffice.z;
   const W = 12, D = 8, H = 4.6;
@@ -627,13 +722,22 @@ const elon = new THREE.Group();
   const armL = box(0.2, 0.7, 0.2, 0x16181c); armL.position.set(-0.6, 1.55, 0); armL.geometry.translate(0, -0.25, 0);
   const armR = box(0.2, 0.7, 0.2, 0x16181c); armR.position.set(0.6, 1.55, 0); armR.geometry.translate(0, -0.25, 0);
   g.add(armL, armR);
-  elon.userData = { armL, armR, rage: 0 };
+  elon.userData = { armL, armR, rage: 0, homeX: bossOffice.x, homeZ: bossOffice.z - 0.6, stormAng: 0 };
   /* chair */
   g.add(box(0.9, 1.2, 0.15, 0x22262c, 0, 1.2, 0.5), cyl(0.4, 0.4, 0.08, 0x22262c, 0, 0.62, 0.25));
   g.position.set(bossOffice.x, 0, bossOffice.z - 0.6);
   g.rotation.y = Math.PI; // face the monitor / windows
   scene.add(g);
 }
+
+/* refresh computer aim points from world matrices */
+scene.updateMatrixWorld(true);
+for (const c of computers) {
+  const w = new THREE.Vector3();
+  c.mesh.getWorldPosition(w);
+  c.x = w.x; c.y = w.y; c.z = w.z;
+}
+
 /* Elon rant text */
 const RANTS = [
   "NO ONE GOES HOME THIS WEEKEND UNTIL EVERY BOT IS PURGED.",
@@ -1139,14 +1243,19 @@ function spawnEnemy(type) {
       speed: (variant === "scout" ? 2.4 : variant === "heavy" ? 1.0 : 1.5) + wave * 0.08,
       shootT: rand(2, 4),
     };
-    /* small stationary nameplate (bots do not throw text) */
-    const botTag = textSprite(
-      variant === "heavy" ? "HEAVY" : variant === "scout" ? "SCOUT" : "BOT",
-      { size: 26, color: variant === "heavy" ? "#ff8c2a" : "#ff6a6a", strokeW: 4 }
-    );
-    botTag.position.set(0, variant === "heavy" ? 2.85 : 2.45, 0);
-    botTag.scale.multiplyScalar(0.55);
+    /* bot-like spam phrase floating above */
+    const phrase = pick(BOT_PHRASES);
+    const botTag = textSprite(phrase, {
+      size: 24,
+      color: variant === "heavy" ? "#ff8c2a" : variant === "scout" ? "#7cffb0" : "#ff6a6a",
+      strokeW: 4
+    });
+    botTag.position.set(0, variant === "heavy" ? 2.9 : 2.5, 0);
+    botTag.scale.multiplyScalar(0.5);
     e.mesh.add(botTag);
+    e.tag = botTag;
+    e.tagPhrase = phrase;
+    e.tagT = rand(2.5, 5);
   }
   if (e.type === "spammer") {
     const spamTag = textSprite("SPAM", { size: 22, color: "#ffd200", strokeW: 4 });
@@ -1286,6 +1395,13 @@ document.addEventListener("pointerlockchange", () => {
 function startGame() {
   mode = "play";
   score = 0; lives = 3; wave = 1; invuln = 0;
+  speedBoost = 0; deathKind = null;
+  bossHitbox.enraged = false; bossHitbox.stormT = 0; bossHitbox.phraseT = 0;
+  if (typeof elon !== "undefined" && elon.userData) {
+    elon.position.set(elon.userData.homeX, 0, elon.userData.homeZ);
+    elon.userData.rage = 0;
+  }
+  overlay.classList.remove("death-weekend", "death-escape");
   weaponIdx = 0;
   $("weaponV").textContent = "X BOOMERANG";
   $("chargeLabel").textContent = "X CHARGE";
@@ -1339,6 +1455,111 @@ function throwBoomerang(big) {
   if (big) { shake = Math.max(shake, 0.35); }
   pigParts.head.rotation.x = -0.3;
 }
+
+/* ============================== WORLD HITS ============================== */
+function emitPhrase(origin, phrase, opts = {}) {
+  const deadly = !!opts.deadly;
+  const color = opts.color || (deadly ? "#ff3030" : "#7ec8ff");
+  const sp = textSprite(phrase, { size: deadly ? 36 : 28, color, strokeW: deadly ? 6 : 4 });
+  sp.position.copy(origin);
+  sp.scale.multiplyScalar(deadly ? 0.32 : 0.24);
+  const vel = pig.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin).normalize().multiplyScalar(opts.speed || (deadly ? 9 : 7));
+  spamTexts.push({
+    sprite: sp, vel, dist: 0, life: opts.life || 4,
+    baseAspect: sp.scale.x / sp.scale.y,
+    deadly, kind: opts.kind || "phrase"
+  });
+  scene.add(sp);
+  beep(deadly ? rand(120, 200) : rand(500, 900), 0.06, "square", deadly ? 0.07 : 0.04);
+}
+function dropPill(x, z) {
+  const g = new THREE.Group();
+  g.add(cyl(0.16, 0.18, 0.38, 0xf2f2ee, 0, 0.25, 0, 10));
+  g.add(cyl(0.17, 0.17, 0.1, 0xd0442a, 0, 0.48, 0, 10));
+  const label = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.16), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  label.position.set(0, 0.24, 0.17);
+  g.add(label);
+  g.position.set(x + rand(-0.4, 0.4), 0.2, z + rand(-0.4, 0.4));
+  scene.add(g);
+  pickups.push({ mesh: g, t: 0, kind: "pill", amount: 0 });
+}
+function hitVending(vm) {
+  if (!vm || vm.dead) return false;
+  vm.hp--;
+  SFX.vending();
+  burst(new THREE.Vector3(vm.x, 1.4, vm.z), 0xffaa66, 8, 4);
+  shake = Math.max(shake, 0.15);
+  if (vm.hp <= 0) {
+    vm.dead = true;
+    SFX.boom();
+    burst(new THREE.Vector3(vm.x, 1.5, vm.z), 0xffd200, 18, 7);
+    for (let i = 0; i < 3; i++) dropPill(vm.x, vm.z);
+    floatText(new THREE.Vector3(vm.x, 2.2, vm.z), "RX DROP!", { size: 36, color: "#7cffb0", strokeW: 5 }, 0.9);
+    score += 40; updateHud();
+  } else {
+    dropPill(vm.x, vm.z);
+    floatText(new THREE.Vector3(vm.x, 2.2, vm.z), vm.hp + " HITS LEFT", { size: 32, color: "#ffd94a", strokeW: 5 }, 0.85);
+  }
+  return true;
+}
+function hitComputer(c) {
+  if (!c || c.dead) return false;
+  c.hp--;
+  SFX.hit();
+  if (c.glow && c.glow.material) c.glow.material.color.setHex(0xff6060);
+  burst(new THREE.Vector3(c.x, c.y, c.z), 0x5ad1ff, 6, 3);
+  for (let i = 0; i < 2; i++) {
+    const origin = new THREE.Vector3(c.x + rand(-0.2, 0.2), c.y + 0.2, c.z + rand(-0.2, 0.2));
+    emitPhrase(origin, pick(X_COMPLAINTS), { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" });
+  }
+  c.cool = 0.8;
+  if (c.hp <= 0) {
+    c.dead = true;
+    SFX.glass();
+    if (c.glow && c.glow.material) c.glow.material.color.setHex(0x221111);
+    burst(new THREE.Vector3(c.x, c.y, c.z), 0x333333, 10, 4);
+    score += 15; updateHud();
+  }
+  return true;
+}
+function enrageBoss() {
+  if (!bossHitbox.enraged) {
+    bossHitbox.enraged = true;
+    showMsg("CEO ENRAGED — PHRASES INBOUND");
+    SFX.bossRage();
+  }
+  bossHitbox.stormT = Math.max(bossHitbox.stormT, 12);
+  elon.userData.rage = Math.max(elon.userData.rage, 3);
+  shake = Math.max(shake, 0.35);
+}
+function hitBossOffice(point) {
+  enrageBoss();
+  SFX.hit();
+  burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
+  for (let i = 0; i < 3; i++) {
+    const origin = new THREE.Vector3(bossHitbox.x + rand(-2, 2), 2.2 + rand(0, 1), bossHitbox.z + 3.5 + rand(-0.5, 0.5));
+    emitPhrase(origin, pick(BOSS_KILL_PHRASES), { deadly: true, color: "#ff3030", speed: 10, life: 5, kind: "boss" });
+  }
+  return true;
+}
+function hitscanWorld(origin, dir, maxDist = 55) {
+  let best = null;
+  let bestScore = 0.42;
+  const consider = (pos, type, ref, pad = 0) => {
+    const to = pos.clone().sub(origin);
+    const dist = to.length();
+    if (dist > maxDist || dist < 0.5) return;
+    const ang = to.normalize().angleTo(dir);
+    const score = ang - pad;
+    if (score < bestScore) { bestScore = score; best = { type, ref, dist, point: pos }; }
+  };
+  for (const e of enemies) consider(e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0)), "enemy", e);
+  for (const vm of vendingMachines) { if (!vm.dead) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.05); }
+  for (const c of computers) { if (!c.dead) consider(new THREE.Vector3(c.x, c.y, c.z), "computer", c, 0.08); }
+  consider(new THREE.Vector3(bossHitbox.x, 2.0, bossHitbox.z + 4), "boss", bossHitbox, 0.02);
+  return best;
+}
+
 function fireRifle() {
   if (rifleCd > 0) return;
   if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
@@ -1356,21 +1577,18 @@ function fireRifle() {
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const dir = aimDir();
   let target = null;
-  if (locked && lockTarget && enemies.includes(lockTarget)) target = lockTarget;
-  else {
-    /* hitscan: wider cone, longer range */
-    let best = 0.38;
-    for (const e of enemies) {
-      const to = e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin);
-      const dist = to.length();
-      if (dist > 55) continue;
-      const ang = to.normalize().angleTo(dir);
-      if (ang < best) { best = ang; target = e; }
-    }
+  let worldHit = null;
+  if (locked && lockTarget && enemies.includes(lockTarget)) {
+    target = lockTarget;
+  } else {
+    worldHit = hitscanWorld(origin, dir, 55);
+    if (worldHit && worldHit.type === "enemy") target = worldHit.ref;
   }
   const end = target
     ? target.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0))
-    : origin.clone().add(dir.clone().multiplyScalar(40));
+    : worldHit
+      ? worldHit.point.clone()
+      : origin.clone().add(dir.clone().multiplyScalar(40));
   /* tracer */
   const len = origin.distanceTo(end);
   const tr = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, len),
@@ -1381,7 +1599,11 @@ function fireRifle() {
   scene.add(tr);
   if (target) {
     if (target.type === "spammer" && locked && target === lockTarget) demonetize(target);
-    else damage(target, 5, end); /* hard-hitting rifle */
+    else damage(target, 5, end);
+  } else if (worldHit) {
+    if (worldHit.type === "vending") hitVending(worldHit.ref);
+    else if (worldHit.type === "computer") hitComputer(worldHit.ref);
+    else if (worldHit.type === "boss") hitBossOffice(worldHit.point);
   }
   locked = false; lockTarget = null; lockT = 0;
 }
@@ -1471,17 +1693,50 @@ function hurtPlayer() {
   updateHud();
   if (lives <= 0) gameOver();
 }
-function gameOver() {
+function gameOver(kind = "normal") {
+  if (mode === "over") return;
   mode = "over";
+  deathKind = kind;
   document.exitPointerLock();
   if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
   const rank = score >= 6000 ? "X COMMANDO ELITE" : score >= 3000 ? "CHIEF BAN OFFICER" :
                score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
-  overlay.querySelector("h1").textContent = "GAME OVER";
-  overlay.querySelector("p").innerHTML =
-    `SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b><br><br>The bots reclaim the timeline… for now.`;
+  overlay.classList.remove("death-weekend", "death-escape");
+  if (kind === "weekend") {
+    overlay.classList.add("death-weekend");
+    overlay.querySelector("h1").textContent = "WEEKEND RUINED";
+    overlay.querySelector("p").innerHTML =
+      `<div class="death-sub">A CEO phrase hit you. Your Saturday is now a standup.</div>
+       SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b>`;
+    SFX.weekend();
+  } else if (kind === "escape") {
+    overlay.classList.add("death-escape");
+    overlay.querySelector("h1").textContent = "FREEDOM?";
+    overlay.querySelector("p").innerHTML =
+      `<span class="fall-art">🐷💨🪟<br>⬇️⬇️⬇️</span>
+       <div class="death-sub">you escaped, no work this weekend, or ever!</div>
+       SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b>`;
+    SFX.escape();
+  } else {
+    overlay.querySelector("h1").textContent = "GAME OVER";
+    overlay.querySelector("p").innerHTML =
+      `SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b><br><br>The bots reclaim the timeline… for now.`;
+  }
   $("overlayGo").textContent = "CLICK OR PRESS ENTER TO RE-ENLIST";
   overlay.classList.remove("hidden");
+}
+function triggerEscape() {
+  if (mode !== "play") return;
+  shake = 0.8;
+  SFX.glass();
+  burst(pig.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0x9ed0f0, 24, 8, 10);
+  gameOver("escape");
+}
+function killByPhrase() {
+  if (mode !== "play") return;
+  lives = 0;
+  updateHud();
+  gameOver("weekend");
 }
 
 /* ============================== UPDATE ============================== */
@@ -1505,11 +1760,33 @@ function collideObstacles(pos, r) {
 function update(dt) {
   t += dt;
   /* --- ambient actors always animate --- */
-  /* Elon */
+  /* Elon — storms office when enraged, spews killer phrases */
   const eu = elon.userData;
   eu.rage = Math.max(0, eu.rage - dt);
   const typing = Math.sin(t * 10) * 0.15;
-  if (eu.rage > 0) {
+  if (bossHitbox.stormT > 0 && mode === "play") {
+    bossHitbox.stormT -= dt;
+    eu.rage = Math.max(eu.rage, 1);
+    eu.stormAng = (eu.stormAng || 0) + dt * 2.8;
+    const sx = eu.homeX + Math.cos(eu.stormAng) * 2.4;
+    const sz = eu.homeZ + Math.sin(eu.stormAng * 1.3) * 1.6;
+    elon.position.x += (sx - elon.position.x) * Math.min(1, dt * 4);
+    elon.position.z += (sz - elon.position.z) * Math.min(1, dt * 4);
+    elon.rotation.y = Math.atan2(pig.position.x - elon.position.x, pig.position.z - elon.position.z);
+    eu.armL.rotation.z = 2.8 + Math.sin(t * 18) * 0.35;
+    eu.armR.rotation.z = -2.8 - Math.sin(t * 18 + 1) * 0.35;
+    bossHitbox.phraseT -= dt;
+    if (bossHitbox.phraseT <= 0) {
+      bossHitbox.phraseT = rand(0.45, 0.85);
+      emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 2.2, 0)), pick(BOSS_KILL_PHRASES),
+        { deadly: true, color: "#ff3030", speed: 11, life: 4.5, kind: "boss" });
+    }
+    if (bossHitbox.stormT <= 0) {
+      bossHitbox.enraged = false;
+      elon.position.set(eu.homeX, 0, eu.homeZ);
+      elon.rotation.y = Math.PI;
+    }
+  } else if (eu.rage > 0) {
     eu.armL.rotation.z = 2.6 + Math.sin(t * 14) * 0.2;
     eu.armR.rotation.z = -2.6 - Math.sin(t * 14 + 1) * 0.2;
   } else {
@@ -1565,15 +1842,25 @@ function update(dt) {
   if (down("KeyA") || down("ArrowLeft")) mv.sub(right);   // strafe left
   if (down("KeyD") || down("ArrowRight")) mv.add(right);  // strafe right
   const moving = mv.lengthSq() > 0;
-  if (moving) mv.normalize().multiplyScalar(7.5);
+  const moveSpd = 7.5 * (speedBoost > 0 ? 1.65 : 1);
+  if (moving) mv.normalize().multiplyScalar(moveSpd);
   pigVel.lerp(mv, 1 - Math.pow(0.0001, dt));
   pig.position.addScaledVector(pigVel, dt);
   collideObstacles(pig.position, 0.8);
+  if (!onGround && pigY > 0.6 && mode === "play") {
+    for (const w of windowZones) {
+      if (Math.abs(pig.position.x - w.x) < w.hx + 0.6 && Math.abs(pig.position.z - w.z) < w.hz + 0.4) {
+        triggerEscape();
+        break;
+      }
+    }
+  }
+  if (speedBoost > 0) speedBoost = Math.max(0, speedBoost - dt);
   /* jump */
   if ((keys.Space || keys.KeyJ) && onGround) {
     pigVy = 6.2; onGround = false; squash = 0.8;
     burst(pig.position.clone().add(new THREE.Vector3(0, 0.1, 0)), 0xcfd3d8, 6, 2, 4);
-    beep(300, 0.1, "square", 0.05, 150);
+    SFX.jump();
   }
   if (!onGround) {
     pigVy -= 18 * dt;
@@ -1616,11 +1903,18 @@ function update(dt) {
     pu.mesh.rotation.y += dt * 3;
     pu.mesh.position.y = 0.4 + Math.sin(pu.t * 3) * 0.12;
     if (pu.mesh.position.distanceTo(pig.position) < 1.3) {
-      const got = pu.amount || 2;
-      ammo += got;
-      $("ammoV").textContent = ammo;
-      SFX.pickup();
-      floatText(pu.mesh.position.clone(), `+${got} AMMO`, { size: 36, color: "#ffe27a", strokeW: 5 }, 0.9);
+      if (pu.kind === "pill") {
+        speedBoost = Math.min(12, speedBoost + 5.5);
+        SFX.pill();
+        floatText(pu.mesh.position.clone(), "RX SPEED!", { size: 36, color: "#ff6ad5", strokeW: 5 }, 0.9);
+        showMsg("PRESCRIPTION SPEED");
+      } else {
+        const got = pu.amount || 2;
+        ammo += got;
+        $("ammoV").textContent = ammo;
+        SFX.pickup();
+        floatText(pu.mesh.position.clone(), `+${got} AMMO`, { size: 36, color: "#ffe27a", strokeW: 5 }, 0.9);
+      }
       scene.remove(pu.mesh);
       pickups.splice(i, 1);
     }
@@ -1681,6 +1975,29 @@ function update(dt) {
         hits++;
       }
     }
+    /* world props: vending / computers / boss office */
+    if (!b.hitSet.has("worldTick")) {
+      b.hitSet.add("worldTick"); /* allow multiple frames via separate keys */
+    }
+    for (const vm of vendingMachines) {
+      if (vm.dead || b.hitSet.has(vm)) continue;
+      if (Math.hypot(vm.x - b.mesh.position.x, vm.z - b.mesh.position.z) < 1.3) {
+        b.hitSet.add(vm); hitVending(vm); hits++;
+      }
+    }
+    for (const c of computers) {
+      if (c.dead || b.hitSet.has(c)) continue;
+      if (Math.hypot(c.x - b.mesh.position.x, c.z - b.mesh.position.z) < 1.0 && Math.abs(c.y - b.mesh.position.y) < 1.5) {
+        b.hitSet.add(c); hitComputer(c); hits++;
+      }
+    }
+    if (!b.hitSet.has("boss") &&
+        Math.abs(b.mesh.position.x - bossHitbox.x) < bossHitbox.hw &&
+        Math.abs(b.mesh.position.z - (bossHitbox.z + 3.5)) < 2.5) {
+      b.hitSet.add("boss");
+      hitBossOffice(b.mesh.position.clone());
+      hits++;
+    }
     if (hits >= 2) {
       floatText(b.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)),
         `${hits}x MASS BAN!`, { size: 60, color: "#8fe8ff", strokeW: 8 }, 2.0);
@@ -1738,6 +2055,23 @@ function update(dt) {
       if (ua["leg1"]) ua["leg1"].rotation.x = Math.sin(e.walk) * 0.5;
       if (e.variant === "heavy" && Math.sin(e.walk) > 0.98)
         burst(e.mesh.position.clone().add(new THREE.Vector3(0, 0.1, 0)), 0xcfd3d8, 2, 1.5, 4);
+      /* rotate bot spam phrase occasionally */
+      if (e.tagT != null) {
+        e.tagT -= dt;
+        if (e.tagT <= 0 && e.tag) {
+          e.tagT = rand(3, 6);
+          e.mesh.remove(e.tag);
+          const phrase = pick(BOT_PHRASES);
+          e.tag = textSprite(phrase, {
+            size: 24,
+            color: e.variant === "heavy" ? "#ff8c2a" : e.variant === "scout" ? "#7cffb0" : "#ff6a6a",
+            strokeW: 4
+          });
+          e.tag.position.set(0, e.variant === "heavy" ? 2.9 : 2.5, 0);
+          e.tag.scale.multiplyScalar(0.5);
+          e.mesh.add(e.tag);
+        }
+      }
       /* bot laser */
       e.shootT -= dt;
       if (e.shootT <= 0 && dist < 22 && dist > 3) {
