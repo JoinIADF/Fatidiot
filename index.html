@@ -3125,9 +3125,9 @@ function update(dt) {
         } else {
           objectPhraseCd = OBJECT_PHRASE_GAP;
           const phrase = pick(SPAM_PHRASES);
-          const sp = textSprite(phrase, { size: 34, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 5 });
-          sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 2.35, 0));
-          sp.scale.multiplyScalar(0.264); /* ~20% larger */
+          const sp = textSprite(phrase, { size: 52, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 8 });
+          sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 2.55, 0));
+          sp.scale.multiplyScalar(0.38); /* larger spam text */
           const vel = pig.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(sp.position).normalize().multiplyScalar(6);
           spamTexts.push({ sprite: sp, vel, dist: 0, life: 3.5, baseAspect: sp.scale.x / sp.scale.y, kind: "spam" });
           scene.add(sp);
