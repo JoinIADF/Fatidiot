@@ -2041,9 +2041,11 @@ function emitPhrase(origin, phrase, opts = {}) {
     strokeW: isBoss ? 14 : isPC ? 8 : deadly ? 7 : 5,
     maxWidth: isBoss ? (long ? 18 : 22) : isPC ? (long ? 20 : 24) : long ? 22 : 0,
   });
-  /* spawn higher above the object so text clears furniture/heads */
+  /* high enough to clear pig, desks, cubicles, and other world props */
   const pos = origin.clone();
-  pos.y += isBoss ? 1.55 : isPC ? 1.45 : 1.05;
+  pos.y += isBoss ? 3.2 : isPC ? 2.8 : 1.6;
+  /* floor clamp so nothing spawns underground */
+  if (pos.y < 4.5) pos.y = isBoss ? 5.2 : isPC ? 4.8 : Math.max(pos.y, 3.6);
   sp.position.copy(pos);
   sp.scale.multiplyScalar(
     isBoss ? (long ? 0.86 : 0.96) :
@@ -2210,7 +2212,7 @@ function hitComputer(c) {
   if (c.glow && c.glow.material) c.glow.material.color.setHex(0xff6060);
   burst(new THREE.Vector3(c.x, c.y, c.z), 0x5ad1ff, 6, 3);
   emitPhrase(
-    new THREE.Vector3(c.x, c.y + 1.85, c.z),
+    new THREE.Vector3(c.x, Math.max(c.y + 2.4, 3.5), c.z),
     pick(X_COMPLAINTS),
     { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" }
   );
@@ -2233,7 +2235,7 @@ function hitServer(s) {
   shake = Math.max(shake, 0.12);
   /* one outage complaint per shot */
   emitPhrase(
-    new THREE.Vector3(s.x, s.y + 1.9, s.z),
+    new THREE.Vector3(s.x, Math.max(s.y + 2.6, 3.8), s.z),
     pick(OUTAGE_COMPLAINTS),
     { deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage" }
   );
@@ -2293,8 +2295,8 @@ function hitBossOffice(point) {
   SFX.hit();
   burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
   const origin = point
-    ? point.clone().add(new THREE.Vector3(0, 2.0, 0))
-    : new THREE.Vector3(bossHitbox.x, 4.2, bossHitbox.z + 3.5);
+    ? point.clone().add(new THREE.Vector3(0, 3.5, 0))
+    : new THREE.Vector3(bossHitbox.x, 5.8, bossHitbox.z + 3.5);
   emitPhrase(origin, pick(BOSS_KILL_PHRASES), {
     deadly: true, color: "#4caf6a", speed: 3.8, life: 7.5, kind: "boss"
   });
@@ -2589,7 +2591,7 @@ function update(dt) {
     if (bossHitbox.phraseT <= 0) {
       /* fewer, slower phrases */
       bossHitbox.phraseT = rand(2.0, 3.2);
-      emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 3.9, 0)), pick(BOSS_KILL_PHRASES),
+      emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 5.4, 0)), pick(BOSS_KILL_PHRASES),
         { deadly: true, color: "#4caf6a", speed: 3.6, life: 7.5, kind: "boss" });
     }
     if (bossHitbox.stormT <= 0) {
@@ -2612,7 +2614,7 @@ function update(dt) {
     });
     rantSprite.scale.multiplyScalar(0.42);
     /* one clean line above the CEO door */
-    rantSprite.position.set(bossOffice.x, 3.15, bossOffice.z + 5.2);
+    rantSprite.position.set(bossOffice.x, 5.4, bossOffice.z + 5.2);
     scene.add(rantSprite);
     rantIdx++; rantLife = 3.8; rantTimer = 8.5;
     eu.rage = 2.2;
