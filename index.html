@@ -2001,16 +2001,21 @@ function throwBoomerang(big) {
 /* ============================== WORLD HITS ============================== */
 function emitPhrase(origin, phrase, opts = {}) {
   const deadly = !!opts.deadly;
-  const color = opts.color || (deadly ? "#ff3030" : "#7ec8ff");
+  const isBoss = opts.kind === "boss";
+  /* boss phrases: medium green, large, slow */
+  const color = opts.color || (isBoss ? "#4caf6a" : deadly ? "#ff3030" : "#7ec8ff");
   const long = String(phrase).length > 24;
+  const fontSize = isBoss ? (long ? 52 : 60) : deadly ? (long ? 30 : 36) : 28;
   const sp = textSprite(phrase, {
-    size: deadly ? (long ? 30 : 36) : 28,
-    color, strokeW: deadly ? 6 : 4,
-    maxWidth: long ? 22 : 0,
+    size: fontSize,
+    color,
+    strokeW: isBoss ? 10 : deadly ? 6 : 4,
+    maxWidth: isBoss ? (long ? 20 : 24) : long ? 22 : 0,
   });
   sp.position.copy(origin);
-  sp.scale.multiplyScalar(deadly ? (long ? 0.28 : 0.32) : 0.24);
-  const vel = pig.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin).normalize().multiplyScalar(opts.speed || (deadly ? 9 : 7));
+  sp.scale.multiplyScalar(isBoss ? (long ? 0.55 : 0.62) : deadly ? (long ? 0.28 : 0.32) : 0.24);
+  const baseSpd = isBoss ? 4.2 : deadly ? 9 : 7;
+  const vel = pig.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin).normalize().multiplyScalar(opts.speed != null ? opts.speed : baseSpd);
   spamTexts.push({
     sprite: sp, vel, dist: 0, life: opts.life || 4,
     baseAspect: sp.scale.x / sp.scale.y,
@@ -2254,7 +2259,9 @@ function hitBossOffice(point) {
   const origin = point
     ? point.clone().add(new THREE.Vector3(0, 0.4, 0))
     : new THREE.Vector3(bossHitbox.x, 2.4, bossHitbox.z + 3.5);
-  emitPhrase(origin, pick(BOSS_KILL_PHRASES), { deadly: true, color: "#ff3030", speed: 10, life: 5, kind: "boss" });
+  emitPhrase(origin, pick(BOSS_KILL_PHRASES), {
+    deadly: true, color: "#4caf6a", speed: 3.8, life: 7.5, kind: "boss"
+  });
   return true;
 }
 function hitscanWorld(origin, dir, maxDist = 55) {
@@ -2544,9 +2551,10 @@ function update(dt) {
     eu.armR.rotation.z = -2.8 - Math.sin(t * 18 + 1) * 0.35;
     bossHitbox.phraseT -= dt;
     if (bossHitbox.phraseT <= 0) {
-      bossHitbox.phraseT = rand(0.45, 0.85);
+      /* fewer, slower phrases */
+      bossHitbox.phraseT = rand(2.0, 3.2);
       emitPhrase(elon.position.clone().add(new THREE.Vector3(0, 2.2, 0)), pick(BOSS_KILL_PHRASES),
-        { deadly: true, color: "#ff3030", speed: 11, life: 4.5, kind: "boss" });
+        { deadly: true, color: "#4caf6a", speed: 3.6, life: 7.5, kind: "boss" });
     }
     if (bossHitbox.stormT <= 0) {
       bossHitbox.enraged = false;
