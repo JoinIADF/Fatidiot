@@ -1592,21 +1592,14 @@ function sayDemonetized() {
     if (typeof speechSynthesis === "undefined") return;
     speechSynthesis.cancel();
     const voice = pickDeepVoice();
-    /* IPA-ish respelling: /diː ˈmʌn ɪ taɪzd/ → clear syllables, stress on MON */
-    const phonetic = "Dee mun ih tized";
-    const u = new SpeechSynthesisUtterance(phonetic);
+    /* Clean phonetic: "D-manna-tized" as one strong word — not choppy syllables */
+    const u = new SpeechSynthesisUtterance("Dee manna tized");
     u.lang = "en-US";
-    u.rate = 0.52;   /* slow, deliberate, commanding */
-    u.pitch = 0.05;  /* as deep as browsers allow */
+    u.rate = 1.05;   /* clean & fast */
+    u.pitch = 0.2;   /* deep but not glitchy */
     u.volume = 1;
     if (voice) u.voice = voice;
-    /* slight pause before for authority */
-    setTimeout(() => {
-      try {
-        speechSynthesis.cancel();
-        speechSynthesis.speak(u);
-      } catch (e) {}
-    }, 40);
+    speechSynthesis.speak(u);
   } catch (e) {}
 }
 /* warm voice list (Chrome loads async) */
