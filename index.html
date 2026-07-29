@@ -1088,10 +1088,10 @@ let zzzTimer = 2;
 const pig = new THREE.Group();
 const pigParts = {};
 {
-  const PINK = 0xdd94a0, PINKD = 0xc27a88, KHAKI = 0xb5a06a, KHAKI2 = 0x9a8656, OLIVE = 0x6b6b3f, TAN = 0x8a774a;
+  const PINK = 0xd6a290, PINKD = 0xb8836f, KHAKI = 0xb5a06a, KHAKI2 = 0x9a8656, OLIVE = 0x6b6b3f, TAN = 0x8a774a;
   /* slab body: long, low, fat */
   const body = sph(0.62, PINK, 0, 0.62, 0);
-  body.scale.set(1.15, 0.92, 1.55);
+  body.scale.set(1.35, 0.95, 1.6);
   pig.add(body);
   /* legs: stubby */
   for (const [lx, lz, k] of [[-0.34, 0.55, "fl"], [0.34, 0.55, "fr"], [-0.34, -0.6, "bl"], [0.34, -0.6, "br"]]) {
@@ -1106,71 +1106,93 @@ const pigParts = {};
   const tail = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.04, 6, 12, Math.PI * 1.6), mat(PINK));
   tail.position.set(0, 0.85, -0.95); tail.rotation.x = 0.4;
   pig.add(tail);
-  /* head — photo face pasted on front (bg removed), hood behind, no 3D snout */
+  /* ---- SCULPTED HALF-MAN / HALF-PIG HEAD — geometry, no photo paste ---- */
+  const SKIN = 0xd9a583, SKIND = 0xbd8a68, SNOUTP = 0xd98f7e, SNOUTD = 0xb06a5c, HAIR = 0x2e2118;
   const headG = new THREE.Group();
-  /* dark under-skull so pink body never peeks through the photo */
-  const skull = sph(0.36, 0x2a241c, 0, 0.02, -0.1);
-  skull.scale.set(0.95, 0.9, 0.85);
-  headG.add(skull);
-  /* THE FACE: unlit photo paste so the man+pig-snout portrait stays vivid */
-  const faceMat = new THREE.MeshBasicMaterial({
-    color: 0xf2e6dc,
-    transparent: true,
-    alphaTest: 0.12,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    fog: false,
-    toneMapped: false,
-  });
-  const face = new THREE.Mesh(new THREE.PlaneGeometry(1.45, 1.55), faceMat);
-  face.position.set(0, 0.08, 0.62);
-  face.renderOrder = 20;
-  face.userData.noOutline = true;
-  headG.add(face);
-  pigParts.face = face;
-  new THREE.TextureLoader().load("pig-face.png?v=vivid", (tex) => {
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    faceMat.map = tex;
-    faceMat.needsUpdate = true;
-  });
-  /* ears — small, tucked under hood edges */
+  /* skull with a proper tall forehead */
+  const mhead = sph(0.5, SKIN, 0, 0.05, 0); mhead.scale.set(1.05, 1.05, 0.9);
+  headG.add(mhead);
+  const forehead = sph(0.34, SKIN, 0, 0.36, 0.16); forehead.scale.set(1.35, 0.8, 0.8);
+  headG.add(forehead);
+  /* dark hair emerging under the helmet: fringe + sideburns */
+  const fringe = sph(0.37, HAIR, 0, 0.52, 0.1); fringe.scale.set(1.35, 0.45, 0.95);
+  headG.add(fringe);
   for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.24, 4), mat(PINK));
-    ear.position.set(0.34 * s, 0.38, 0.0);
-    ear.rotation.z = -0.55 * s;
-    ear.rotation.x = 0.35;
+    const burn = box(0.1, 0.32, 0.12, HAIR, 0.48 * s, 0.14, 0.06);
+    burn.rotation.z = -0.1 * s;
+    headG.add(burn);
+  }
+  /* massive jowls + chin roll + neck folds */
+  headG.add(sph(0.26, SKIN, -0.32, -0.2, 0.16));
+  headG.add(sph(0.26, SKIN, 0.32, -0.2, 0.16));
+  headG.add(sph(0.3, SKIN, 0, -0.3, 0.12));
+  const neck1 = sph(0.44, SKIN, 0, -0.4, -0.08); neck1.scale.set(1.15, 0.5, 0.9);
+  const neck2 = sph(0.4, SKIND, 0, -0.54, -0.1); neck2.scale.set(1.1, 0.38, 0.85);
+  headG.add(neck1, neck2);
+  /* OPEN eyes: whites + dark irises under slight brows, cheeks pushed up by the grin */
+  for (const s of [-1, 1]) {
+    const white = sph(0.075, 0xf2ead8, 0.2 * s, 0.18, 0.4);
+    white.scale.set(1.25, 1, 0.55);
+    const iris = sph(0.035, 0x3a2818, 0.2 * s, 0.18, 0.45);
+    headG.add(white, iris);
+    const browB = box(0.19, 0.05, 0.06, SKIND, 0.2 * s, 0.29, 0.4);
+    browB.rotation.z = -0.12 * s;
+    headG.add(browB);
+    /* crow's-feet smile crease + cheek apple */
+    const crease = box(0.03, 0.13, 0.02, SKIND, 0.37 * s, 0.12, 0.36);
+    crease.rotation.z = 0.55 * s;
+    headG.add(crease);
+    headG.add(sph(0.17, SKIN, 0.3 * s, -0.05, 0.3));
+  }
+  /* BIG upturned pig snout, front and center */
+  const snout = cyl(0.24, 0.28, 0.32, SNOUTP, 0, -0.02, 0.46);
+  snout.rotation.x = Math.PI / 2 - 0.18; snout.scale.x = 1.45;
+  const snoutCap = cyl(0.245, 0.245, 0.045, SNOUTD, 0, 0.01, 0.61);
+  snoutCap.rotation.x = Math.PI / 2 - 0.18; snoutCap.scale.x = 1.45;
+  headG.add(snout, snoutCap);
+  for (const s of [-1, 1]) {
+    const nos = cyl(0.055, 0.055, 0.05, 0x5e3028, 0.13 * s, 0.03, 0.63);
+    nos.rotation.x = Math.PI / 2 - 0.18;
+    nos.scale.set(1, 1, 1.7);
+    headG.add(nos);
+  }
+  /* WIDE grin like the photo: broad arc curving up into the cheeks + lower lip roll */
+  const grin = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.022, 6, 20, Math.PI * 0.85), mat(0x6e4234));
+  grin.position.set(0, -0.06, 0.4);
+  grin.rotation.z = Math.PI + Math.PI * 0.075;
+  headG.add(grin);
+  const lipLo = sph(0.16, SKIND, 0, -0.24, 0.34); lipLo.scale.set(1.7, 0.45, 0.6);
+  headG.add(lipLo);
+  /* pig ears under the helmet rim */
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.28, 4), mat(SKIN));
+    ear.position.set(0.46 * s, 0.36, -0.06); ear.rotation.z = -0.75 * s; ear.rotation.x = 0.3;
     headG.add(ear);
     pigParts["ear" + (s > 0 ? "R" : "L")] = ear;
   }
-  /* ghillie hood: behind/above face only — keep the photo fully readable */
-  const hood = sph(0.48, KHAKI, 0, 0.18, -0.2);
-  hood.scale.set(1.2, 0.9, 1.0);
-  headG.add(hood);
-  /* hood rim wrapping the top of the face (not covering it) */
-  const brim = cyl(0.48, 0.52, 0.12, KHAKI2, 0, 0.38, 0.12, 12);
-  brim.scale.z = 0.7;
-  headG.add(brim);
-  const flapCols = [KHAKI, KHAKI2, OLIVE, TAN];
-  for (let i = 0; i < 12; i++) {
-    /* only sides + back — skip the front face cone entirely */
-    const a = rand(0.9, Math.PI * 2 - 0.9); // away from +Z front
-    if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.7) continue;
-    const fl = box(rand(0.1, 0.16), rand(0.22, 0.42), 0.04, pick(flapCols));
-    const rr = 0.46;
-    fl.position.set(Math.sin(a) * rr, rand(0.0, 0.22), Math.cos(a) * rr * 0.55 - 0.12);
-    fl.rotation.z = rand(-0.35, 0.35);
-    fl.rotation.x = rand(-0.2, 0.2);
-    fl.geometry.translate(0, -0.12, 0);
-    headG.add(fl);
-  }
-  /* side drapes framing the face without covering the photo */
+  /* ARMY HELMET: camo-blotch dome sitting high — forehead and hair show under it */
+  const helmTex = canvasTex(128, 64, (g2, w, h) => {
+    g2.fillStyle = "#6b6b3f"; g2.fillRect(0, 0, w, h);
+    for (let i = 0; i < 26; i++) {
+      g2.fillStyle = pick(["#8a7a4a", "#4c5230", "#7a6a3c", "#5a5a34"]);
+      g2.beginPath(); g2.ellipse(rand(0, w), rand(0, h), rand(6, 16), rand(4, 9), rand(0, 3), 0, Math.PI * 2); g2.fill();
+    }
+  });
+  const helm = new THREE.Mesh(new THREE.SphereGeometry(0.52, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshLambertMaterial({ map: helmTex, flatShading: true }));
+  helm.position.set(0, 0.44, -0.04); helm.scale.set(1.12, 0.8, 1.06);
+  helm.castShadow = true;
+  headG.add(helm);
+  const brimH = cyl(0.56, 0.6, 0.08, 0x5a5a34, 0, 0.46, -0.04, 14);
+  brimH.scale.set(1.12, 1, 1.06);
+  headG.add(brimH);
   for (const s of [-1, 1]) {
-    const drape = box(0.14, 0.55, 0.08, KHAKI, 0.4 * s, 0.05, 0.28);
-    drape.rotation.z = 0.15 * s;
-    headG.add(drape);
+    const strap = box(0.045, 0.5, 0.03, 0x3c3626, 0.53 * s, 0.02, 0.12);
+    strap.rotation.z = -0.15 * s;
+    headG.add(strap);
   }
-  headG.position.set(0, 0.95, 0.9);
+  headG.scale.setScalar(0.85);
+  headG.position.set(0, 1.22, 0.68);
   pig.add(headG);
   pigParts.head = headG;
   /* vest wrapping torso + pouches + straps */
