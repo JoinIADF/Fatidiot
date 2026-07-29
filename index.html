@@ -231,25 +231,47 @@ function addOutline(group, scale = 1.055) {
   }
 }
 /* outlined bare-text sprite (transparent canvas, no box) */
-function textSprite(text, { size = 64, color = "#ffd94a", stroke = "#000", strokeW = 8, font = "bold %spx Arial Black, Arial" } = {}) {
+function textSprite(text, { size = 64, color = "#ffd94a", stroke = "#000", strokeW = 8, font = "bold %spx Arial Black, Arial", maxWidth = 0 } = {}) {
   const c = document.createElement("canvas");
   const ctx = c.getContext("2d");
   const f = font.replace("%s", size);
   ctx.font = f;
-  const w = Math.ceil(ctx.measureText(text).width) + strokeW * 2 + 8;
-  c.width = w; c.height = size * 1.5;
+  let lines = [String(text)];
+  const wrapAt = maxWidth || (String(text).length > 28 ? 26 : 0);
+  if (wrapAt > 0) {
+    const words = String(text).split(/\s+/);
+    lines = [];
+    let cur = "";
+    for (const w of words) {
+      const trial = cur ? cur + " " + w : w;
+      if (trial.length > wrapAt && cur) { lines.push(cur); cur = w; }
+      else cur = trial;
+    }
+    if (cur) lines.push(cur);
+  }
+  let maxW = 0;
+  for (const ln of lines) maxW = Math.max(maxW, ctx.measureText(ln).width);
+  const w = Math.ceil(maxW) + strokeW * 2 + 12;
+  const lineH = size * 1.15;
+  c.width = w; c.height = Math.ceil(lineH * lines.length + strokeW * 2 + 8);
   const g = c.getContext("2d");
   g.font = f; g.textAlign = "center"; g.textBaseline = "middle";
   g.lineJoin = "round"; g.lineWidth = strokeW; g.strokeStyle = stroke;
-  g.strokeText(text, c.width / 2, c.height / 2);
   g.fillStyle = color;
-  g.fillText(text, c.width / 2, c.height / 2);
+  const startY = c.height / 2 - ((lines.length - 1) * lineH) / 2;
+  lines.forEach((ln, idx) => {
+    const y = startY + idx * lineH;
+    g.strokeText(ln, w / 2, y);
+    g.fillText(ln, w / 2, y);
+  });
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
-  sp.scale.set(c.width / c.height, 1, 1);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+  const sp = new THREE.Sprite(mat);
+  sp.scale.set(w / 64, c.height / 64, 1);
   return sp;
 }
+
 function canvasTex(w, h, draw) {
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
@@ -1528,13 +1550,14 @@ function buildBot(variant) {
 function spawnEnemy(type) {
   let e;
   if (type === "spammer") {
-    e = { type, hp: 2, speed: rand(2.2, 2.9) + wave * 0.12, mesh: buildSpammer(), shootT: rand(2.5, 4.5), r: 0.9, zig: rand(0, 6.28) };
+    e = { type, hp: 2, speed: rand(1.9, 3.6) + wave * 0.14, mesh: buildSpammer(), shootT: rand(2.0, 4.2), r: 0.9, zig: rand(0, 6.28) };
   } else {
     const variant = pick(BOT_VARIANTS);
+    const baseSpd = variant === "scout" ? rand(2.0, 3.4) : variant === "heavy" ? rand(0.7, 1.35) : rand(1.15, 2.35);
     e = {
       type: "bot", variant, mesh: buildBot(variant), r: variant === "heavy" ? 1.0 : 0.75,
       hp: variant === "heavy" ? 6 : variant === "scout" ? 2 : 3,
-      speed: (variant === "scout" ? 2.4 : variant === "heavy" ? 1.0 : 1.5) + wave * 0.08,
+      speed: baseSpd + wave * rand(0.05, 0.14) + rand(-0.25, 0.45),
       shootT: rand(2, 4),
     };
     /* bot-like spam phrase floating above */
@@ -1792,8 +1815,8 @@ function startGame() {
   updateHud();
 }
 function beginWave() {
-  spawnQueue = 4 + wave * 2;
-  spawnT = 0.5;
+  spawnQueue = 5 + wave * 3;
+  spawnT = 0.4;
   showMsg(`WAVE ${wave}`);
   SFX.wave();
 }
@@ -1832,9 +1855,14 @@ function throwBoomerang(big) {
 function emitPhrase(origin, phrase, opts = {}) {
   const deadly = !!opts.deadly;
   const color = opts.color || (deadly ? "#ff3030" : "#7ec8ff");
-  const sp = textSprite(phrase, { size: deadly ? 36 : 28, color, strokeW: deadly ? 6 : 4 });
+  const long = String(phrase).length > 24;
+  const sp = textSprite(phrase, {
+    size: deadly ? (long ? 30 : 36) : 28,
+    color, strokeW: deadly ? 6 : 4,
+    maxWidth: long ? 22 : 0,
+  });
   sp.position.copy(origin);
-  sp.scale.multiplyScalar(deadly ? 0.32 : 0.24);
+  sp.scale.multiplyScalar(deadly ? (long ? 0.28 : 0.32) : 0.24);
   const vel = pig.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin).normalize().multiplyScalar(opts.speed || (deadly ? 9 : 7));
   spamTexts.push({
     sprite: sp, vel, dist: 0, life: opts.life || 4,
@@ -2067,6 +2095,10 @@ function enrageBoss() {
   bossHitbox.stormT = Math.max(bossHitbox.stormT, 12);
   elon.userData.rage = Math.max(elon.userData.rage, 3);
   shake = Math.max(shake, 0.35);
+  /* clear ambient door rant so only one phrase is active */
+  if (rantSprite) { scene.remove(rantSprite); rantSprite = null; }
+  rantTimer = 8;
+  rantLife = 0;
 }
 function hitBossOffice(point) {
   enrageBoss();
@@ -2375,15 +2407,19 @@ function update(dt) {
     eu.armR.rotation.z = -0.5 - typing;
   }
   rantTimer -= dt;
-  if (rantTimer <= 0) {
+  if (rantTimer <= 0 && bossHitbox.stormT <= 0) {
     if (rantSprite) scene.remove(rantSprite);
-    rantSprite = textSprite(RANTS[rantIdx % RANTS.length], { size: 48, color: "#ffd94a", strokeW: 8 });
-    rantSprite.scale.multiplyScalar(0.0);
-    /* hang just above the CEO door, in front of the office — not into the ceiling */
+    rantSprite = textSprite(RANTS[rantIdx % RANTS.length], {
+      size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 28
+    });
+    rantSprite.scale.multiplyScalar(0.42);
+    /* one clean line above the CEO door */
     rantSprite.position.set(bossOffice.x, 3.15, bossOffice.z + 5.2);
     scene.add(rantSprite);
-    rantIdx++; rantLife = 4.5; rantTimer = 7.5;
+    rantIdx++; rantLife = 3.8; rantTimer = 8.5;
     eu.rage = 2.2;
+  } else if (rantTimer <= 0) {
+    rantTimer = 2.5; /* quiet while CEO is storming */
   }
   if (rantSprite) {
     rantLife -= dt;
@@ -2783,9 +2819,10 @@ function update(dt) {
   if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
-      spawnT = Math.max(0.5, 1.6 - wave * 0.08);
+      spawnT = Math.max(0.4, 1.35 - wave * 0.07);
       spawnQueue--;
-      spawnEnemy(Math.random() < Math.min(0.5, 0.22 + wave * 0.04) ? "spammer" : "bot");
+      /* more spammers: ~42–72% by wave */
+      spawnEnemy(Math.random() < Math.min(0.72, 0.42 + wave * 0.05) ? "spammer" : "bot");
     }
   } else if (enemies.length === 0) {
     if (betweenT <= 0) {
