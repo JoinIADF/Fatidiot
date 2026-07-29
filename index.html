@@ -2330,17 +2330,27 @@ function hitVending(vm) {
   }
   return true;
 }
-function hitComputer(c) {
+function hitComputer(c, via = "rifle") {
   if (!c || c.dead) return false;
   c.hp--;
   SFX.hit();
   if (c.glow && c.glow.material) c.glow.material.color.setHex(0xff6060);
   burst(new THREE.Vector3(c.x, c.y, c.z), 0x5ad1ff, 6, 3);
-  emitPhrase(
-    new THREE.Vector3(c.x, Math.max(c.y + 1.6, 2.8), c.z),
-    pick(X_COMPLAINTS),
-    { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" }
-  );
+  /* boomerang needs 2 hits to spit a phrase; rifle = every hit */
+  let phrase = true;
+  if (via === "boom") {
+    c.boomPhraseHits = (c.boomPhraseHits || 0) + 1;
+    phrase = c.boomPhraseHits >= 2;
+    if (phrase) c.boomPhraseHits = 0;
+    else floatText(new THREE.Vector3(c.x, c.y + 1.2, c.z), "1 MORE", { size: 28, color: "#5ad1ff", strokeW: 4 }, 0.7);
+  }
+  if (phrase) {
+    emitPhrase(
+      new THREE.Vector3(c.x, Math.max(c.y + 1.6, 2.8), c.z),
+      pick(X_COMPLAINTS),
+      { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" }
+    );
+  }
   c.cool = 0.8;
   if (c.hp <= 0) {
     c.dead = true;
@@ -2351,19 +2361,28 @@ function hitComputer(c) {
   }
   return true;
 }
-function hitServer(s) {
+function hitServer(s, via = "rifle") {
   if (!s) return false;
   s.hp = Math.max(0, s.hp - 1);
   SFX.hit();
   /* flash red LEDs vibe */
   burst(new THREE.Vector3(s.x, s.y, s.z), 0xff4a3a, 10, 5);
   shake = Math.max(shake, 0.12);
-  /* one outage complaint per shot */
-  emitPhrase(
-    new THREE.Vector3(s.x, Math.max(s.y + 1.8, 3.0), s.z),
-    pick(OUTAGE_COMPLAINTS),
-    { deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage" }
-  );
+  /* boomerang needs 2 hits to spit a phrase; rifle = every hit */
+  let phrase = true;
+  if (via === "boom") {
+    s.boomPhraseHits = (s.boomPhraseHits || 0) + 1;
+    phrase = s.boomPhraseHits >= 2;
+    if (phrase) s.boomPhraseHits = 0;
+    else floatText(new THREE.Vector3(s.x, s.y + 1.4, s.z), "1 MORE", { size: 28, color: "#ff8c2a", strokeW: 4 }, 0.7);
+  }
+  if (phrase) {
+    emitPhrase(
+      new THREE.Vector3(s.x, Math.max(s.y + 1.8, 3.0), s.z),
+      pick(OUTAGE_COMPLAINTS),
+      { deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage" }
+    );
+  }
   s.cool = 0.5;
   if (s.hp <= 0) {
     SFX.boom();
@@ -3058,13 +3077,13 @@ function update(dt) {
     for (const c of computers) {
       if (c.dead || b.hitSet.has(c)) continue;
       if (Math.hypot(c.x - b.mesh.position.x, c.z - b.mesh.position.z) < 1.0 && Math.abs(c.y - b.mesh.position.y) < 1.5) {
-        b.hitSet.add(c); hitComputer(c); hits++;
+        b.hitSet.add(c); hitComputer(c, "boom"); hits++;
       }
     }
     for (const s of servers) {
       if (b.hitSet.has(s)) continue;
       if (Math.hypot(s.x - b.mesh.position.x, s.z - b.mesh.position.z) < 1.6) {
-        b.hitSet.add(s); hitServer(s); hits++;
+        b.hitSet.add(s); hitServer(s, "boom"); hits++;
       }
     }
     if (!b.hitSet.has("grok") &&
