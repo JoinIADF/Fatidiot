@@ -303,6 +303,18 @@ const SFX = {
   escape: () => { noiseBurst(0.5, 0.22, 4000, 200); beep(400, 0.4, "sawtooth", 0.1, -300); setTimeout(() => beep(200, 0.5, "triangle", 0.1, -100), 150); },
   weekend: () => { noiseBurst(0.4, 0.24, 1500, 50); thump(45, 0.5, 0.22); beep(100, 0.5, "sawtooth", 0.14, -50); setTimeout(() => beep(60, 0.6, "triangle", 0.12), 200); },
   jump: () => { beep(280, 0.08, "square", 0.06, 160); noiseBurst(0.05, 0.06, 2000, 200); },
+  dogHit: () => {
+    thump(90, 0.12, 0.12);
+    noiseBurst(0.1, 0.12, 2500, 300);
+    beep(180, 0.08, "square", 0.08, -40);
+  },
+  dogRage: () => {
+    thump(70, 0.25, 0.18);
+    noiseBurst(0.22, 0.2, 1800, 100);
+    beep(140, 0.18, "sawtooth", 0.12, -50);
+    setTimeout(() => beep(100, 0.2, "triangle", 0.1, -30), 90);
+    setTimeout(() => beep(80, 0.25, "sawtooth", 0.1, -20), 180);
+  },
 };
 
 /* ============================== OFFICE ============================== */
@@ -987,8 +999,16 @@ const grok = new THREE.Group();
   dog.add(tail, tailTip);
   dog.userData = { head, body };
   grok.add(dog);
-  grok.userData = { dog };
-  grok.position.set(bossOffice.x + 3.2, 0, bossOffice.z + 5.4);
+  /* Shiba stays on the bed — shootable, enrages but never leaves */
+  grok.userData = {
+    dog,
+    home: new THREE.Vector3(bossOffice.x + 3.2, 0, bossOffice.z + 5.4),
+    enraged: false,
+    rageT: 0,
+    spawnT: 0,
+    cool: 0,
+  };
+  grok.position.copy(grok.userData.home);
   addOutline(dog, 1.05);
   scene.add(grok);
   blockArea(grok.position.x, grok.position.z, 1.2, 1.2);
@@ -1639,6 +1659,17 @@ function startGame() {
     elon.position.set(elon.userData.homeX, 0, elon.userData.homeZ);
     elon.userData.rage = 0;
   }
+  if (typeof grok !== "undefined" && grok.userData) {
+    grok.userData.enraged = false;
+    grok.userData.rageT = 0;
+    grok.userData.spawnT = 0;
+    grok.userData.cool = 0;
+    if (grok.userData.home) grok.position.copy(grok.userData.home);
+    if (grok.userData.dog) {
+      grok.userData.dog.rotation.y = 0;
+      if (grok.userData.dog.userData.head) grok.userData.dog.userData.head.rotation.z = 0;
+    }
+  }
   overlay.classList.remove("death-weekend", "death-escape");
   const escBg = overlay.querySelector(".escape-bg");
   if (escBg) escBg.remove();
@@ -1899,6 +1930,33 @@ function hitServer(s) {
   }
   return true;
 }
+function hitGrok(point) {
+  const gu = grok.userData;
+  if (gu.cool > 0) return false;
+  gu.cool = 0.35;
+  SFX.dogHit();
+  const p = point || grok.position.clone().add(new THREE.Vector3(0, 0.7, 0));
+  burst(p, 0xd98c4a, 10, 5);
+  burst(p, 0xff4a3a, 6, 4);
+  shake = Math.max(shake, 0.25);
+  /* pin in place forever */
+  grok.position.copy(gu.home);
+  if (!gu.enraged) {
+    gu.enraged = true;
+    showMsg("SHIBA ENRAGED — REINFORCEMENTS");
+    SFX.dogRage();
+    floatText(p.clone().add(new THREE.Vector3(0, 0.5, 0)), "GRRR!", { size: 48, color: "#ff4a3a", strokeW: 8 }, 1.2);
+  } else {
+    floatText(p.clone().add(new THREE.Vector3(0, 0.4, 0)), "BARK!", { size: 40, color: "#ff8c2a", strokeW: 6 }, 0.9);
+  }
+  /* each shot extends rage and dumps a quick wave of bots + spammers */
+  gu.rageT = Math.max(gu.rageT, 14);
+  gu.spawnT = Math.min(gu.spawnT, 0.15);
+  /* immediate partial dump */
+  for (let i = 0; i < 2; i++) spawnEnemy("bot");
+  spawnEnemy("spammer");
+  return true;
+}
 function enrageBoss() {
   if (!bossHitbox.enraged) {
     bossHitbox.enraged = true;
@@ -1936,6 +1994,7 @@ function hitscanWorld(origin, dir, maxDist = 55) {
   for (const vm of vendingMachines) { if (!vm.dead) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.14); }
   for (const c of computers) { if (!c.dead) consider(new THREE.Vector3(c.x, c.y, c.z), "computer", c, 0.08); }
   for (const s of servers) consider(new THREE.Vector3(s.x, s.y, s.z), "server", s, 0.06);
+  consider(grok.position.clone().add(new THREE.Vector3(0, 0.6, 0)), "grok", grok, 0.12);
   consider(new THREE.Vector3(bossHitbox.x, 2.0, bossHitbox.z + 4), "boss", bossHitbox, 0.02);
   return best;
 }
@@ -1984,6 +2043,7 @@ function fireRifle() {
     if (worldHit.type === "vending") hitVending(worldHit.ref);
     else if (worldHit.type === "computer") hitComputer(worldHit.ref);
     else if (worldHit.type === "server") hitServer(worldHit.ref);
+    else if (worldHit.type === "grok") hitGrok(worldHit.point);
     else if (worldHit.type === "boss") hitBossOffice(worldHit.point);
   }
   locked = false; lockTarget = null; lockT = 0;
@@ -2228,13 +2288,50 @@ function update(dt) {
     rantSprite.position.y = 3.0 + (4.5 - rantLife) * 0.35; /* rises from door to ~4.6 */
     if (rantLife <= 0) { scene.remove(rantSprite); rantSprite = null; }
   }
-  /* Grok breathing + zzz */
-  const dog = grok.userData.dog;
-  dog.userData.body.scale.y = 0.75 + Math.sin(t * 2.2) * 0.03;
-  zzzTimer -= dt;
-  if (zzzTimer <= 0) {
-    zzzTimer = rand(3, 6);
-    floatText(grok.position.clone().add(new THREE.Vector3(0.3, 1.2, 0)), "zzz", { size: 40, color: "#cfd6e0", strokeW: 5 }, 0.8);
+  /* Grok the Shiba — stays on the bed; enraged when shot */
+  {
+    const gu = grok.userData;
+    const dog = gu.dog;
+    /* lock position — never leaves the bed */
+    grok.position.copy(gu.home);
+    gu.cool = Math.max(0, gu.cool - dt);
+    if (gu.enraged && gu.rageT > 0 && mode === "play") {
+      gu.rageT -= dt;
+      /* angry breathing / thrashing in place */
+      dog.userData.body.scale.y = 0.75 + Math.sin(t * 14) * 0.08;
+      dog.rotation.y = Math.sin(t * 10) * 0.25;
+      dog.userData.head.rotation.z = Math.sin(t * 12) * 0.15;
+      /* red alert aura */
+      if (Math.sin(t * 20) > 0.7) {
+        burst(grok.position.clone().add(new THREE.Vector3(rand(-0.3, 0.3), 0.5, rand(-0.3, 0.3))), 0xff3030, 2, 2, 10);
+      }
+      /* summon bots + spammers while enraged */
+      gu.spawnT -= dt;
+      if (gu.spawnT <= 0) {
+        gu.spawnT = rand(0.55, 0.95);
+        const roll = Math.random();
+        if (roll < 0.4) spawnEnemy("spammer");
+        else if (roll < 0.75) { spawnEnemy("bot"); spawnEnemy("bot"); }
+        else { spawnEnemy("spammer"); spawnEnemy("bot"); }
+        floatText(grok.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
+          pick(["SIC 'EM", "MORE BOTS", "SPAM THEM", "GO GET HIM", "BARK BARK"]),
+          { size: 32, color: "#ff6a4a", strokeW: 5 }, 0.75);
+      }
+      if (gu.rageT <= 0) {
+        gu.enraged = false;
+        dog.rotation.y = 0;
+        dog.userData.head.rotation.z = 0;
+        floatText(grok.position.clone().add(new THREE.Vector3(0, 1.1, 0)), "…zzz", { size: 36, color: "#cfd6e0", strokeW: 5 }, 0.8);
+      }
+    } else {
+      dog.userData.body.scale.y = 0.75 + Math.sin(t * 2.2) * 0.03;
+      dog.rotation.y = 0;
+      zzzTimer -= dt;
+      if (zzzTimer <= 0) {
+        zzzTimer = rand(3, 6);
+        floatText(grok.position.clone().add(new THREE.Vector3(0.3, 1.2, 0)), "zzz", { size: 40, color: "#cfd6e0", strokeW: 5 }, 0.8);
+      }
+    }
   }
   /* bot chest blinks */
   for (const e of enemies) if (e.type === "bot" && e.mesh.userData.blink)
@@ -2433,6 +2530,13 @@ function update(dt) {
       if (Math.hypot(s.x - b.mesh.position.x, s.z - b.mesh.position.z) < 1.6) {
         b.hitSet.add(s); hitServer(s); hits++;
       }
+    }
+    if (!b.hitSet.has("grok") &&
+        Math.hypot(grok.position.x - b.mesh.position.x, grok.position.z - b.mesh.position.z) < 1.5 &&
+        b.mesh.position.y < 2.2) {
+      b.hitSet.add("grok");
+      hitGrok(b.mesh.position.clone());
+      hits++;
     }
     if (!b.hitSet.has("boss") &&
         Math.abs(b.mesh.position.x - bossHitbox.x) < bossHitbox.hw &&
