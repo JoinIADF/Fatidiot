@@ -1295,26 +1295,50 @@ const pigParts = {};
 }
 /* rifle model (shared builder) */
 function buildRifle() {
+  /* chunky Demonetizer — reads clearly on the pig silhouette */
   const g = new THREE.Group();
-  g.add(box(0.9, 0.12, 0.1, 0x1e2126, 0, 0, 0));                    // receiver
-  g.add(cyl(0.03, 0.03, 0.6, 0x2c3038, 0.72, 0.01, 0));             // barrel
-  g.children[1].rotation.z = Math.PI / 2;
-  g.add(box(0.09, 0.22, 0.08, 0x2c3038, 0.05, -0.16, 0));           // mag
-  g.add(box(0.3, 0.12, 0.09, 0x8a774a, -0.55, -0.02, 0));           // stock
-  const scope = cyl(0.045, 0.045, 0.3, 0x14161a, 0.1, 0.11, 0);
+  /* receiver */
+  g.add(box(1.15, 0.18, 0.16, 0x14181e, 0, 0, 0));
+  g.add(box(1.05, 0.1, 0.18, 0x2a3038, 0.02, 0.06, 0)); /* top rail */
+  /* long barrel (local +X) */
+  const barrel = cyl(0.045, 0.04, 0.95, 0x3a4048, 0.95, 0.02, 0, 10);
+  barrel.rotation.z = Math.PI / 2;
+  g.add(barrel);
+  /* muzzle brake */
+  g.add(box(0.14, 0.1, 0.1, 0xffd200, 1.42, 0.02, 0));
+  /* mag */
+  g.add(box(0.14, 0.32, 0.12, 0x22262c, 0.08, -0.22, 0));
+  /* wooden stock */
+  g.add(box(0.42, 0.16, 0.14, 0xa07840, -0.72, -0.04, 0));
+  g.add(box(0.18, 0.28, 0.12, 0x8a6640, -0.95, -0.1, 0)); /* butt */
+  /* scope */
+  const scope = cyl(0.06, 0.06, 0.42, 0x0c0e12, 0.12, 0.16, 0, 10);
   scope.rotation.z = Math.PI / 2;
   g.add(scope);
+  /* red optic glow so it pops */
+  const glow = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff3030 })
+  );
+  glow.position.set(0.32, 0.16, 0);
+  g.add(glow);
+  /* sling strap hint */
+  g.add(box(0.06, 0.04, 0.55, 0x4a3020, -0.2, -0.12, 0.12));
   return g;
 }
-/* rifle always visible, permanently strapped on the back, barrel facing backwards */
+/* rifle always visible over shoulder, barrel pointing BACKWARDS */
 const rifleHeld = buildRifle(); /* fire math only — never shown on the front */
 rifleHeld.visible = false;
 pig.add(rifleHeld);
 const rifleSlung = buildRifle();
-/* +X barrel rotated to -Z (back of pig). Always on. */
-rifleSlung.rotation.set(0.12, Math.PI / 2, 0.08);
-rifleSlung.position.set(0.12, 0.95, -0.62);
-rifleSlung.scale.setScalar(1.05);
+/*
+  Pig faces the camera. Local -Z is the back.
+  Place high on the RIGHT shoulder so it peeks past the head from the front view.
+  Barrel points back (-Z): rifle local +X → after rot.y = +PI/2 points to -Z.
+*/
+rifleSlung.rotation.set(0.35, Math.PI / 2, -0.45); /* tilt up over shoulder, slight roll */
+rifleSlung.position.set(0.42, 1.28, -0.38);       /* high, right, on the back */
+rifleSlung.scale.setScalar(1.45);                  /* big enough to read */
 rifleSlung.visible = true;
 pig.add(rifleSlung);
 
