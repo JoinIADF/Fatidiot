@@ -1539,10 +1539,11 @@ function hitComputer(c) {
   SFX.hit();
   if (c.glow && c.glow.material) c.glow.material.color.setHex(0xff6060);
   burst(new THREE.Vector3(c.x, c.y, c.z), 0x5ad1ff, 6, 3);
-  for (let i = 0; i < 2; i++) {
-    const origin = new THREE.Vector3(c.x + rand(-0.2, 0.2), c.y + 0.2, c.z + rand(-0.2, 0.2));
-    emitPhrase(origin, pick(X_COMPLAINTS), { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" });
-  }
+  emitPhrase(
+    new THREE.Vector3(c.x, c.y + 0.2, c.z),
+    pick(X_COMPLAINTS),
+    { deadly: false, color: "#5ad1ff", speed: 6.5, life: 3.5, kind: "complaint" }
+  );
   c.cool = 0.8;
   if (c.hp <= 0) {
     c.dead = true;
@@ -1560,14 +1561,12 @@ function hitServer(s) {
   /* flash red LEDs vibe */
   burst(new THREE.Vector3(s.x, s.y, s.z), 0xff4a3a, 10, 5);
   shake = Math.max(shake, 0.12);
-  /* users complaining about outages */
-  const n = 2 + ((Math.random() * 2) | 0);
-  for (let i = 0; i < n; i++) {
-    const origin = new THREE.Vector3(s.x + rand(-0.8, 0.8), s.y + rand(-0.5, 1.2), s.z + rand(-0.2, 0.2));
-    emitPhrase(origin, pick(OUTAGE_COMPLAINTS), {
-      deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage"
-    });
-  }
+  /* one outage complaint per shot */
+  emitPhrase(
+    new THREE.Vector3(s.x, s.y + 0.4, s.z),
+    pick(OUTAGE_COMPLAINTS),
+    { deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage" }
+  );
   s.cool = 0.5;
   if (s.hp <= 0) {
     SFX.boom();
@@ -1592,25 +1591,27 @@ function hitBossOffice(point) {
   enrageBoss();
   SFX.hit();
   burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
-  for (let i = 0; i < 3; i++) {
-    const origin = new THREE.Vector3(bossHitbox.x + rand(-2, 2), 2.2 + rand(0, 1), bossHitbox.z + 3.5 + rand(-0.5, 0.5));
-    emitPhrase(origin, pick(BOSS_KILL_PHRASES), { deadly: true, color: "#ff3030", speed: 10, life: 5, kind: "boss" });
-  }
+  const origin = point
+    ? point.clone().add(new THREE.Vector3(0, 0.4, 0))
+    : new THREE.Vector3(bossHitbox.x, 2.4, bossHitbox.z + 3.5);
+  emitPhrase(origin, pick(BOSS_KILL_PHRASES), { deadly: true, color: "#ff3030", speed: 10, life: 5, kind: "boss" });
   return true;
 }
 function hitscanWorld(origin, dir, maxDist = 55) {
   let best = null;
-  let bestScore = 0.42;
+  let bestScore = 1e9;
+  const maxAng = 0.45;
   const consider = (pos, type, ref, pad = 0) => {
     const to = pos.clone().sub(origin);
     const dist = to.length();
     if (dist > maxDist || dist < 0.5) return;
     const ang = to.normalize().angleTo(dir);
-    const score = ang - pad;
+    if (ang - pad > maxAng) return;
+    const score = (ang - pad) * 40 + dist * 0.02;
     if (score < bestScore) { bestScore = score; best = { type, ref, dist, point: pos }; }
   };
   for (const e of enemies) consider(e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0)), "enemy", e);
-  for (const vm of vendingMachines) { if (!vm.dead) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.05); }
+  for (const vm of vendingMachines) { if (!vm.dead) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.14); }
   for (const c of computers) { if (!c.dead) consider(new THREE.Vector3(c.x, c.y, c.z), "computer", c, 0.08); }
   for (const s of servers) consider(new THREE.Vector3(s.x, s.y, s.z), "server", s, 0.06);
   consider(new THREE.Vector3(bossHitbox.x, 2.0, bossHitbox.z + 4), "boss", bossHitbox, 0.02);
@@ -2052,7 +2053,8 @@ function update(dt) {
     }
     for (const vm of vendingMachines) {
       if (vm.dead || b.hitSet.has(vm)) continue;
-      if (Math.hypot(vm.x - b.mesh.position.x, vm.z - b.mesh.position.z) < 1.3) {
+      if (Math.abs(vm.x - b.mesh.position.x) < 1.8 && Math.abs(vm.z - b.mesh.position.z) < 1.5
+          && b.mesh.position.y > 0.3 && b.mesh.position.y < 3.0) {
         b.hitSet.add(vm); hitVending(vm); hits++;
       }
     }
