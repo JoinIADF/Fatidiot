@@ -654,6 +654,75 @@ const grok = new THREE.Group();
 }
 let zzzTimer = 2;
 
+/* ============================== RIPPED-OUT KITCHEN SINK ============================== */
+/* Dumped out front under the hanging X — the office took everything,
+   including the kitchen sink… then left that on the curb too. */
+{
+  const g = new THREE.Group();
+  /* battered base cabinet (door missing, hollow guts exposed) */
+  g.add(box(1.15, 0.74, 0.72, 0x6a6e72, 0, 0.37, 0));
+  g.add(box(0.95, 0.55, 0.55, 0x1a1c20, 0, 0.34, 0.06));           // dark interior
+  g.add(box(0.08, 0.5, 0.5, 0x55585c, -0.52, 0.35, 0.08));         // left panel remnant
+  /* stainless basin, slightly crooked on the cabinet */
+  const basin = box(1.02, 0.1, 0.62, 0xc5ced6, 0.04, 0.8, 0.02);
+  basin.rotation.z = 0.04;
+  g.add(basin);
+  const well = box(0.72, 0.16, 0.42, 0x8a949c, 0.04, 0.72, 0.04);
+  g.add(well);
+  g.add(cyl(0.07, 0.07, 0.05, 0x2a2e32, 0.04, 0.62, 0.04));        // drain
+  /* faucet bent hard to the side — not installable anymore */
+  const faucet = new THREE.Group();
+  faucet.add(cyl(0.038, 0.042, 0.3, 0x9aa3ab, 0, 0.15, 0));
+  const spout = cyl(0.032, 0.032, 0.34, 0x9aa3ab, 0.14, 0.28, 0);
+  spout.rotation.z = Math.PI / 2;
+  faucet.add(spout);
+  faucet.add(sph(0.045, 0x7a828a, 0.3, 0.28, 0));
+  faucet.add(cyl(0.05, 0.05, 0.06, 0xb0b8c0, -0.08, 0.08, 0.06));  // handle stump
+  faucet.position.set(-0.28, 0.84, -0.16);
+  faucet.rotation.z = 0.55;
+  faucet.rotation.y = 0.35;
+  g.add(faucet);
+  /* copper supply lines ripped free, dangling out the back */
+  const p1 = cyl(0.038, 0.038, 0.85, 0xb87333, -0.28, 0.22, -0.55);
+  p1.rotation.x = 1.15; p1.rotation.z = 0.45;
+  const p2 = cyl(0.034, 0.034, 0.7, 0xc4843a, 0.22, 0.12, -0.52);
+  p2.rotation.x = 0.95; p2.rotation.z = -0.55;
+  g.add(p1, p2);
+  g.add(sph(0.06, 0x9a5a20, -0.28, 0.04, -0.42));
+  g.add(sph(0.055, 0x9a5a20, 0.22, 0.02, -0.48));
+  /* flexible braided hose loop, still clamped to nothing */
+  const hose = new THREE.Mesh(
+    new THREE.TorusGeometry(0.2, 0.028, 6, 14, Math.PI * 1.2),
+    mat(0x3a2a1a)
+  );
+  hose.position.set(0.12, 0.18, -0.58);
+  hose.rotation.x = Math.PI / 2;
+  hose.rotation.z = 0.7;
+  g.add(hose);
+  /* floor stain / sad little puddle */
+  const puddle = new THREE.Mesh(
+    new THREE.CircleGeometry(0.85, 18),
+    new THREE.MeshLambertMaterial({ color: 0x3d5a68, transparent: true, opacity: 0.38 })
+  );
+  puddle.rotation.x = -Math.PI / 2;
+  puddle.position.set(0.35, 0.015, 0.45);
+  puddle.scale.set(1.2, 0.75, 1);
+  g.add(puddle);
+  /* debris kicked out with it */
+  g.add(box(0.28, 0.04, 0.22, 0xd0cabc, 0.75, 0.03, 0.55));         // broken tile
+  g.add(box(0.14, 0.05, 0.1, 0xff8c4a, -0.6, 0.04, 0.4));           // dried sponge
+  g.add(box(0.38, 0.42, 0.07, 0xe8e0d0, -0.78, 0.24, -0.28));       // drywall chunk
+  g.add(cyl(0.02, 0.02, 0.35, 0x555555, 0.55, 0.04, -0.35));        // stray pipe stub on floor
+  /* dump pose — tipped, rotated, not installed */
+  g.position.set(11.8, 0.02, 5.2);
+  g.rotation.y = -0.62;
+  g.rotation.z = 0.09;
+  g.rotation.x = 0.05;
+  addOutline(g, 1.04);
+  scene.add(g);
+  blockArea(11.8, 5.2, 0.85, 0.7);
+}
+
 /* ============================== PIG ============================== */
 const pig = new THREE.Group();
 const pigParts = {};
