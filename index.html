@@ -605,42 +605,42 @@ let levelUpT = 0;
     placeNS(-1);
   }
 
-  /* ===== GIANT WALL TIMER (kill countdown) ===== */
+  /* ===== KILL COUNTER — right of boss office (black / red) ===== */
   {
     wallTimerCanvas = document.createElement("canvas");
     wallTimerCanvas.width = 1024;
-    wallTimerCanvas.height = 512;
+    wallTimerCanvas.height = 640;
     wallTimerCtx = wallTimerCanvas.getContext("2d");
     wallTimerTex = new THREE.CanvasTexture(wallTimerCanvas);
     wallTimerTex.colorSpace = THREE.SRGBColorSpace;
+    wallTimerTex.anisotropy = 8;
     const panel = new THREE.Group();
-    /* bezel */
-    panel.add(box(14.2, 7.2, 0.35, 0x1a1e26, 0, 0, -0.05));
-    panel.add(box(13.6, 6.6, 0.2, 0x0a0c10, 0, 0, 0));
+    /* heavy black housing */
+    panel.add(box(11.2, 7.4, 0.45, 0x0a0a0a, 0, 0, -0.08));
+    panel.add(box(10.6, 6.8, 0.25, 0x000000, 0, 0, 0.02));
+    /* thin red bezel */
+    panel.add(box(10.85, 0.12, 0.12, 0xff1a1a, 0, 3.35, 0.18));
+    panel.add(box(10.85, 0.12, 0.12, 0xff1a1a, 0, -3.35, 0.18));
+    panel.add(box(0.12, 6.9, 0.12, 0xff1a1a, 5.35, 0, 0.18));
+    panel.add(box(0.12, 6.9, 0.12, 0xff1a1a, -5.35, 0, 0.18));
     const screen = new THREE.Mesh(
-      new THREE.PlaneGeometry(13.0, 6.0),
+      new THREE.PlaneGeometry(10.2, 6.2),
       new THREE.MeshBasicMaterial({ map: wallTimerTex, toneMapped: false })
     );
-    screen.position.z = 0.12;
+    screen.position.z = 0.2;
     panel.add(screen);
-    /* status LEDs */
-    for (let i = 0; i < 8; i++) {
-      const led = new THREE.Mesh(
-        new THREE.SphereGeometry(0.12, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0x3aff6a })
-      );
-      led.position.set(-5.5 + i * 1.55, 3.2, 0.25);
-      panel.add(led);
-      if (!wallTimerMesh) wallTimerMesh = panel; /* store for LED flash later */
-    }
-    panel.userData.leds = panel.children.filter(c => c.geometry && c.geometry.type === "SphereGeometry");
-    /* hang on +Z wall facing into the floor */
-    panel.position.set(0, 4.0, FLOOR_D / 2 - 0.35);
-    panel.rotation.y = Math.PI;
+    panel.userData.screen = screen;
+    /*
+      Boss office sits at (0, -FLOOR_D/2+4), width 12 → right edge ~x=6.
+      Mount large counter on the south building wall, to the RIGHT of the office,
+      facing into the floor so the pig always sees the countdown.
+    */
+    const ox = 0, officeHalfW = 6;
+    panel.position.set(ox + officeHalfW + 6.2, 3.9, -FLOOR_D / 2 + 0.45);
+    panel.rotation.y = 0; /* face +Z into the room */
     scene.add(panel);
     wallTimerMesh = panel;
     wallTimerDirty = true;
-    /* initial paint (functions defined later — deferred) */
     setTimeout(() => { try { paintWallTimer(); } catch (e) {} }, 0);
   }
 
@@ -1913,51 +1913,46 @@ function paintWallTimer() {
   if (!wallTimerCtx || !wallTimerCanvas) return;
   const g = wallTimerCtx;
   const w = wallTimerCanvas.width, h = wallTimerCanvas.height;
-  const danger = wallQuota <= 20;
-  const mid = wallQuota <= wallQuotaMax * 0.4;
-  /* bg */
-  g.fillStyle = "#05070c";
+  /* pure black board + red digits */
+  g.fillStyle = "#000000";
   g.fillRect(0, 0, w, h);
-  /* outer ring */
-  g.strokeStyle = danger ? "#ff3030" : mid ? "#ffb020" : "#3aff6a";
-  g.lineWidth = 18;
-  g.strokeRect(16, 16, w - 32, h - 32);
-  g.strokeStyle = "#1a2230";
-  g.lineWidth = 6;
-  g.strokeRect(36, 36, w - 72, h - 72);
-  /* label */
-  g.fillStyle = "#8a93a3";
-  g.font = "bold 48px Arial Black, Arial";
+  /* subtle inner red frame */
+  g.strokeStyle = "#8b0000";
+  g.lineWidth = 10;
+  g.strokeRect(20, 20, w - 40, h - 40);
+  g.strokeStyle = "#ff1a1a";
+  g.lineWidth = 3;
+  g.strokeRect(34, 34, w - 68, h - 68);
+  /* header */
+  g.fillStyle = "#ff1a1a";
+  g.font = "bold 52px Arial Black, Arial";
   g.textAlign = "center";
-  g.fillText("PURGE COUNTDOWN", w / 2, 90);
-  /* giant number */
-  const col = danger ? "#ff3a3a" : mid ? "#ffc93c" : "#7CFFB0";
-  g.fillStyle = col;
-  g.strokeStyle = "#000";
-  g.lineWidth = 16;
-  g.font = "bold 280px Arial Black, Arial";
-  g.lineJoin = "round";
+  g.textBaseline = "middle";
+  g.fillText("KILLS REMAINING", w / 2, 78);
+  /* LEVEL line */
+  g.fillStyle = "#cc2020";
+  g.font = "bold 36px Arial";
+  g.fillText("LEVEL " + wave + "  /  GOAL " + wallQuotaMax, w / 2, 130);
+  /* GIANT red countdown number */
   const num = String(Math.max(0, wallQuota | 0));
-  g.strokeText(num, w / 2, h / 2 + 70);
-  g.fillText(num, w / 2, h / 2 + 70);
+  g.fillStyle = "#ff0000";
+  g.strokeStyle = "#3a0000";
+  g.lineWidth = 18;
+  g.lineJoin = "round";
+  g.font = "bold 320px Arial Black, Arial";
+  g.strokeText(num, w / 2, h / 2 + 40);
+  g.fillText(num, w / 2, h / 2 + 40);
+  /* red glow underline */
+  g.fillStyle = "#ff1a1a";
+  g.globalAlpha = 0.35;
+  g.fillRect(w * 0.15, h / 2 + 170, w * 0.7, 6);
+  g.globalAlpha = 1;
   /* footer */
-  g.fillStyle = "#cfd6e0";
-  g.font = "bold 42px Arial";
-  g.fillText("LEVEL " + wave + "  ·  KILL TO COUNT DOWN", w / 2, h - 48);
-  /* progress bar */
-  const pct = wallQuotaMax > 0 ? wallQuota / wallQuotaMax : 0;
-  g.fillStyle = "#1a1e28";
-  g.fillRect(80, h - 120, w - 160, 28);
-  g.fillStyle = col;
-  g.fillRect(80, h - 120, (w - 160) * pct, 28);
+  g.fillStyle = "#ff4444";
+  g.font = "bold 34px Arial";
+  g.fillText("BOTS + SPAMMERS COUNT DOWN", w / 2, h - 60);
   if (wallTimerTex) wallTimerTex.needsUpdate = true;
   wallTimerDirty = false;
-  /* LED colors */
-  if (wallTimerMesh && wallTimerMesh.userData.leds) {
-    for (const led of wallTimerMesh.userData.leds) {
-      if (led.material) led.material.color.setHex(danger ? 0xff3030 : mid ? 0xffb020 : 0x3aff6a);
-    }
-  }
 }
 function updateHud() {
   $("scoreV").textContent = score;
