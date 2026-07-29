@@ -780,8 +780,9 @@ function mkDeskRow(cx, cz) {
   for (let i = -1; i <= 1; i++) {
     mkDesk(cx + i * 2.4, cz - 0.7, 0);
     mkDesk(cx + i * 2.4, cz + 0.7, Math.PI);
+    blockArea(cx + i * 2.4, cz - 0.7, 1.05, 0.6, 1.15);
+    blockArea(cx + i * 2.4, cz + 0.7, 1.05, 0.6, 1.15);
   }
-  blockArea(cx, cz, 4.0, 1.6);
 }
 /* layout — larger floor, pods on the perimeter, big open plaza in the center */
 /* west wing large pods */
