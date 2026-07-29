@@ -140,6 +140,10 @@
     background: rgba(0,0,0,0.35);
     border: 2px solid rgba(255,255,255,0.35);
   }
+  #stickBase.locked {
+    border-color: #7CFFB0;
+    box-shadow: 0 0 16px rgba(124,255,176,0.55), inset 0 0 20px rgba(124,255,176,0.15);
+  }
   #stickKnob {
     position: absolute; left: 50%; top: 50%;
     width: 52px; height: 52px; margin: -26px 0 0 -26px;
@@ -147,6 +151,22 @@
     background: rgba(255,182,198,0.85);
     border: 2px solid #fff;
   }
+  #stickBase.locked #stickKnob {
+    background: rgba(124,255,176,0.95);
+    border-color: #fff;
+  }
+  #stickLockLabel {
+    position: absolute; left: 28px; bottom: 152px;
+    width: 120px; text-align: center;
+    font: 800 10px/1.2 system-ui, sans-serif;
+    color: #7CFFB0;
+    text-shadow: 0 1px 3px #000;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #stickBase.locked + #stickLockLabel,
+  #stickZone.locked #stickLockLabel { opacity: 1; }
+  #stickZone.locked #stickLockLabel { opacity: 1; }
   #lookZone {
     position: absolute; right: 0; top: 0;
     width: 54%; height: 100%;
@@ -209,8 +229,11 @@
   <p class="go" id="overlayGo">TAP / CLICK TO ENLIST</p>
 </div>
 <div id="mobileUI" aria-hidden="true">
-  <div id="mobileHint">left stick · right look · buttons fire</div>
-  <div id="stickZone"><div id="stickBase"><div id="stickKnob"></div></div></div>
+  <div id="mobileHint">stick forward full = auto-run · tap stick to unlock</div>
+  <div id="stickZone">
+    <div id="stickBase"><div id="stickKnob"></div></div>
+    <div id="stickLockLabel">AUTO-RUN · TAP TO UNLOCK</div>
+  </div>
   <div id="lookZone"></div>
   <div id="btnCol">
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
@@ -2200,6 +2223,7 @@ const isMobile = () =>
   ("ontouchstart" in window) ||
   (navigator.maxTouchPoints || 0) > 0;
 const touchMove = { x: 0, y: 0, active: false };
+let stickLocked = false; /* auto-run: locked full-forward until unlocked */
 let lookTouchId = null, stickTouchId = null;
 let mobileFireHeld = false;
 
@@ -3740,6 +3764,10 @@ function showMobileUI(on) {
     ui.setAttribute("aria-hidden", "true");
     touchMove.x = touchMove.y = 0;
     touchMove.active = false;
+    stickLocked = false;
+    const sb = $("stickBase"), sz = $("stickZone");
+    if (sb) sb.classList.remove("locked");
+    if (sz) sz.classList.remove("locked");
   }
 }
 (function () {
@@ -3761,15 +3789,47 @@ function bindMobileControls() {
     if (stickKnob) stickKnob.style.transform = `translate(${nx * R}px, ${ny * R}px)`;
   };
 
+  const setStickLockVisual = (on) => {
+    stickBase.classList.toggle("locked", on);
+    stickZone.classList.toggle("locked", on);
+  };
+  const unlockStick = () => {
+    stickLocked = false;
+    touchMove.x = touchMove.y = 0;
+    touchMove.active = false;
+    setKnob(0, 0);
+    setStickLockVisual(false);
+  };
+  const tryLockForward = (dx, dy) => {
+    /* full forward (screen-up = negative y) locks auto-run */
+    const mag = Math.hypot(dx, dy);
+    if (mag >= 0.88 && dy <= -0.72) {
+      stickLocked = true;
+      touchMove.x = 0;
+      touchMove.y = -1;
+      touchMove.active = true;
+      setKnob(0, -1);
+      setStickLockVisual(true);
+      return true;
+    }
+    return false;
+  };
+
   stickZone.addEventListener("touchstart", (e) => {
     if (mode !== "play") return;
+    /* tap while locked → unlock */
+    if (stickLocked) {
+      unlockStick();
+      e.preventDefault();
+      return;
+    }
     stickTouchId = e.changedTouches[0].identifier;
     touchMove.active = true;
     e.preventDefault();
   }, { passive: false });
 
   stickZone.addEventListener("touchmove", (e) => {
-    if (mode !== "play") return;
+    if (mode !== "play" || stickLocked) return;
     let t = null;
     for (const x of e.changedTouches) if (x.identifier === stickTouchId) t = x;
     if (!t) return;
@@ -3779,7 +3839,9 @@ function bindMobileControls() {
     const len = Math.hypot(dx, dy) || 1;
     if (len > 1) { dx /= len; dy /= len; }
     touchMove.x = dx; touchMove.y = dy;
+    touchMove.active = true;
     setKnob(dx, dy);
+    tryLockForward(dx, dy);
     e.preventDefault();
   }, { passive: false });
 
@@ -3787,9 +3849,17 @@ function bindMobileControls() {
     for (const t of e.changedTouches) {
       if (t.identifier === stickTouchId) {
         stickTouchId = null;
-        touchMove.x = touchMove.y = 0;
-        touchMove.active = false;
-        setKnob(0, 0);
+        /* if locked, keep moving; else reset */
+        if (stickLocked) {
+          touchMove.x = 0;
+          touchMove.y = -1;
+          touchMove.active = true;
+          setKnob(0, -1);
+        } else {
+          touchMove.x = touchMove.y = 0;
+          touchMove.active = false;
+          setKnob(0, 0);
+        }
       }
     }
   };
