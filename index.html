@@ -2158,7 +2158,10 @@ document.addEventListener("mousemove", e => {
 });
 renderer.domElement.addEventListener("mousedown", e => {
   if (mode !== "play") return;
-  if (document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock(); return; }
+  if (!isMobile() && document.pointerLockElement !== renderer.domElement) {
+    renderer.domElement.requestPointerLock();
+    return;
+  }
   if (e.button === 0) {
     if (weaponIdx === 0) { charging = true; chargeT = 0; }
     else fireRifle();
@@ -2226,7 +2229,8 @@ function startGame() {
   $("ammoV").textContent = ammo;
   pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
   overlay.classList.add("hidden");
-  renderer.domElement.requestPointerLock();
+  if (!isMobile()) renderer.domElement.requestPointerLock();
+  else showMobileUI(true);
   beginWave();
   updateHud();
 }
@@ -2959,7 +2963,8 @@ function resumeFromSleep() {
   levelUp();
   invuln = 2.0;
   pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
-  renderer.domElement.requestPointerLock();
+  if (!isMobile()) renderer.domElement.requestPointerLock();
+  else showMobileUI(true);
   updateHud();
 }
 function gameOver(kind = "normal") {
@@ -2967,6 +2972,7 @@ function gameOver(kind = "normal") {
   mode = "over";
   deathKind = kind;
   document.exitPointerLock();
+  showMobileUI(false);
   if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
   const rank = score >= 6000 ? "X COMMANDO ELITE" : score >= 3000 ? "CHIEF BAN OFFICER" :
                score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
@@ -3185,10 +3191,22 @@ function update(dt) {
   const right = new THREE.Vector3(cy, 0, -sy);    // screen-right
   const mv = new THREE.Vector3();
   const down = (c) => !!(keys[c]);
-  if (down("KeyW") || down("ArrowUp")) mv.add(fwd);
-  if (down("KeyS") || down("ArrowDown")) mv.sub(fwd);
-  if (down("KeyA") || down("ArrowLeft")) mv.sub(right);   // strafe left
-  if (down("KeyD") || down("ArrowRight")) mv.add(right);  // strafe right
+  if (down("KeyW") || down("ArrowUp") || touchMove.y < -0.25) mv.add(fwd);
+  if (down("KeyS") || down("ArrowDown") || touchMove.y > 0.25) mv.sub(fwd);
+  if (down("KeyA") || down("ArrowLeft") || touchMove.x < -0.25) mv.sub(right);   // strafe left
+  if (down("KeyD") || down("ArrowRight") || touchMove.x > 0.25) mv.add(right);  // strafe right
+  /* analog stick strength */
+  if (touchMove.active) {
+    const ax = Math.abs(touchMove.x), ay = Math.abs(touchMove.y);
+    if (ax > 0.08 || ay > 0.08) {
+      const stick = fwd.clone().multiplyScalar(-touchMove.y).add(right.clone().multiplyScalar(touchMove.x));
+      if (stick.lengthSq() > 0.001) {
+        stick.normalize();
+        const mag = Math.min(1, Math.hypot(touchMove.x, touchMove.y));
+        mv.copy(stick.multiplyScalar(mag));
+      }
+    }
+  }
   const moving = mv.lengthSq() > 0;
   const moveSpd = 7.5 * (speedBoost > 0 ? 1.65 : 1);
   if (moving) mv.normalize().multiplyScalar(moveSpd);
@@ -3640,7 +3658,161 @@ window.__step = (n = 1, dt = 1 / 60) => {
     yaw,
   };
 };
-window.__game = { startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, get enemies() { return enemies; }, get pig() { return pig; } };
+/* ===== MOBILE TOUCH CONTROLS ===== */
+function showMobileUI(on) {
+  const ui = $("mobileUI");
+  if (!ui) return;
+  if (on && isMobile()) {
+    ui.classList.add("show");
+    ui.setAttribute("aria-hidden", "false");
+    document.body.style.touchAction = "none";
+  } else {
+    ui.classList.remove("show");
+    ui.setAttribute("aria-hidden", "true");
+    touchMove.x = touchMove.y = 0;
+    touchMove.active = false;
+  }
+}
+/* show mobile-specific start instructions */
+(function () {
+  if (!isMobile()) return;
+  document.querySelectorAll(".deskCtrl").forEach(n => { n.style.display = "none"; });
+  document.querySelectorAll(".mobCtrl").forEach(n => { n.style.display = "inline"; });
+  const go = $("overlayGo");
+  if (go) go.textContent = "TAP TO ENLIST";
+})();
+
+function bindMobileControls() {
+  const stickZone = $("stickZone");
+  const stickKnob = $("stickKnob");
+  const stickBase = $("stickBase");
+  const lookZone = $("lookZone");
+  if (!stickZone || !lookZone) return;
+  const R = 42; /* knob travel px */
+
+  const setKnob = (nx, ny) => {
+    if (!stickKnob) return;
+    stickKnob.style.transform = `translate(${nx * R}px, ${ny * R}px)`;
+  };
+
+  stickZone.addEventListener("touchstart", (e) => {
+    if (mode !== "play") return;
+    const t = e.changedTouches[0];
+    stickTouchId = t.identifier;
+    touchMove.active = true;
+    e.preventDefault();
+  }, { passive: false });
+
+  stickZone.addEventListener("touchmove", (e) => {
+    if (mode !== "play") return;
+    let t = null;
+    for (const x of e.changedTouches) if (x.identifier === stickTouchId) t = x;
+    if (!t) return;
+    const rect = stickBase.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = (t.clientX - cx) / R;
+    let dy = (t.clientY - cy) / R;
+    const len = Math.hypot(dx, dy) || 1;
+    if (len > 1) { dx /= len; dy /= len; }
+    touchMove.x = dx;
+    touchMove.y = dy;
+    setKnob(dx, dy);
+    e.preventDefault();
+  }, { passive: false });
+
+  const endStick = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === stickTouchId) {
+        stickTouchId = null;
+        touchMove.x = touchMove.y = 0;
+        touchMove.active = false;
+        setKnob(0, 0);
+      }
+    }
+  };
+  stickZone.addEventListener("touchend", endStick);
+  stickZone.addEventListener("touchcancel", endStick);
+
+  lookZone.addEventListener("touchstart", (e) => {
+    if (mode !== "play") return;
+    /* ignore if hit a button */
+    if (e.target.closest && e.target.closest(".mbtn")) return;
+    lookTouchId = e.changedTouches[0].identifier;
+    e.preventDefault();
+  }, { passive: false });
+
+  lookZone.addEventListener("touchmove", (e) => {
+    if (mode !== "play") return;
+    let t = null;
+    for (const x of e.changedTouches) if (x.identifier === lookTouchId) t = x;
+    if (!t) return;
+    /* use movement via previous stored */
+    const prev = lookZone._prev || { x: t.clientX, y: t.clientY };
+    const mx = t.clientX - prev.x;
+    const my = t.clientY - prev.y;
+    lookZone._prev = { x: t.clientX, y: t.clientY };
+    yaw -= mx * 0.0055;
+    pitch = Math.max(0.05, Math.min(1.1, pitch + my * 0.004));
+    e.preventDefault();
+  }, { passive: false });
+
+  lookZone.addEventListener("touchstart", (e) => {
+    const t = e.changedTouches[0];
+    lookZone._prev = { x: t.clientX, y: t.clientY };
+  }, { passive: false });
+
+  const endLook = (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === lookTouchId) {
+        lookTouchId = null;
+        lookZone._prev = null;
+      }
+    }
+  };
+  lookZone.addEventListener("touchend", endLook);
+  lookZone.addEventListener("touchcancel", endLook);
+
+  const hold = (el, onDown, onUp) => {
+    if (!el) return;
+    const down = (e) => { e.preventDefault(); el.classList.add("held"); onDown && onDown(e); };
+    const up = (e) => { el.classList.remove("held"); onUp && onUp(e); };
+    el.addEventListener("touchstart", down, { passive: false });
+    el.addEventListener("touchend", up);
+    el.addEventListener("touchcancel", up);
+    el.addEventListener("mousedown", down);
+    el.addEventListener("mouseup", up);
+    el.addEventListener("mouseleave", up);
+  };
+
+  hold($("mJump"), () => { keys.Space = true; keys.KeyJ = true; }, () => { keys.Space = false; keys.KeyJ = false; });
+  hold($("mBoom"), () => {
+    weaponIdx = 0;
+    $("weaponV").textContent = "X BOOMERANG";
+    charging = true; chargeT = 0.85; /* throw immediately on release-ish */
+    throwBoomerang(0.9);
+    charging = false; chargeT = 0;
+  });
+  hold($("mRifle"), () => {
+    weaponIdx = 1;
+    $("weaponV").textContent = "DEMONETIZER";
+    fireRifle();
+    mobileFireHeld = true;
+  }, () => { mobileFireHeld = false; });
+  hold($("mSwap"), () => {
+    weaponIdx = 1 - weaponIdx;
+    $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
+    $("chargeLabel").textContent = weaponIdx ? "LOCK-ON" : "X CHARGE";
+  });
+}
+bindMobileControls();
+
+/* auto-fire while rifle button held on mobile */
+const _mobileRiflePulse = setInterval(() => {
+  if (mode === "play" && mobileFireHeld && weaponIdx === 1) fireRifle();
+}, 160);
+
+window.__game = { startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, get enemies() { return enemies; }, get pig() { return pig; }, isMobile };
 window.__cam = camera;
 window.__renderer = renderer;
 window.__scene = scene;
