@@ -269,8 +269,15 @@ const BOSS_KILL_PHRASES = [
   "NO ONE LEAVES", "SHIP IT TONIGHT", "I SEE YOU", "OVERTIME IS MANDATORY",
   "CLOSE THE LAPTOP? NEVER"
 ];
+const OUTAGE_COMPLAINTS = [
+  "is X down?", "site is broken again", "can't load timeline",
+  "error 503 forever", "servers on fire??", "why is everything lagging",
+  "posts won't send", "outage again??", "refresh does nothing",
+  "blue screen of X", "status page says fine (it's not)", "who unplugged the rack"
+];
 const vendingMachines = [];
 const computers = [];
+const servers = []; /* {mesh, x, y, z, hp, cool} */
 const windowZones = [];
 const bossHitbox = { x: 0, z: 0, hw: 6.2, hd: 4.8, enraged: false, stormT: 0, phraseT: 0 };
 let speedBoost = 0;
@@ -481,17 +488,16 @@ function mkDeskRow(cx, cz) {
 /* layout — larger floor, pods on the perimeter, big open plaza in the center */
 /* west wing large pods */
 mkCubiclePod(-42, -28, true); mkCubiclePod(-42, -8, true); mkCubiclePod(-42, 12, true); mkCubiclePod(-42, 30, true);
-mkCubiclePod(-28, -30, true); mkCubiclePod(-28, 28, true);
-/* east wing */
-mkCubiclePod(36, -26, true); mkCubiclePod(36, -6, true); mkCubiclePod(36, 14, true); mkCubiclePod(36, 32, true);
-mkCubiclePod(22, -30, true); mkCubiclePod(22, 30, true);
-/* north / south clusters (leave center open around 0,0 → lobby) */
-mkCubiclePod(-14, -32, true); mkCubiclePod(6, -32, true);
+mkCubiclePod(-28, 28, true);
+/* east wing (no pods jammed against the CEO office) */
+mkCubiclePod(36, -6, true); mkCubiclePod(36, 14, true); mkCubiclePod(36, 32, true);
+mkCubiclePod(22, 30, true);
+/* north cluster only — keep plaza open in front of the CEO office (south) */
 mkCubiclePod(-14, 32, true); mkCubiclePod(6, 32, true);
-/* sparse standard pods off the open lanes */
+/* sparse standard pods off the open lanes (none by the office) */
 mkCubiclePod(-28, 8); mkCubiclePod(-28, -16); mkCubiclePod(22, 8); mkCubiclePod(22, -12);
-/* a couple desk rows on the edges only */
-mkDeskRow(-48, 0); mkDeskRow(48, 0); mkDeskRow(0, -38);
+/* desk rows on the far edges only — not blocking the office */
+mkDeskRow(-48, 0); mkDeskRow(48, 0);
 
 /* vending machines */
 function mkVending(x, z, ry, bodyCol, glow, label) {
@@ -618,9 +624,10 @@ mkVending(-10, -FLOOR_D / 2 + 3, 0, 0x9028b0, "#f0d8ff", "ENERGY");
   }
   blockArea(cx + 5, cz, 3, 1.4);
 }
-/* server racks along -z wall */
+/* server racks along -z wall — shootable, spit outage complaints */
 for (let x = 20; x <= 52; x += 3.2) {
-  const r = box(2.6, 4.4, 1.1, 0x1c2026, x, 2.2, -FLOOR_D / 2 + 0.7);
+  const zx = -FLOOR_D / 2 + 0.7;
+  const r = box(2.6, 4.4, 1.1, 0x1c2026, x, 2.2, zx);
   scene.add(r);
   for (let i = 0; i < 10; i++) {
     const led = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.12),
@@ -628,7 +635,22 @@ for (let x = 20; x <= 52; x += 3.2) {
     led.position.set(x + rand(-1, 1), rand(0.4, 4), -FLOOR_D / 2 + 1.26);
     scene.add(led);
   }
-  blockArea(x, -FLOOR_D / 2 + 0.7, 1.4, 0.7);
+  blockArea(x, zx, 1.4, 0.7);
+  servers.push({ mesh: r, x, y: 2.2, z: zx, hp: 8, cool: 0 });
+}
+/* extra server row on +z wall too */
+for (let x = -48; x <= -20; x += 3.2) {
+  const zx = FLOOR_D / 2 - 0.7;
+  const r = box(2.6, 4.4, 1.1, 0x1c2026, x, 2.2, zx);
+  scene.add(r);
+  for (let i = 0; i < 8; i++) {
+    const led = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.12),
+      new THREE.MeshBasicMaterial({ color: Math.random() < 0.55 ? 0x3aff6a : 0xff4a3a }));
+    led.position.set(x + rand(-1, 1), rand(0.4, 4), FLOOR_D / 2 - 1.26);
+    scene.add(led);
+  }
+  blockArea(x, zx, 1.4, 0.7);
+  servers.push({ mesh: r, x, y: 2.2, z: zx, hp: 8, cool: 0 });
 }
 /* small potted plants scattered */
 for (let i = 0; i < 6; i++) {
@@ -1324,14 +1346,23 @@ let invuln = 0, hitstop = 0, shake = 0;
 let weaponIdx = 0; // 0 boomerang, 1 rifle
 let charging = false, chargeT = 0, boomsOut = 0;
 let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 6;
-function say(text) {
+function say(text, opts = {}) {
   try {
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.95; u.pitch = 0.6; u.volume = 1;
+    u.rate = opts.rate != null ? opts.rate : 0.85;
+    u.pitch = opts.pitch != null ? opts.pitch : 0.45;
+    u.volume = opts.volume != null ? opts.volume : 1;
+    /* prefer a deep male-ish voice when available */
+    const voices = speechSynthesis.getVoices?.() || [];
+    const deep = voices.find(v => /english/i.test(v.lang) && /male|daniel|david|fred|google uk english male/i.test(v.name))
+      || voices.find(v => /en(-|_)?us|en(-|_)?gb/i.test(v.lang));
+    if (deep) u.voice = deep;
     speechSynthesis.cancel();
     speechSynthesis.speak(u);
   } catch (e) {}
 }
+/* warm voice list (Chrome loads async) */
+try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) {}
 let yaw = 0, pitch = 0.32;
 const keys = {};
 let pigVel = new THREE.Vector3(), pigY = 0, pigVy = 0, onGround = true;
@@ -1522,6 +1553,31 @@ function hitComputer(c) {
   }
   return true;
 }
+function hitServer(s) {
+  if (!s) return false;
+  s.hp = Math.max(0, s.hp - 1);
+  SFX.hit();
+  /* flash red LEDs vibe */
+  burst(new THREE.Vector3(s.x, s.y, s.z), 0xff4a3a, 10, 5);
+  shake = Math.max(shake, 0.12);
+  /* users complaining about outages */
+  const n = 2 + ((Math.random() * 2) | 0);
+  for (let i = 0; i < n; i++) {
+    const origin = new THREE.Vector3(s.x + rand(-0.8, 0.8), s.y + rand(-0.5, 1.2), s.z + rand(-0.2, 0.2));
+    emitPhrase(origin, pick(OUTAGE_COMPLAINTS), {
+      deadly: false, color: "#ff8c2a", speed: 6.2, life: 3.8, kind: "outage"
+    });
+  }
+  s.cool = 0.5;
+  if (s.hp <= 0) {
+    SFX.boom();
+    burst(new THREE.Vector3(s.x, s.y, s.z), 0xff3030, 16, 7);
+    floatText(new THREE.Vector3(s.x, s.y + 1.5, s.z), "OUTAGE", { size: 40, color: "#ff4a3a", strokeW: 6 }, 1.1);
+    score += 25; updateHud();
+    s.hp = 8; /* rack reboots so you can keep farming complaints */
+  }
+  return true;
+}
 function enrageBoss() {
   if (!bossHitbox.enraged) {
     bossHitbox.enraged = true;
@@ -1556,6 +1612,7 @@ function hitscanWorld(origin, dir, maxDist = 55) {
   for (const e of enemies) consider(e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0)), "enemy", e);
   for (const vm of vendingMachines) { if (!vm.dead) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.05); }
   for (const c of computers) { if (!c.dead) consider(new THREE.Vector3(c.x, c.y, c.z), "computer", c, 0.08); }
+  for (const s of servers) consider(new THREE.Vector3(s.x, s.y, s.z), "server", s, 0.06);
   consider(new THREE.Vector3(bossHitbox.x, 2.0, bossHitbox.z + 4), "boss", bossHitbox, 0.02);
   return best;
 }
@@ -1598,32 +1655,46 @@ function fireRifle() {
   tracers.push({ mesh: tr, life: 0.12 });
   scene.add(tr);
   if (target) {
-    if (target.type === "spammer" && locked && target === lockTarget) demonetize(target);
+    if (target.type === "spammer") demonetize(target);
     else damage(target, 5, end);
   } else if (worldHit) {
     if (worldHit.type === "vending") hitVending(worldHit.ref);
     else if (worldHit.type === "computer") hitComputer(worldHit.ref);
+    else if (worldHit.type === "server") hitServer(worldHit.ref);
     else if (worldHit.type === "boss") hitBossOffice(worldHit.point);
   }
   locked = false; lockTarget = null; lockT = 0;
 }
 function demonetize(e) {
+  if (!e || e.dying != null) return;
   const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-  floatText(p, "DEMONETIZED", { size: 72, color: "#ffd200", strokeW: 10 }, 2.6);
+  /* big exploding DEMONETIZED billboard */
+  floatText(p.clone().add(new THREE.Vector3(0, 0.6, 0)), "DEMONETIZED", { size: 90, color: "#ffd200", strokeW: 12 }, 3.2);
+  floatText(p.clone().add(new THREE.Vector3(rand(-0.5, 0.5), 0.1, rand(-0.5, 0.5))), "DEMONETIZED", { size: 48, color: "#ff6a00", strokeW: 8 }, 2.0);
   SFX.demon();
-  say("DE, monetized!");
+  SFX.boom();
+  /* deep voice — clearly "demonetized" */
+  say("demonetized", { rate: 0.72, pitch: 0.28, volume: 1 });
+  setTimeout(() => say("demonetized", { rate: 0.68, pitch: 0.22, volume: 0.95 }), 80);
+  /* gold / black explosion */
+  burst(p, 0xffd200, 28, 9, 10);
+  burst(p, 0x0a0a0a, 16, 7, 8);
+  burst(p, 0xff6a00, 12, 10, 12);
+  shockRing(p, 0xffd200, 2.4);
   /* drain color then explode */
-  e.dying = 0.45;
+  e.dying = 0.5;
   e.speed = 0;
   e.mesh.traverse(o => {
     if (o.isMesh && o.material && o.material.color && o.material !== OUTLINE_MAT) {
       o.material = o.material.clone();
-      o.material.color.setScalar(0.55);
+      o.material.color.setHex(0x1a1a1a);
       if (o.material.map) o.material.map = null;
+      if (o.material.emissive) o.material.emissive.setHex(0x332200);
     }
   });
   e.demonBonus = true;
-  shake = Math.max(shake, 0.3);
+  shake = Math.max(shake, 0.55);
+  hitstop = Math.max(hitstop, 0.08);
 }
 function damage(e, dmg, hitPos) {
   e.hp -= dmg;
@@ -1989,6 +2060,12 @@ function update(dt) {
       if (c.dead || b.hitSet.has(c)) continue;
       if (Math.hypot(c.x - b.mesh.position.x, c.z - b.mesh.position.z) < 1.0 && Math.abs(c.y - b.mesh.position.y) < 1.5) {
         b.hitSet.add(c); hitComputer(c); hits++;
+      }
+    }
+    for (const s of servers) {
+      if (b.hitSet.has(s)) continue;
+      if (Math.hypot(s.x - b.mesh.position.x, s.z - b.mesh.position.z) < 1.6) {
+        b.hitSet.add(s); hitServer(s); hits++;
       }
     }
     if (!b.hitSet.has("boss") &&
