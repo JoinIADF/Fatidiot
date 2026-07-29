@@ -176,6 +176,11 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xdfe4ea);
 scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
 
+/* collision obstacles — must exist before floor/props call blockArea */
+const obstacles = []; // {x,z,hw,hd}
+function blockArea(x, z, hw, hd, h = 10) { obstacles.push({ x, z, hw, hd, h }); }
+
+
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 280);
 
 addEventListener("resize", () => {
@@ -887,9 +892,6 @@ let levelUpT = 0;
 }
 
 /* obstacles list for enemy/player collision-lite (axis-aligned) */
-const obstacles = []; // {x,z,hw,hd}
-function blockArea(x, z, hw, hd, h = 10) { obstacles.push({ x, z, hw, hd, h }); }
-
 /* furniture builders */
 function mkDesk(x, z, ry = 0, clutterSeed = Math.random()) {
   const g = new THREE.Group();
