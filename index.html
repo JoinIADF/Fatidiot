@@ -130,7 +130,7 @@
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox">LEVEL<br><span id="waveV">1</span></div>
   <div id="quota" class="hudBox">WALL TIMER<br><span id="quotaV">100</span></div>
-  <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span><br>RIFLE AMMO <span id="ammoV">6</span></div>
+  <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span><br>RIFLE AMMO <span id="ammoV">20</span></div>
   <div id="lives" class="hudBox">🐷🐷🐷</div>
   <div id="chargeWrap" class="hudBox">
     <div id="chargeLabel">X CHARGE</div>
@@ -1719,7 +1719,7 @@ let lives = 3, wave = 1, spawnQueue = 0, spawnT = 0, betweenT = 0;
 let invuln = 0, hitstop = 0, shake = 0;
 let weaponIdx = 0; // 0 boomerang, 1 rifle
 let charging = false, chargeT = 0, boomsOut = 0;
-let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 6;
+let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 20;
 function pickDeepVoice() {
   const voices = (typeof speechSynthesis !== "undefined" && speechSynthesis.getVoices?.()) || [];
   if (!voices.length) return null;
@@ -1922,7 +1922,7 @@ function startGame() {
   for (const arr of [boomerangs, bolts, spamTexts, tracers, particles, floatTexts, rings, pickups])
     { for (const o of arr) scene.remove(o.mesh || o.sprite); arr.length = 0; }
   boomsOut = 0;
-  ammo = 6;
+  ammo = 20;
   $("ammoV").textContent = ammo;
   pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
   overlay.classList.add("hidden");
