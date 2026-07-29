@@ -125,7 +125,8 @@
 <body>
 <div id="hud">
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
-  <div id="wave" class="hudBox">WAVE<br><span id="waveV">1</span></div>
+  <div id="wave" class="hudBox">LEVEL<br><span id="waveV">1</span></div>
+  <div id="quota" class="hudBox">WALL TIMER<br><span id="quotaV">100</span></div>
   <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span><br>RIFLE AMMO <span id="ammoV">6</span></div>
   <div id="lives" class="hudBox">🐷🐷🐷</div>
   <div id="chargeWrap" class="hudBox">
@@ -433,6 +434,15 @@ const windowZones = [];
 const bossHitbox = { x: 0, z: 0, hw: 6.2, hd: 4.8, enraged: false, stormT: 0, phraseT: 0 };
 let speedBoost = 0;
 let deathKind = null;
+/* giant wall kill-countdown: level 1 → 100, level 2 → 200, … */
+let wallQuota = 100;
+let wallQuotaMax = 100;
+let wallTimerMesh = null;
+let wallTimerTex = null;
+let wallTimerCanvas = null;
+let wallTimerCtx = null;
+let wallTimerDirty = true;
+let levelUpT = 0;
 
 
 {
@@ -594,6 +604,46 @@ let deathKind = null;
     placeNS(1);
     placeNS(-1);
   }
+
+  /* ===== GIANT WALL TIMER (kill countdown) ===== */
+  {
+    wallTimerCanvas = document.createElement("canvas");
+    wallTimerCanvas.width = 1024;
+    wallTimerCanvas.height = 512;
+    wallTimerCtx = wallTimerCanvas.getContext("2d");
+    wallTimerTex = new THREE.CanvasTexture(wallTimerCanvas);
+    wallTimerTex.colorSpace = THREE.SRGBColorSpace;
+    const panel = new THREE.Group();
+    /* bezel */
+    panel.add(box(14.2, 7.2, 0.35, 0x1a1e26, 0, 0, -0.05));
+    panel.add(box(13.6, 6.6, 0.2, 0x0a0c10, 0, 0, 0));
+    const screen = new THREE.Mesh(
+      new THREE.PlaneGeometry(13.0, 6.0),
+      new THREE.MeshBasicMaterial({ map: wallTimerTex, toneMapped: false })
+    );
+    screen.position.z = 0.12;
+    panel.add(screen);
+    /* status LEDs */
+    for (let i = 0; i < 8; i++) {
+      const led = new THREE.Mesh(
+        new THREE.SphereGeometry(0.12, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x3aff6a })
+      );
+      led.position.set(-5.5 + i * 1.55, 3.2, 0.25);
+      panel.add(led);
+      if (!wallTimerMesh) wallTimerMesh = panel; /* store for LED flash later */
+    }
+    panel.userData.leds = panel.children.filter(c => c.geometry && c.geometry.type === "SphereGeometry");
+    /* hang on +Z wall facing into the floor */
+    panel.position.set(0, 4.0, FLOOR_D / 2 - 0.35);
+    panel.rotation.y = Math.PI;
+    scene.add(panel);
+    wallTimerMesh = panel;
+    wallTimerDirty = true;
+    /* initial paint (functions defined later — deferred) */
+    setTimeout(() => { try { paintWallTimer(); } catch (e) {} }, 0);
+  }
+
   const ceil = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D), mat(0xf2f1ee));
   ceil.rotation.x = Math.PI / 2; ceil.position.y = wallH; scene.add(ceil);
   /* light panels */
@@ -1556,14 +1606,14 @@ function buildBot(variant) {
 function spawnEnemy(type) {
   let e;
   if (type === "spammer") {
-    e = { type, hp: 2, speed: rand(1.9, 3.6) + wave * 0.14, mesh: buildSpammer(), shootT: rand(2.0, 4.2), r: 0.9, zig: rand(0, 6.28) };
+    e = { type, hp: 2, speed: rand(1.9, 3.6) + wave * 0.28, mesh: buildSpammer(), shootT: rand(1.6, 3.8), r: 0.9, zig: rand(0, 6.28) };
   } else {
     const variant = pick(BOT_VARIANTS);
     const baseSpd = variant === "scout" ? rand(2.0, 3.4) : variant === "heavy" ? rand(0.7, 1.35) : rand(1.15, 2.35);
     e = {
       type: "bot", variant, mesh: buildBot(variant), r: variant === "heavy" ? 1.0 : 0.75,
       hp: variant === "heavy" ? 6 : variant === "scout" ? 2 : 3,
-      speed: baseSpd + wave * rand(0.05, 0.14) + rand(-0.25, 0.45),
+      speed: baseSpd + wave * rand(0.12, 0.32) + rand(-0.2, 0.5),
       shootT: rand(2, 4),
     };
     /* bot-like spam phrase floating above */
@@ -1785,6 +1835,8 @@ function startGame() {
   mode = "play";
   score = 0; lives = 3; wave = 1; invuln = 0;
   speedBoost = 0; deathKind = null;
+  levelUpT = 0;
+  setWallQuota(100);
   bossHitbox.enraged = false; bossHitbox.stormT = 0; bossHitbox.phraseT = 0;
   if (typeof elon !== "undefined" && elon.userData) {
     elon.position.set(elon.userData.homeX, 0, elon.userData.homeZ);
@@ -1821,17 +1873,106 @@ function startGame() {
   updateHud();
 }
 function beginWave() {
-  spawnQueue = 5 + wave * 3;
-  spawnT = 0.4;
-  showMsg(`WAVE ${wave}`);
+  /* keep floor hot — timer (not empty floor) advances levels */
+  spawnQueue = 8 + wave * 5;
+  spawnT = 0.25;
+  showMsg(`LEVEL ${wave} — KILL ${wallQuota}`);
   SFX.wave();
 }
 let msgT = 0;
 function showMsg(t) { $("msg").textContent = t; msgT = 1.6; }
+function paintWallTimer() {
+  if (!wallTimerCtx || !wallTimerCanvas) return;
+  const g = wallTimerCtx;
+  const w = wallTimerCanvas.width, h = wallTimerCanvas.height;
+  const danger = wallQuota <= 20;
+  const mid = wallQuota <= wallQuotaMax * 0.4;
+  /* bg */
+  g.fillStyle = "#05070c";
+  g.fillRect(0, 0, w, h);
+  /* outer ring */
+  g.strokeStyle = danger ? "#ff3030" : mid ? "#ffb020" : "#3aff6a";
+  g.lineWidth = 18;
+  g.strokeRect(16, 16, w - 32, h - 32);
+  g.strokeStyle = "#1a2230";
+  g.lineWidth = 6;
+  g.strokeRect(36, 36, w - 72, h - 72);
+  /* label */
+  g.fillStyle = "#8a93a3";
+  g.font = "bold 48px Arial Black, Arial";
+  g.textAlign = "center";
+  g.fillText("PURGE COUNTDOWN", w / 2, 90);
+  /* giant number */
+  const col = danger ? "#ff3a3a" : mid ? "#ffc93c" : "#7CFFB0";
+  g.fillStyle = col;
+  g.strokeStyle = "#000";
+  g.lineWidth = 16;
+  g.font = "bold 280px Arial Black, Arial";
+  g.lineJoin = "round";
+  const num = String(Math.max(0, wallQuota | 0));
+  g.strokeText(num, w / 2, h / 2 + 70);
+  g.fillText(num, w / 2, h / 2 + 70);
+  /* footer */
+  g.fillStyle = "#cfd6e0";
+  g.font = "bold 42px Arial";
+  g.fillText("LEVEL " + wave + "  ·  KILL TO COUNT DOWN", w / 2, h - 48);
+  /* progress bar */
+  const pct = wallQuotaMax > 0 ? wallQuota / wallQuotaMax : 0;
+  g.fillStyle = "#1a1e28";
+  g.fillRect(80, h - 120, w - 160, 28);
+  g.fillStyle = col;
+  g.fillRect(80, h - 120, (w - 160) * pct, 28);
+  if (wallTimerTex) wallTimerTex.needsUpdate = true;
+  wallTimerDirty = false;
+  /* LED colors */
+  if (wallTimerMesh && wallTimerMesh.userData.leds) {
+    for (const led of wallTimerMesh.userData.leds) {
+      if (led.material) led.material.color.setHex(danger ? 0xff3030 : mid ? 0xffb020 : 0x3aff6a);
+    }
+  }
+}
 function updateHud() {
   $("scoreV").textContent = score;
   $("waveV").textContent = wave;
+  const qv = $("quotaV");
+  if (qv) qv.textContent = String(Math.max(0, wallQuota | 0));
   $("lives").textContent = "🐷".repeat(Math.max(0, lives));
+  if (wallTimerDirty) paintWallTimer();
+}
+function setWallQuota(n) {
+  wallQuota = n;
+  wallQuotaMax = n;
+  wallTimerDirty = true;
+  updateHud();
+}
+function tickWallTimer(amount = 1) {
+  if (mode !== "play" || levelUpT > 0) return;
+  wallQuota = Math.max(0, wallQuota - amount);
+  wallTimerDirty = true;
+  updateHud();
+  if (wallQuota <= 0) levelUp();
+}
+function levelUp() {
+  if (levelUpT > 0) return;
+  levelUpT = 2.2;
+  wave++;
+  const next = wave * 100; /* 100, 200, 300… */
+  setWallQuota(next);
+  /* dump a surge of faster bots + spammers */
+  const surge = 6 + wave * 4;
+  spawnQueue += surge;
+  spawnT = 0.12;
+  showMsg(`LEVEL ${wave} — TIMER ${next}`);
+  SFX.wave();
+  SFX.purge();
+  shake = Math.max(shake, 0.45);
+  score += 100 * wave;
+  updateHud();
+  /* flash wall */
+  if (wallTimerMesh) {
+    wallTimerMesh.scale.setScalar(1.08);
+    setTimeout(() => { if (wallTimerMesh) wallTimerMesh.scale.setScalar(1); }, 180);
+  }
 }
 
 /* ============================== WEAPONS ============================== */
@@ -2241,6 +2382,13 @@ function killEnemy(e, silent = false) {
   if (e.demonBonus) pts += 150;
   score += pts;
   floatText(p, `+${pts}`, { size: 44, color: "#aef2b6", strokeW: 6 }, 1.1);
+  /* wall timer counts down per bot / spammer kill */
+  if (!silent && (e.type === "bot" || e.type === "spammer")) {
+    tickWallTimer(1);
+    floatText(p.clone().add(new THREE.Vector3(0, 0.6, 0)),
+      String(Math.max(0, wallQuota)),
+      { size: 36, color: wallQuota <= 20 ? "#ff4a4a" : "#ffd94a", strokeW: 5 }, 0.85);
+  }
   /* kills drop rifle ammo — bots always dump mags, spammers often */
   if (!silent) {
     const force = e.type === "bot" || Math.random() < 0.8;
@@ -2822,24 +2970,20 @@ function update(dt) {
   }
 
   /* --- waves --- */
+  /* continuous pressure — refill queue if low; level-up is kill-timer based */
+  levelUpT = Math.max(0, levelUpT - dt);
   if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
-      spawnT = Math.max(0.4, 1.35 - wave * 0.07);
+      /* faster spawns each level */
+      spawnT = Math.max(0.22, 1.1 - wave * 0.1);
       spawnQueue--;
-      /* more spammers: ~42–72% by wave */
-      spawnEnemy(Math.random() < Math.min(0.72, 0.42 + wave * 0.05) ? "spammer" : "bot");
+      spawnEnemy(Math.random() < Math.min(0.75, 0.45 + wave * 0.05) ? "spammer" : "bot");
     }
-  } else if (enemies.length === 0) {
-    if (betweenT <= 0) {
-      betweenT = 2.5;
-      score += 50 + wave * 25;
-      showMsg(`WAVE ${wave} CLEARED  +${50 + wave * 25}`);
-      SFX.wave();
-      updateHud();
-    }
-    betweenT -= dt;
-    if (betweenT <= 0) { wave++; updateHud(); beginWave(); }
+  } else if (mode === "play" && levelUpT <= 0) {
+    /* top up so the floor never goes quiet */
+    spawnQueue = 3 + wave * 2;
+    spawnT = 0.35;
   }
   purgeCooldown = Math.max(0, purgeCooldown - dt);
   purgeBtn.userData.cap.position.y += (0.4 - purgeBtn.userData.cap.position.y) * dt * 3;
