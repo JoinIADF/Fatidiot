@@ -2391,7 +2391,7 @@ function emitPhrase(origin, phrase, opts = {}) {
     isPC ? 0.38 :
     deadly ? (long ? 0.34 : 0.38) : 0.29
   );
-  const baseSpd = isBoss ? 4.2 : deadly ? 9 : 7;
+  const baseSpd = isBoss ? 7.2 : deadly ? 9 : 7;
   const vel = pig.position.clone().add(new THREE.Vector3(0, 1.1, 0)).sub(origin).normalize().multiplyScalar(opts.speed != null ? opts.speed : baseSpd);
   spamTexts.push({
     sprite: sp, vel, dist: 0, life: opts.life || 4,
@@ -2743,7 +2743,7 @@ function tryEmitBossPhrase(origin) {
   if (bossPhraseActive()) return false;
   if (bossHitbox.phraseT > 0) return false;
   emitPhrase(origin, pick(BOSS_KILL_PHRASES), {
-    deadly: true, color: "#4caf6a", speed: 2.6, life: 8.5, kind: "boss"
+    deadly: true, color: "#4caf6a", speed: 7.2, life: 6.5, kind: "boss"
   });
   bossHitbox.phraseT = 4.2; /* cooldown before next line */
   return true;
