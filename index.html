@@ -1413,23 +1413,67 @@ let invuln = 0, hitstop = 0, shake = 0;
 let weaponIdx = 0; // 0 boomerang, 1 rifle
 let charging = false, chargeT = 0, boomsOut = 0;
 let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 6;
+function pickDeepVoice() {
+  const voices = (typeof speechSynthesis !== "undefined" && speechSynthesis.getVoices?.()) || [];
+  if (!voices.length) return null;
+  const score = (v) => {
+    let s = 0;
+    const n = (v.name || "").toLowerCase();
+    const l = (v.lang || "").toLowerCase();
+    if (/^en/.test(l)) s += 6;
+    if (/en-?gb|en_gb/.test(l)) s += 3; /* often deeper / clearer enunciation */
+    if (/en-?us|en_us/.test(l)) s += 2;
+    if (/male|david|daniel|mark|fred|james|alex|bruce|tom|george|arthur|brian|guy|reed|rishi/.test(n)) s += 14;
+    if (/google uk english male|microsoft david|microsoft mark|microsoft guy/.test(n)) s += 8;
+    if (/female|samantha|zira|karen|moira|fiona|woman|girl|victoria|hazel|susan/.test(n)) s -= 25;
+    if (/premium|enhanced|neural|natural|wavenet|studio/.test(n)) s += 4;
+    return s;
+  };
+  return voices.slice().sort((a, b) => score(b) - score(a))[0] || null;
+}
 function say(text, opts = {}) {
   try {
+    if (typeof speechSynthesis === "undefined") return;
     const u = new SpeechSynthesisUtterance(text);
+    u.lang = opts.lang || "en-US";
     u.rate = opts.rate != null ? opts.rate : 0.85;
     u.pitch = opts.pitch != null ? opts.pitch : 0.45;
     u.volume = opts.volume != null ? opts.volume : 1;
-    /* prefer a deep male-ish voice when available */
-    const voices = speechSynthesis.getVoices?.() || [];
-    const deep = voices.find(v => /english/i.test(v.lang) && /male|daniel|david|fred|google uk english male/i.test(v.name))
-      || voices.find(v => /en(-|_)?us|en(-|_)?gb/i.test(v.lang));
+    const deep = opts.voice || pickDeepVoice();
     if (deep) u.voice = deep;
-    speechSynthesis.cancel();
+    if (!opts.queue) speechSynthesis.cancel();
     speechSynthesis.speak(u);
+    return u;
+  } catch (e) { return null; }
+}
+/* Commanding announcer: phonetic so TTS never says "demon-etized" */
+function sayDemonetized() {
+  try {
+    if (typeof speechSynthesis === "undefined") return;
+    speechSynthesis.cancel();
+    const voice = pickDeepVoice();
+    /* IPA-ish respelling: /diː ˈmʌn ɪ taɪzd/ → clear syllables, stress on MON */
+    const phonetic = "Dee mun ih tized";
+    const u = new SpeechSynthesisUtterance(phonetic);
+    u.lang = "en-US";
+    u.rate = 0.52;   /* slow, deliberate, commanding */
+    u.pitch = 0.05;  /* as deep as browsers allow */
+    u.volume = 1;
+    if (voice) u.voice = voice;
+    /* slight pause before for authority */
+    setTimeout(() => {
+      try {
+        speechSynthesis.cancel();
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }, 40);
   } catch (e) {}
 }
 /* warm voice list (Chrome loads async) */
-try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) {}
+try {
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => { pickDeepVoice(); };
+} catch (e) {}
 let yaw = 0, pitch = 0.32;
 const keys = {};
 let pigVel = new THREE.Vector3(), pigY = 0, pigVy = 0, onGround = true;
@@ -1741,9 +1785,8 @@ function demonetize(e) {
   floatText(p.clone().add(new THREE.Vector3(rand(-0.5, 0.5), 0.1, rand(-0.5, 0.5))), "DEMONETIZED", { size: 48, color: "#ff6a00", strokeW: 8 }, 2.0);
   SFX.demon();
   SFX.boom();
-  /* deep voice — clearly "demonetized" */
-  say("demonetized", { rate: 0.72, pitch: 0.28, volume: 1 });
-  setTimeout(() => say("demonetized", { rate: 0.68, pitch: 0.22, volume: 0.95 }), 80);
+  /* deep commanding announcer — phonetically clear "dee-MUN-ih-tized" */
+  sayDemonetized();
   /* gold / black explosion */
   burst(p, 0xffd200, 28, 9, 10);
   burst(p, 0x0a0a0a, 16, 7, 8);
