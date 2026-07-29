@@ -2527,9 +2527,13 @@ function fireRifle() {
 function demonetize(e) {
   if (!e || e.dying != null) return;
   const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.4, 0));
-  /* big exploding DEMONETIZED billboard */
-  floatText(p.clone().add(new THREE.Vector3(0, 0.6, 0)), "DEMONETIZED", { size: 90, color: "#ffd200", strokeW: 12 }, 3.2);
-  floatText(p.clone().add(new THREE.Vector3(rand(-0.5, 0.5), 0.1, rand(-0.5, 0.5))), "DEMONETIZED", { size: 48, color: "#ff6a00", strokeW: 8 }, 2.0);
+  /* single clear DEMONETIZED stinger — not a double screen-wipe */
+  floatText(
+    p.clone().add(new THREE.Vector3(0, 0.85, 0)),
+    "DEMONETIZED",
+    { size: 52, color: "#ffd200", strokeW: 10 },
+    1.6
+  );
   SFX.demon();
   SFX.boom();
   /* drill-sergeant bark — dee-MAH-nuh-tyzd, ≤2s */
