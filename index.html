@@ -818,7 +818,7 @@ function mkVending(x, z, ry, bodyCol, glow, label) {
   g.position.set(x, 0, z); g.rotation.y = ry;
   scene.add(g);
   blockArea(x, z, 1.0, 0.8);
-  const vm = { mesh: g, hp: 4, maxHp: 4, x, z, ry, dead: false, label };
+  const vm = { mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label };
   vendingMachines.push(vm);
   g.userData.vending = vm;
   return g;
@@ -2196,6 +2196,7 @@ function hitVending(vm) {
     setTimeout(() => { if (vm.mesh) vm.mesh.position.x = vm.x; }, 70);
   }
   if (vm.hp <= 0) {
+    /* 2nd shot: dump prescriptions */
     vm.dead = true;
     SFX.boom();
     burst(new THREE.Vector3(vm.x, 1.5, vm.z), 0xffd200, 22, 8);
@@ -2204,8 +2205,8 @@ function hitVending(vm) {
     floatText(flap.clone().add(new THREE.Vector3(0, 1.2, 0)), "RX DROP!", { size: 40, color: "#ff4a7a", strokeW: 6 }, 1.1);
     score += 40; updateHud();
   } else {
-    dropPill(vm);
-    floatText(flap.clone().add(new THREE.Vector3(0, 1.0, 0)), vm.hp + " HITS LEFT", { size: 32, color: "#ffd94a", strokeW: 5 }, 0.85);
+    /* 1st shot: rattle only — 1 more hit to spit pills */
+    floatText(flap.clone().add(new THREE.Vector3(0, 1.0, 0)), "1 HIT LEFT", { size: 32, color: "#ffd94a", strokeW: 5 }, 0.85);
   }
   return true;
 }
