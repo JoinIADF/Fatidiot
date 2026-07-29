@@ -237,15 +237,15 @@ function textSprite(text, { size = 64, color = "#ffd94a", stroke = "#000", strok
   const ctx = c.getContext("2d");
   const f = font.replace("%s", size);
   ctx.font = f;
-  let lines = [String(text)];
-  const wrapAt = maxWidth || (String(text).length > 28 ? 26 : 0);
-  if (wrapAt > 0) {
-    const words = String(text).split(/\s+/);
+  /* one line by default; only wrap when maxWidth is explicitly > 0 */
+  let lines = [String(text).replace(/\s+/g, " ").trim()];
+  if (maxWidth > 0 && lines[0].length > maxWidth) {
+    const words = lines[0].split(" ");
     lines = [];
     let cur = "";
     for (const w of words) {
       const trial = cur ? cur + " " + w : w;
-      if (trial.length > wrapAt && cur) { lines.push(cur); cur = w; }
+      if (trial.length > maxWidth && cur) { lines.push(cur); cur = w; }
       else cur = trial;
     }
     if (cur) lines.push(cur);
@@ -2039,7 +2039,7 @@ function emitPhrase(origin, phrase, opts = {}) {
     size: fontSize,
     color,
     strokeW: isBoss ? 14 : isPC ? 8 : deadly ? 7 : 5,
-    maxWidth: isBoss ? (long ? 18 : 22) : isPC ? (long ? 20 : 24) : long ? 22 : 0,
+    maxWidth: 0, /* force single line for boss + object phrases */
   });
   /* high enough to clear pig, desks, cubicles, and other world props */
   const pos = origin.clone();
@@ -2610,7 +2610,7 @@ function update(dt) {
   if (rantTimer <= 0 && bossHitbox.stormT <= 0) {
     if (rantSprite) scene.remove(rantSprite);
     rantSprite = textSprite(RANTS[rantIdx % RANTS.length], {
-      size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 28
+      size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 0
     });
     rantSprite.scale.multiplyScalar(0.42);
     /* one clean line above the CEO door */
