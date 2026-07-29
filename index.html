@@ -2288,7 +2288,7 @@ function gameOver(kind = "normal") {
     overlay.insertBefore(flash, overlay.firstChild);
     overlay.querySelector("h1").textContent = "YOU ESCAPED";
     overlay.querySelector("p").innerHTML =
-      `<div class="death-sub">you escaped, no work this weekend, or ever again!</div>
+      `<div class="death-sub">You escaped X! No work this weekend, or ever again! 💀</div>
        SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>RANK: <b style="color:#ffd94a">${rank}</b>`;
     SFX.escape();
   } else {
