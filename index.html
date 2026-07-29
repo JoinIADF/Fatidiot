@@ -1123,9 +1123,9 @@ const pigParts = {};
     headG.add(burn);
   }
   /* massive jowls + chin roll + neck folds */
-  headG.add(sph(0.26, SKIN, -0.32, -0.2, 0.16));
-  headG.add(sph(0.26, SKIN, 0.32, -0.2, 0.16));
-  headG.add(sph(0.3, SKIN, 0, -0.3, 0.12));
+  headG.add(sph(0.2, SKIN, -0.28, -0.22, 0.14));
+  headG.add(sph(0.2, SKIN, 0.28, -0.22, 0.14));
+  headG.add(sph(0.24, SKIN, 0, -0.32, 0.1));
   const neck1 = sph(0.44, SKIN, 0, -0.4, -0.08); neck1.scale.set(1.15, 0.5, 0.9);
   const neck2 = sph(0.4, SKIND, 0, -0.54, -0.1); neck2.scale.set(1.1, 0.38, 0.85);
   headG.add(neck1, neck2);
@@ -1144,7 +1144,7 @@ const pigParts = {};
     const crease = box(0.03, 0.13, 0.02, SKIND, 0.37 * s, 0.12, 0.36);
     crease.rotation.z = 0.55 * s;
     headG.add(crease);
-    headG.add(sph(0.17, SKIN, 0.3 * s, -0.05, 0.3));
+    headG.add(sph(0.11, SKIN, 0.28 * s, -0.06, 0.32));
   }
   /* BIG upturned pig snout, front and center */
   const snout = cyl(0.2, 0.23, 0.28, SNOUTP, 0, -0.1, 0.46);
