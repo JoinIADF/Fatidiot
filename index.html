@@ -1625,13 +1625,14 @@ function pickDeepVoice() {
     let s = 0;
     const n = (v.name || "").toLowerCase();
     const l = (v.lang || "").toLowerCase();
-    if (/^en/.test(l)) s += 6;
-    if (/en-?gb|en_gb/.test(l)) s += 3; /* often deeper / clearer enunciation */
-    if (/en-?us|en_us/.test(l)) s += 2;
-    if (/male|david|daniel|mark|fred|james|alex|bruce|tom|george|arthur|brian|guy|reed|rishi/.test(n)) s += 14;
-    if (/google uk english male|microsoft david|microsoft mark|microsoft guy/.test(n)) s += 8;
-    if (/female|samantha|zira|karen|moira|fiona|woman|girl|victoria|hazel|susan/.test(n)) s -= 25;
-    if (/premium|enhanced|neural|natural|wavenet|studio/.test(n)) s += 4;
+    /* drill-sergeant: deep US/UK English male */
+    if (/^en/.test(l)) s += 8;
+    if (/en-?us|en_us/.test(l)) s += 5;
+    if (/en-?gb|en_gb/.test(l)) s += 3;
+    if (/male|david|daniel|mark|fred|james|alex|bruce|tom|george|arthur|brian|guy|reed|rishi|aaron|jony/.test(n)) s += 16;
+    if (/google us english|google uk english male|microsoft david|microsoft mark|microsoft guy|microsoft eric/.test(n)) s += 12;
+    if (/female|samantha|zira|karen|moira|fiona|woman|girl|victoria|hazel|susan|siri|kathy|tessa/.test(n)) s -= 30;
+    if (/premium|enhanced|neural|natural|wavenet|studio|online/.test(n)) s += 3;
     return s;
   };
   return voices.slice().sort((a, b) => score(b) - score(a))[0] || null;
@@ -1651,20 +1652,38 @@ function say(text, opts = {}) {
     return u;
   } catch (e) { return null; }
 }
-/* Commanding announcer: phonetic so TTS never says "demon-etized" */
+/* Drill-sergeant bark: "dee-MAH-nuh-tyzd" — clear, deep, under 2s */
+let _demonVoiceTimer = 0;
 function sayDemonetized() {
   try {
     if (typeof speechSynthesis === "undefined") return;
     speechSynthesis.cancel();
+    if (_demonVoiceTimer) { clearTimeout(_demonVoiceTimer); _demonVoiceTimer = 0; }
+    /* Force voice list load (Chrome) */
+    const voices = speechSynthesis.getVoices() || [];
     const voice = pickDeepVoice();
-    /* Clean phonetic: "D-manna-tized" as one strong word — not choppy syllables */
-    const u = new SpeechSynthesisUtterance("Dee manna tized");
+    /*
+      Phonetic for "demonetized" stress: dee-MAH-nuh-tyzd
+      Spelling tuned so engines do NOT say "demon" or "dee mon eh".
+      "Dee mahnuh tized" ≈ /diː ˈmɑːnə taɪzd/
+    */
+    const phonetic = "Dee mahnuh tized";
+    const u = new SpeechSynthesisUtterance(phonetic);
     u.lang = "en-US";
-    u.rate = 1.05;   /* clean & fast */
-    u.pitch = 0.2;   /* deep but not glitchy */
+    /* Fast bark — whole line must finish ≤ ~1.5–2s */
+    u.rate = 1.35;
+    u.pitch = 0.01;   /* floor = deepest */
     u.volume = 1;
-    if (voice) u.voice = voice;
+    if (voice) {
+      u.voice = voice;
+      if (voice.lang) u.lang = voice.lang;
+    }
     speechSynthesis.speak(u);
+    /* hard cap: cut off after 2s max */
+    _demonVoiceTimer = setTimeout(() => {
+      try { speechSynthesis.cancel(); } catch (e) {}
+      _demonVoiceTimer = 0;
+    }, 2000);
   } catch (e) {}
 }
 /* warm voice list (Chrome loads async) */
@@ -1672,6 +1691,7 @@ try {
   speechSynthesis.getVoices();
   speechSynthesis.onvoiceschanged = () => { pickDeepVoice(); };
 } catch (e) {}
+
 let yaw = 0, pitch = 0.32;
 const keys = {};
 let pigVel = new THREE.Vector3(), pigY = 0, pigVy = 0, onGround = true;
@@ -2137,7 +2157,7 @@ function demonetize(e) {
   floatText(p.clone().add(new THREE.Vector3(rand(-0.5, 0.5), 0.1, rand(-0.5, 0.5))), "DEMONETIZED", { size: 48, color: "#ff6a00", strokeW: 8 }, 2.0);
   SFX.demon();
   SFX.boom();
-  /* deep commanding announcer — phonetically clear "dee-MUN-ih-tized" */
+  /* drill-sergeant bark — dee-MAH-nuh-tyzd, ≤2s */
   sayDemonetized();
   /* gold / black explosion */
   burst(p, 0xffd200, 28, 9, 10);
