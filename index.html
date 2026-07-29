@@ -452,21 +452,219 @@ let levelUpT = 0;
 
 
 {
-  const floorTex = canvasTex(512, 512, (g) => {
-    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-      g.fillStyle = (x + y) % 2 ? "#cfd3d8" : "#c4c9cf";
+  /* —— multi-zone floor: tile field + corridors + rugs + decals —— */
+  const floorTex = canvasTex(1024, 1024, (g, w, h) => {
+    /* base: warm corporate porcelain with subtle noise */
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+      const n = ((x * 17 + y * 31) % 7) - 3;
+      const light = (x + y) % 2;
+      const base = light ? 210 + n : 198 + n;
+      g.fillStyle = `rgb(${base},${base - 2},${base - 6})`;
       g.fillRect(x * 64, y * 64, 64, 64);
+      /* micro grit */
+      g.fillStyle = "rgba(255,255,255,0.04)";
+      g.fillRect(x * 64 + 8, y * 64 + 10, 12, 3);
+      g.fillStyle = "rgba(0,0,0,0.04)";
+      g.fillRect(x * 64 + 40, y * 64 + 44, 10, 4);
     }
-    g.strokeStyle = "rgba(0,0,0,0.08)"; g.lineWidth = 2;
-    for (let i = 0; i <= 8; i++) { g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, 512); g.stroke();
-      g.beginPath(); g.moveTo(0, i * 64); g.lineTo(512, i * 64); g.stroke(); }
+    /* grout */
+    g.strokeStyle = "rgba(90,96,105,0.22)";
+    g.lineWidth = 3;
+    for (let i = 0; i <= 16; i++) {
+      g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, h); g.stroke();
+      g.beginPath(); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke();
+    }
+    /* scuffs */
+    g.strokeStyle = "rgba(60,60,70,0.08)";
+    g.lineWidth = 2;
+    for (let i = 0; i < 40; i++) {
+      g.beginPath();
+      g.moveTo(Math.random() * w, Math.random() * h);
+      g.lineTo(Math.random() * w, Math.random() * h);
+      g.stroke();
+    }
   });
   floorTex.wrapS = floorTex.wrapT = THREE.RepeatWrapping;
-  floorTex.repeat.set(14, 11);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D),
-    new THREE.MeshLambertMaterial({ map: floorTex }));
-  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  floorTex.repeat.set(10, 8);
+  floorTex.anisotropy = 8;
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(FLOOR_W, FLOOR_D),
+    new THREE.MeshLambertMaterial({ map: floorTex })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
   scene.add(floor);
+
+  const flat = (tex, w, d, x, z, y = 0.015) => {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, d),
+      new THREE.MeshLambertMaterial({ map: tex, transparent: true })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(x, y, z);
+    m.receiveShadow = true;
+    scene.add(m);
+    return m;
+  };
+
+  /* main corridor rubber mats (cross of the floor) */
+  const matTex = canvasTex(256, 64, (g, w, h) => {
+    g.fillStyle = "#2a3038"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#343b45";
+    for (let y = 0; y < h; y += 6) g.fillRect(0, y, w, 3);
+    g.fillStyle = "#ffc93c";
+    g.fillRect(0, 2, w, 3);
+    g.fillRect(0, h - 5, w, 3);
+    g.fillStyle = "rgba(255,255,255,0.06)";
+    g.font = "bold 14px Arial"; g.textAlign = "center";
+    g.fillText("KEEP CLEAR  ·  SHIP LANE", w / 2, h / 2 + 4);
+  });
+  matTex.wrapS = THREE.RepeatWrapping; matTex.repeat.set(8, 1);
+  flat(matTex, 70, 4.2, 0, 0, 0.02);
+  const matTex2 = matTex.clone(); matTex2.repeat.set(1, 6);
+  {
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.2, 55),
+      new THREE.MeshLambertMaterial({ map: matTex2, transparent: true })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(0, 0.02, 2);
+    m.receiveShadow = true;
+    scene.add(m);
+  }
+
+  /* plaza carpet under open center */
+  const plazaTex = canvasTex(512, 512, (g, w, h) => {
+    const grd = g.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, w * 0.55);
+    grd.addColorStop(0, "#3a5a8a");
+    grd.addColorStop(0.55, "#2a4068");
+    grd.addColorStop(1, "#1e2e4a");
+    g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    /* diamond pattern */
+    g.strokeStyle = "rgba(255,220,120,0.18)";
+    g.lineWidth = 3;
+    for (let i = -4; i < 12; i++) {
+      g.beginPath();
+      g.moveTo(i * 60, 0); g.lineTo(i * 60 + h, h); g.stroke();
+      g.beginPath();
+      g.moveTo(i * 60, h); g.lineTo(i * 60 + h, 0); g.stroke();
+    }
+    /* border */
+    g.strokeStyle = "#c9a24a"; g.lineWidth = 14;
+    g.strokeRect(18, 18, w - 36, h - 36);
+    g.strokeStyle = "rgba(255,255,255,0.15)"; g.lineWidth = 4;
+    g.strokeRect(32, 32, w - 64, h - 64);
+    /* logo wordmark */
+    g.fillStyle = "rgba(255,230,150,0.35)";
+    g.font = "bold 54px Arial Black, Arial";
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("X HQ", w / 2, h / 2 - 10);
+    g.font = "bold 22px Arial";
+    g.fillStyle = "rgba(200,220,255,0.35)";
+    g.fillText("PURGE PLAZA", w / 2, h / 2 + 28);
+  });
+  flat(plazaTex, 28, 22, 0, 6, 0.025);
+
+  /* red carpet runner to CEO office */
+  const runnerTex = canvasTex(128, 512, (g, w, h) => {
+    g.fillStyle = "#6a1824"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#8a2030";
+    for (let y = 0; y < h; y += 28) g.fillRect(8, y, w - 16, 14);
+    g.strokeStyle = "#d4a84a"; g.lineWidth = 8;
+    g.strokeRect(4, 4, w - 8, h - 8);
+    g.fillStyle = "rgba(255,220,150,0.25)";
+    g.font = "bold 20px Arial"; g.textAlign = "center";
+    g.save(); g.translate(w / 2, h / 2); g.rotate(-Math.PI / 2);
+    g.fillText("→  CEO  →", 0, 0);
+    g.restore();
+  });
+  flat(runnerTex, 3.6, 26, 0, -18, 0.03);
+
+  /* server aisle raised floor (dark tech tiles) near -Z and +Z racks */
+  const techTex = canvasTex(256, 256, (g, w, h) => {
+    g.fillStyle = "#1a1e26"; g.fillRect(0, 0, w, h);
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+      g.fillStyle = (x + y) % 2 ? "#222830" : "#1c212a";
+      g.fillRect(x * 32, y * 32, 32, 32);
+      g.strokeStyle = "rgba(80,200,255,0.12)"; g.lineWidth = 1;
+      g.strokeRect(x * 32 + 2, y * 32 + 2, 28, 28);
+      g.fillStyle = "rgba(80,200,255,0.2)";
+      g.fillRect(x * 32 + 12, y * 32 + 12, 4, 4);
+    }
+  });
+  techTex.wrapS = techTex.wrapT = THREE.RepeatWrapping;
+  techTex.repeat.set(6, 1.5);
+  flat(techTex, 56, 8, 0, -FLOOR_D / 2 + 5, 0.04);
+  flat(techTex, 40, 8, -34, FLOOR_D / 2 - 5, 0.04);
+
+  /* yellow caution strips near server zones */
+  const cautionTex = canvasTex(256, 32, (g, w, h) => {
+    for (let x = 0; x < w; x += 32) {
+      g.fillStyle = x % 64 === 0 ? "#ffd200" : "#1a1a1a";
+      g.fillRect(x, 0, 32, h);
+    }
+  });
+  cautionTex.wrapS = THREE.RepeatWrapping; cautionTex.repeat.set(12, 1);
+  flat(cautionTex, 50, 0.7, 0, -FLOOR_D / 2 + 9.2, 0.05);
+
+  /* floor wayfinding decals */
+  const decal = (text, col, x, z, rot = 0, size = 4) => {
+    const t = canvasTex(256, 128, (g, w, h) => {
+      g.clearRect(0, 0, w, h);
+      g.fillStyle = col;
+      g.font = "bold 48px Arial Black, Arial";
+      g.textAlign = "center"; g.textBaseline = "middle";
+      g.globalAlpha = 0.55;
+      g.fillText(text, w / 2, h / 2);
+    });
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(size * 2.2, size),
+      new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, toneMapped: false })
+    );
+    m.rotation.x = -Math.PI / 2;
+    m.rotation.z = rot;
+    m.position.set(x, 0.035, z);
+    scene.add(m);
+  };
+  decal("PLAZA", "rgba(120,180,255,0.9)", 0, 14, 0, 3.5);
+  decal("SERVERS →", "rgba(255,100,80,0.9)", 18, -FLOOR_D / 2 + 12, 0, 3);
+  decal("← WING", "rgba(180,200,220,0.8)", -30, 0, Math.PI / 2, 3);
+  decal("WING →", "rgba(180,200,220,0.8)", 30, 0, -Math.PI / 2, 3);
+
+  /* low baseboard around room */
+  const baseM = mat(0x3a3e46);
+  const baseH = 0.18, baseT = 0.12;
+  const edges = [
+    [FLOOR_W, baseH, baseT, 0, baseH / 2, -FLOOR_D / 2 + baseT / 2],
+    [FLOOR_W, baseH, baseT, 0, baseH / 2, FLOOR_D / 2 - baseT / 2],
+    [baseT, baseH, FLOOR_D, -FLOOR_W / 2 + baseT / 2, baseH / 2, 0],
+    [baseT, baseH, FLOOR_D, FLOOR_W / 2 - baseT / 2, baseH / 2, 0],
+  ];
+  for (const e of edges) {
+    scene.add(box(e[0], e[1], e[2], 0x3a3e46, e[3], e[4], e[5]));
+  }
+
+  /* structural columns with brushed metal + plant rings */
+  const colPositions = [
+    [-20, -20], [20, -20], [-20, 18], [20, 18],
+    [-38, 0], [38, 0], [0, 28], [-12, -8], [12, -8],
+  ];
+  for (const [cx, cz] of colPositions) {
+    const col = new THREE.Group();
+    col.add(cyl(0.55, 0.6, 0.2, 0x4a5058, 0, 0.1, 0, 12));
+    col.add(cyl(0.42, 0.42, 6.6, 0x8a909a, 0, 3.4, 0, 12));
+    col.add(cyl(0.5, 0.55, 0.18, 0x4a5058, 0, 6.85, 0, 12));
+    /* light strip */
+    const strip = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.44, 0.44, 6.4, 12, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.12, side: THREE.DoubleSide })
+    );
+    strip.position.y = 3.4;
+    col.add(strip);
+    col.position.set(cx, 0, cz);
+    scene.add(col);
+    blockArea(cx, cz, 0.7, 0.7, 7);
+  }
 }
 /* walls + ceiling */
 {
@@ -958,10 +1156,94 @@ for (let x = -48; x <= -20; x += 3.2) {
   blockArea(x, zx, 1.4, 0.7);
   servers.push({ mesh: r, x, y: 2.2, z: zx, hp: 8, cool: 0 });
 }
-/* small potted plants scattered */
-for (let i = 0; i < 6; i++) {
-  const px = rand(-48, 48), pz = rand(-36, 36);
-  scene.add(cyl(0.22, 0.3, 0.4, 0xb06a3a, px, 0.2, pz), sph(0.45, 0x3f7a3f, px, 0.8, pz));
+/* floor props: planters, lounge, whiteboards, water cooler */
+{
+  const planter = (x, z, scale = 1) => {
+    const g = new THREE.Group();
+    g.add(box(1.1 * scale, 0.55 * scale, 1.1 * scale, 0x3a3e44, 0, 0.28 * scale, 0));
+    g.add(box(0.95 * scale, 0.12 * scale, 0.95 * scale, 0x2a2218, 0, 0.55 * scale, 0));
+    g.add(sph(0.55 * scale, 0x2f6a38, 0, 0.95 * scale, 0));
+    g.add(sph(0.35 * scale, 0x4a8a40, 0.25 * scale, 1.15 * scale, 0.1 * scale));
+    g.add(sph(0.28 * scale, 0x3a7a30, -0.2 * scale, 1.2 * scale, -0.15 * scale));
+    g.position.set(x, 0, z);
+    scene.add(g);
+    blockArea(x, z, 0.7 * scale, 0.7 * scale, 1.2);
+  };
+  /* frame the plaza */
+  planter(-12, 16, 1.1); planter(12, 16, 1.1);
+  planter(-12, -2, 1); planter(12, -2, 1);
+  planter(-22, 6, 0.9); planter(22, 6, 0.9);
+  planter(0, 22, 1.2);
+  /* wing markers */
+  planter(-45, -20, 1); planter(45, -20, 1);
+  planter(-45, 20, 1); planter(45, 20, 1);
+
+  /* lounge sofas on plaza edge */
+  const sofa = (x, z, ry) => {
+    const g = new THREE.Group();
+    g.add(box(2.6, 0.45, 1.0, 0x2a3550, 0, 0.35, 0));
+    g.add(box(2.6, 0.7, 0.28, 0x243048, 0, 0.7, -0.4));
+    g.add(box(0.28, 0.55, 1.0, 0x243048, -1.2, 0.55, 0));
+    g.add(box(0.28, 0.55, 1.0, 0x243048, 1.2, 0.55, 0));
+    g.position.set(x, 0, z); g.rotation.y = ry;
+    scene.add(g);
+    blockArea(x, z, 1.4, 0.7, 0.9);
+  };
+  sofa(-8, 12, 0.4); sofa(8, 12, -0.4);
+
+  /* coffee table */
+  scene.add(box(1.4, 0.12, 0.8, 0x8a7355, 0, 0.4, 11));
+  scene.add(cyl(0.08, 0.08, 0.4, 0x5a4a38, -0.5, 0.2, 10.7, 8));
+  scene.add(cyl(0.08, 0.08, 0.4, 0x5a4a38, 0.5, 0.2, 10.7, 8));
+  scene.add(cyl(0.08, 0.08, 0.4, 0x5a4a38, -0.5, 0.2, 11.3, 8));
+  scene.add(cyl(0.08, 0.08, 0.4, 0x5a4a38, 0.5, 0.2, 11.3, 8));
+
+  /* water cooler */
+  {
+    const g = new THREE.Group();
+    g.add(box(0.7, 1.1, 0.7, 0xd8dce2, 0, 0.55, 0));
+    g.add(cyl(0.28, 0.28, 0.55, 0x7ec8ff, 0, 1.4, 0, 12));
+    g.add(box(0.15, 0.08, 0.25, 0x888c92, 0.35, 0.9, 0.1));
+    g.position.set(16, 0, -8);
+    scene.add(g);
+    blockArea(16, -8, 0.5, 0.5, 1.6);
+  }
+
+  /* whiteboard stands along corridor */
+  for (const [x, z, ry] of [[-16, -10, 0.2], [16, 4, -0.3], [-6, 24, 0]]) {
+    const g = new THREE.Group();
+    g.add(box(2.4, 1.5, 0.08, 0xf4f7fb, 0, 1.5, 0));
+    g.add(box(2.5, 0.08, 0.12, 0x33363c, 0, 2.28, 0));
+    g.add(box(0.08, 1.4, 0.08, 0x33363c, -1.15, 0.8, 0));
+    g.add(box(0.08, 1.4, 0.08, 0x33363c, 1.15, 0.8, 0));
+    /* scribbles */
+    const board = canvasTex(256, 160, (gg, w, h) => {
+      gg.fillStyle = "#f4f7fb"; gg.fillRect(0, 0, w, h);
+      gg.strokeStyle = "#2a6ad4"; gg.lineWidth = 3;
+      gg.beginPath(); gg.moveTo(30, 40); gg.lineTo(100, 80); gg.lineTo(180, 50); gg.stroke();
+      gg.strokeStyle = "#d43a2a"; gg.lineWidth = 2;
+      gg.strokeRect(40, 90, 90, 40);
+      gg.fillStyle = "#333"; gg.font = "bold 18px Arial";
+      gg.fillText("OKRs → bots", 50, 115);
+      gg.fillText("SHIP IT", 140, 55);
+    });
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.3, 1.4),
+      new THREE.MeshBasicMaterial({ map: board })
+    );
+    face.position.set(0, 1.5, 0.05);
+    g.add(face);
+    g.position.set(x, 0, z); g.rotation.y = ry;
+    scene.add(g);
+    blockArea(x, z, 1.2, 0.3, 2.2);
+  }
+
+  /* floor cable covers */
+  for (const [x, z, len, ry] of [[-5, 2, 8, 0.3], [8, -6, 6, -0.5], [0, 18, 5, 0]]) {
+    const c = box(len, 0.06, 0.35, 0x4a5058, x, 0.04, z);
+    c.rotation.y = ry;
+    scene.add(c);
+  }
 }
 
 /* ============================== BOSS OFFICE ============================== */
