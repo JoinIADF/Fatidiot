@@ -435,6 +435,9 @@ let speedBoost = 0;
 let deathKind = null;
 let vendingsOpened = 0; /* non-sleep machines cracked open */
 const SLEEP_BAG_UNLOCK = 3;
+/* object phrases (PCs / servers / spam) — max 1 every 4s */
+let objectPhraseCd = 0;
+const OBJECT_PHRASE_GAP = 4.0;
 /* giant wall kill-countdown: level 1 → 100, level 2 → 200, … */
 let wallQuota = 100;
 let wallQuotaMax = 100;
@@ -1884,6 +1887,7 @@ function startGame() {
   speedBoost = 0; deathKind = null;
   levelUpT = 0;
   vendingsOpened = 0;
+  objectPhraseCd = 0;
   setWallQuota(100);
   bossHitbox.enraged = false; bossHitbox.stormT = 0; bossHitbox.phraseT = 0;
   if (typeof elon !== "undefined" && elon.userData) {
@@ -2045,6 +2049,11 @@ function throwBoomerang(big) {
 function emitPhrase(origin, phrase, opts = {}) {
   const deadly = !!opts.deadly;
   const isBoss = opts.kind === "boss";
+  /* PCs / servers / generic object phrases: 1 every 4 seconds globally */
+  if (!isBoss && (opts.kind === "complaint" || opts.kind === "outage" || opts.kind === "phrase" || opts.kind === "spam")) {
+    if (objectPhraseCd > 0) return null;
+    objectPhraseCd = OBJECT_PHRASE_GAP;
+  }
   /* boss phrases: medium green, large, slow */
   const color = opts.color || (isBoss ? "#4caf6a" : deadly ? "#ff3030" : "#7ec8ff");
   const long = String(phrase).length > 24;
@@ -3111,14 +3120,19 @@ function update(dt) {
       e.shootT -= dt;
       if (e.shootT <= 0 && dist < 28) {
         e.shootT = rand(3.8, 6.2);
-        const phrase = pick(SPAM_PHRASES);
-        const sp = textSprite(phrase, { size: 34, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 5 });
-        sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 2.35, 0));
-        sp.scale.multiplyScalar(0.264); /* ~20% larger */
-        const vel = pig.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(sp.position).normalize().multiplyScalar(6);
-        spamTexts.push({ sprite: sp, vel, dist: 0, life: 3.5, baseAspect: sp.scale.x / sp.scale.y });
-        scene.add(sp);
-        beep(rand(500, 900), 0.05, "square", 0.03);
+        if (objectPhraseCd > 0) {
+          /* skip text while global object phrase gap is active */
+        } else {
+          objectPhraseCd = OBJECT_PHRASE_GAP;
+          const phrase = pick(SPAM_PHRASES);
+          const sp = textSprite(phrase, { size: 34, color: pick(["#ff5040", "#ffd200", "#5ad1ff", "#7cff6a"]), strokeW: 5 });
+          sp.position.copy(e.mesh.position).add(new THREE.Vector3(0, 2.35, 0));
+          sp.scale.multiplyScalar(0.264); /* ~20% larger */
+          const vel = pig.position.clone().add(new THREE.Vector3(0, 1, 0)).sub(sp.position).normalize().multiplyScalar(6);
+          spamTexts.push({ sprite: sp, vel, dist: 0, life: 3.5, baseAspect: sp.scale.x / sp.scale.y, kind: "spam" });
+          scene.add(sp);
+          beep(rand(500, 900), 0.05, "square", 0.03);
+        }
       }
     } else {
       e.mesh.position.addScaledVector(toP, e.speed * dt);
@@ -3201,6 +3215,7 @@ function update(dt) {
   /* --- waves --- */
   /* continuous pressure — refill queue if low; level-up is kill-timer based */
   levelUpT = Math.max(0, levelUpT - dt);
+  objectPhraseCd = Math.max(0, objectPhraseCd - dt);
   if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
