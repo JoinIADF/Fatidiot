@@ -2957,12 +2957,12 @@ function update(dt) {
           e.mesh.remove(e.tag);
           const phrase = pick(BOT_PHRASES);
           e.tag = textSprite(phrase, {
-            size: 24,
+            size: 31,
             color: e.variant === "heavy" ? "#ff8c2a" : e.variant === "scout" ? "#7cffb0" : "#ff6a6a",
-            strokeW: 4
+            strokeW: 5
           });
-          e.tag.position.set(0, e.variant === "heavy" ? 2.9 : 2.5, 0);
-          e.tag.scale.multiplyScalar(0.5);
+          e.tag.position.set(0, e.variant === "heavy" ? 3.15 : 2.75, 0);
+          e.tag.scale.multiplyScalar(0.65);
           e.mesh.add(e.tag);
         }
       }
