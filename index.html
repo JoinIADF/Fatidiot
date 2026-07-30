@@ -2549,12 +2549,6 @@ function buildFlamethrower() {
   g.add(mark);
   return g;
 }
-flameWpn = buildFlamethrower();
-flameWpn.visible = false;
-flameWpn.rotation.set(0.2, Math.PI / 2, -0.3);
-flameWpn.position.set(-0.35, 1.15, -0.35);
-flameWpn.scale.setScalar(1.2);
-pig.add(flameWpn);
 rifleSlung.visible = true;
 pig.add(rifleSlung);
 
@@ -2964,6 +2958,13 @@ let weaponIdx = 0; // 0 boomerang, 1 rifle, 2 flamethrower
 let flameUnlocked = false, flameFuel = 0, flameCd = 0, flameFiring = false;
 let flameWpn = null;
 let charging = false, chargeT = 0, boomsOut = 0;
+/* attach flamethrower model now that pig + lets exist */
+flameWpn = buildFlamethrower();
+flameWpn.visible = false;
+flameWpn.rotation.set(0.2, Math.PI / 2, -0.3);
+flameWpn.position.set(-0.35, 1.15, -0.35);
+flameWpn.scale.setScalar(1.2);
+pig.add(flameWpn);
 let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 20;
 function pickDeepVoice() {
   const voices = (typeof speechSynthesis !== "undefined" && speechSynthesis.getVoices?.()) || [];
