@@ -46,26 +46,32 @@
     inset: 0;
     z-index: 0;
     overflow: hidden;
-    background: #000;
+    background: #05060c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   #overlay.death-escape .escape-stage img {
     position: absolute;
-    inset: 0;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    object-position: center 30%;
-    animation: escapeKen 8s ease-out forwards;
-    filter: contrast(1.08) saturate(1.1);
+    /* full freefall art visible — do not crop the pig */
+    object-fit: contain;
+    object-position: center center;
+    animation: escapeKen 7s ease-out forwards;
+    filter: contrast(1.05) saturate(1.08);
   }
   #overlay.death-escape .escape-veil {
     position: absolute; inset: 0;
     background: linear-gradient(
       to top,
-      rgba(0,0,0,0.92) 0%,
-      rgba(0,0,0,0.55) 28%,
-      rgba(0,0,0,0.2) 55%,
-      rgba(0,0,0,0.35) 100%
+      rgba(0,0,0,0.88) 0%,
+      rgba(0,0,0,0.4) 32%,
+      rgba(0,0,0,0.12) 58%,
+      rgba(0,0,0,0.28) 100%
     );
     pointer-events: none;
   }
@@ -89,6 +95,11 @@
     margin-bottom: 6px;
     letter-spacing: 0.04em;
     animation: escapeTextIn 0.7s ease-out 0.35s both;
+    max-width: 96vw;
+  }
+  #overlay.death-escape p {
+    max-width: min(640px, 94vw);
+    padding: 0 12px;
   }
   #overlay.death-escape p {
     color: #e8eef8;
@@ -112,9 +123,9 @@
     100% { opacity: 0; }
   }
   @keyframes escapeKen {
-    0% { transform: scale(1.2) translateY(-6%); opacity: 0.4; }
-    20% { opacity: 1; }
-    100% { transform: scale(1.0) translateY(4%); opacity: 1; }
+    0% { transform: translate(-50%, -50%) scale(1.04); opacity: 0.35; }
+    18% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
   }
   @keyframes escapeTextIn {
     from { opacity: 0; transform: translateY(16px); }
