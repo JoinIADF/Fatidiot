@@ -210,6 +210,85 @@
     #overlay p { font-size: 14px; padding: 0 14px; }
     #overlay h1 { font-size: 34px; }
   }
+  #overlay.death-escape .go {
+    animation: escapeTextIn 0.7s ease-out 0.7s both;
+  }
+  /* —— GROK PORTAL LEVEL TRANSITION —— */
+  #overlay.death-portal {
+    background: #000 !important;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 4vw 6vh;
+    overflow: hidden;
+  }
+  #overlay.death-portal .portal-stage {
+    position: absolute; inset: 0; z-index: 0;
+    overflow: hidden; background: #02040a;
+  }
+  #overlay.death-portal .portal-stage img {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%; height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    animation: portalKen 6.5s ease-out forwards;
+    filter: contrast(1.06) saturate(1.12);
+  }
+  #overlay.death-portal .portal-veil {
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.9) 0%,
+      rgba(0,0,0,0.35) 40%,
+      rgba(0,0,0,0.15) 70%,
+      rgba(0,0,0,0.4) 100%
+    );
+    pointer-events: none;
+  }
+  #overlay.death-portal h1,
+  #overlay.death-portal p,
+  #overlay.death-portal .go {
+    position: relative; z-index: 3;
+  }
+  #overlay.death-portal h1 {
+    color: #ffb06a;
+    font-size: clamp(28px, 5.5vw, 48px);
+    text-shadow: 0 0 24px #000, 0 3px 0 #000, 0 0 40px rgba(255,120,40,0.4);
+    margin-bottom: 8px;
+    letter-spacing: 0.03em;
+    animation: escapeTextIn 0.7s ease-out 0.3s both;
+    max-width: 94vw;
+  }
+  #overlay.death-portal p {
+    color: #e8eef8;
+    text-shadow: 0 2px 10px #000;
+    animation: escapeTextIn 0.7s ease-out 0.45s both;
+    max-width: min(720px, 94vw);
+    padding: 0 12px;
+  }
+  #overlay.death-portal .go {
+    animation: escapeTextIn 0.7s ease-out 0.65s both;
+  }
+  @keyframes portalKen {
+    0% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.3; }
+    15% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+  }
+  #portalHint {
+    position: absolute;
+    left: 50%; top: 18%;
+    transform: translateX(-50%);
+    z-index: 5;
+    pointer-events: none;
+    font: 800 16px/1.3 system-ui, sans-serif;
+    color: #ffb06a;
+    text-shadow: 0 2px 8px #000, 0 0 20px rgba(255,100,30,0.5);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  #portalHint.show { opacity: 1; }
+
 </style>
 </head>
 <body>
@@ -239,6 +318,7 @@
   Jump out windows to escape</p>
   <p class="go" id="overlayGo">TAP / CLICK TO ENLIST</p>
 </div>
+<div id="portalHint">JUMP INTO THE GROK PORTAL → NEXT LEVEL</div>
 <div id="mobileUI" aria-hidden="true">
   <div id="mobileHint">stick forward full = auto-run · tap stick to unlock</div>
   <div id="stickZone">
@@ -586,6 +666,7 @@ let wallTimerTex = null;
 let wallTimerCanvas = null;
 let wallTimerCtx = null;
 let wallTimerDirty = true;
+let portalReady = false, portalMesh = null, portalSpin = 0;
 let levelUpT = 0;
 
 
@@ -2331,6 +2412,10 @@ addEventListener("mouseup", e => {
 });
 overlay.addEventListener("click", () => {
   ac();
+  if (mode === "portal" && deathKind === "portal") {
+    resumeFromPortal();
+    return;
+  }
   if (mode === "over" && deathKind === "sleep") {
     resumeFromSleep();
     return;
@@ -2348,6 +2433,7 @@ function startGame() {
   score = 0; lives = 9; wave = 1; invuln = 0;
   speedBoost = 0; deathKind = null;
   levelUpT = 0;
+  clearLevelPortal();
   vendingsOpened = 0;
   sleepBagGranted = false;
   objectPhraseCd = 0;
@@ -2464,14 +2550,124 @@ function setWallQuota(n) {
   updateHud();
 }
 function tickWallTimer(amount = 1) {
-  if (mode !== "play" || levelUpT > 0) return;
+  if (mode !== "play" || levelUpT > 0 || portalReady) return;
   wallQuota = Math.max(0, wallQuota - amount);
   wallTimerDirty = true;
   updateHud();
-  if (wallQuota <= 0) levelUp();
+  if (wallQuota <= 0) openLevelPortal();
 }
+function openLevelPortal() {
+  if (portalReady || mode !== "play") return;
+  portalReady = true;
+  wallQuota = 0;
+  wallTimerDirty = true;
+  updateHud();
+  showMsg("GROK PORTAL OPEN — JUMP IN!");
+  SFX.wave();
+  SFX.purge();
+  shake = Math.max(shake, 0.55);
+  /* floating Grok black-hole logo at board center */
+  const tex = new THREE.TextureLoader().load("./grok-portal.jpg");
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const matP = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false,
+  });
+  portalMesh = new THREE.Mesh(new THREE.CircleGeometry(3.6, 48), matP);
+  portalMesh.position.set(0, 2.4, 0);
+  portalMesh.rotation.x = -0.15;
+  scene.add(portalMesh);
+  /* soft glow ring */
+  const glow = new THREE.Mesh(
+    new THREE.RingGeometry(3.5, 4.3, 48),
+    new THREE.MeshBasicMaterial({ color: 0xff6a30, transparent: true, opacity: 0.55, side: THREE.DoubleSide })
+  );
+  glow.position.copy(portalMesh.position);
+  glow.rotation.copy(portalMesh.rotation);
+  portalMesh.userData.glow = glow;
+  scene.add(glow);
+  const hint = $("portalHint");
+  if (hint) hint.classList.add("show");
+  /* clear remaining spawn pressure a bit so portal is reachable */
+  spawnQueue = Math.min(spawnQueue, 2);
+}
+
+function enterGrokPortal() {
+  if (!portalReady || mode !== "play") return;
+  mode = "portal";
+  deathKind = "portal";
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+  const hint = $("portalHint");
+  if (hint) hint.classList.remove("show");
+  clearLevelPortal();
+  /* transition death screen */
+  try {
+    overlay.classList.remove("death-weekend", "death-escape", "death-sleep", "death-portal");
+    overlay.querySelectorAll(".portal-stage, .escape-stage, .escape-flash, .escape-veil").forEach(n => n.remove());
+    overlay.classList.add("death-portal");
+    const stage = document.createElement("div");
+    stage.className = "portal-stage";
+    const img = document.createElement("img");
+    img.alt = "Pig flying through Grok black hole";
+    img.src = "./pig-portal.jpg";
+    img.decoding = "async";
+    img.onerror = () => { img.src = "./grok-portal.jpg"; };
+    const veil = document.createElement("div");
+    veil.className = "portal-veil";
+    stage.appendChild(img);
+    stage.appendChild(veil);
+    if (overlay.firstChild) overlay.insertBefore(stage, overlay.firstChild);
+    else overlay.appendChild(stage);
+    const h1 = overlay.querySelector("h1");
+    const p = overlay.querySelector("p");
+    const go = $("overlayGo");
+    if (h1) h1.textContent = "PORTAL JUMP";
+    if (p) p.innerHTML =
+      `<div class="death-sub">Beats another two hour in person weekly review.</div>
+       SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>
+       <span style="opacity:.9">Next level inbound…</span>`;
+    if (go) go.textContent = "TAP / CLICK TO CONTINUE";
+    overlay.classList.remove("hidden");
+  } catch (err) {
+    console.error(err);
+    overlay.classList.remove("hidden");
+  }
+  try { SFX.escape(); } catch (_) {}
+  try { SFX.wave(); } catch (_) {}
+  score += 150 * wave;
+  updateHud();
+}
+
+function clearLevelPortal() {
+  portalReady = false;
+  if (portalMesh) {
+    if (portalMesh.userData.glow) scene.remove(portalMesh.userData.glow);
+    scene.remove(portalMesh);
+    portalMesh = null;
+  }
+  const hint = $("portalHint");
+  if (hint) hint.classList.remove("show");
+}
+
+function resumeFromPortal() {
+  deathKind = null;
+  overlay.classList.add("hidden");
+  overlay.classList.remove("death-portal", "death-sleep", "death-weekend", "death-escape");
+  overlay.querySelectorAll(".portal-stage").forEach(n => n.remove());
+  mode = "play";
+  if (!isMobile()) renderer.domElement.requestPointerLock();
+  else showMobileUI(true);
+  /* advance level after portal jump */
+  levelUp();
+  pig.position.set(0, 0, 8);
+  pigY = 0; pigVy = 0;
+  invuln = 1.2;
+  updateHud();
+}
+
 function levelUp() {
   if (levelUpT > 0) return;
+  clearLevelPortal();
   levelUpT = 2.2;
   wave++;
   const next = wave * 100; /* 100, 200, 300… */
@@ -3123,6 +3319,7 @@ function triggerSleepRest() {
 }
 function resumeFromSleep() {
   /* skip to next level — keep score/lives/ammo */
+  clearLevelPortal();
   deathKind = null;
   overlay.classList.add("hidden");
   overlay.classList.remove("death-sleep", "death-weekend", "death-escape");
@@ -3417,6 +3614,23 @@ function update(dt) {
         break;
       }
     }
+  /* Grok portal — jump through to next level */
+  if (portalReady && portalMesh && mode === "play") {
+    portalSpin += dt;
+    portalMesh.rotation.z = portalSpin * 0.7;
+    if (portalMesh.userData.glow) {
+      portalMesh.userData.glow.rotation.z = -portalSpin * 0.5;
+      portalMesh.userData.glow.material.opacity = 0.4 + Math.sin(portalSpin * 4) * 0.2;
+    }
+    const dx = pig.position.x - portalMesh.position.x;
+    const dz = pig.position.z - portalMesh.position.z;
+    const dist = Math.hypot(dx, dz);
+    /* enter by running into it, or jumping while near */
+    if (dist < 3.2 && (pigY > 0.35 || !onGround || dist < 2.2)) {
+      enterGrokPortal();
+    }
+  }
+
   }
   if (speedBoost > 0) speedBoost = Math.max(0, speedBoost - dt);
   /* jump */
