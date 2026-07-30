@@ -2585,7 +2585,24 @@ function openLevelPortal() {
   glow.position.copy(portalMesh.position);
   glow.rotation.copy(portalMesh.rotation);
   portalMesh.userData.glow = glow;
+  portalMesh.userData.fxT = 0;
+  portalMesh.userData.sparkT = 0;
   scene.add(glow);
+  /* opening particle bloom */
+  const origin = portalMesh.position.clone();
+  burst(origin.clone(), 0xff6a30, 28, 9, 4);
+  burst(origin.clone(), 0x5ad1ff, 18, 7, 3);
+  burst(origin.clone(), 0xffffff, 12, 6, 2);
+  {
+    const r = new THREE.Mesh(
+      new THREE.RingGeometry(0.4, 0.7, 32),
+      new THREE.MeshBasicMaterial({ color: 0xff8c40, transparent: true, opacity: 0.9, side: THREE.DoubleSide })
+    );
+    r.position.copy(origin);
+    r.rotation.x = -Math.PI / 2 + 0.2;
+    scene.add(r);
+    rings.push({ mesh: r, life: 0.9, max: 0.9, grow: 12 });
+  }
   const hint = $("portalHint");
   if (hint) hint.classList.add("show");
   /* clear remaining spawn pressure a bit so portal is reachable */
@@ -3615,19 +3632,68 @@ function update(dt) {
         break;
       }
     }
-  /* Grok portal — jump through to next level */
+  /* Grok portal — jump through to next level + particle FX */
   if (portalReady && portalMesh && mode === "play") {
     portalSpin += dt;
     portalMesh.rotation.z = portalSpin * 0.7;
     if (portalMesh.userData.glow) {
       portalMesh.userData.glow.rotation.z = -portalSpin * 0.5;
       portalMesh.userData.glow.material.opacity = 0.4 + Math.sin(portalSpin * 4) * 0.2;
+      portalMesh.userData.glow.scale.setScalar(1 + Math.sin(portalSpin * 3) * 0.06);
+    }
+    /* continuous accretion / swirl particles */
+    portalMesh.userData.fxT = (portalMesh.userData.fxT || 0) - dt;
+    portalMesh.userData.sparkT = (portalMesh.userData.sparkT || 0) - dt;
+    const o = portalMesh.position;
+    if (portalMesh.userData.fxT <= 0) {
+      portalMesh.userData.fxT = 0.045;
+      const colors = [0xff6a30, 0xff3a1a, 0xffb060, 0x5ad1ff, 0x8ec8ff, 0xffffff];
+      for (let i = 0; i < 3; i++) {
+        const ang = portalSpin * 2.5 + i * 2.1 + Math.random() * 0.4;
+        const rad = 2.2 + Math.random() * 2.0;
+        const px = o.x + Math.cos(ang) * rad;
+        const pz = o.z + Math.sin(ang) * rad * 0.85;
+        const py = o.y + (Math.random() - 0.5) * 1.4;
+        const m = new THREE.Mesh(PART_GEO, new THREE.MeshBasicMaterial({
+          color: colors[(Math.random() * colors.length) | 0],
+          transparent: true,
+          opacity: 0.95,
+        }));
+        m.position.set(px, py, pz);
+        m.scale.setScalar(0.7 + Math.random() * 1.1);
+        const toC = new THREE.Vector3(o.x - px, (o.y - py) * 0.3, o.z - pz).normalize();
+        const tangent = new THREE.Vector3(-Math.sin(ang), 0.15, Math.cos(ang));
+        const vel = toC.multiplyScalar(2.5 + Math.random() * 2).addScaledVector(tangent, 3 + Math.random() * 2);
+        vel.y += rand(-0.5, 1.2);
+        particles.push({ mesh: m, grav: -1.2, vel, life: 0.55 + Math.random() * 0.45 });
+        scene.add(m);
+      }
+    }
+    /* jet sparks along the accretion axis */
+    if (portalMesh.userData.sparkT <= 0) {
+      portalMesh.userData.sparkT = 0.16;
+      for (const side of [-1, 1]) {
+        const m = new THREE.Mesh(PART_GEO, new THREE.MeshBasicMaterial({
+          color: side > 0 ? 0xff5020 : 0x70d0ff,
+          transparent: true, opacity: 1,
+        }));
+        m.position.set(o.x + rand(-0.3, 0.3), o.y + rand(-0.4, 0.4), o.z + rand(-0.3, 0.3));
+        m.scale.setScalar(1.2);
+        particles.push({
+          mesh: m, grav: 0,
+          vel: new THREE.Vector3(side * rand(4, 9), rand(-1, 1), rand(-1.5, 1.5)),
+          life: 0.35 + Math.random() * 0.25,
+        });
+        scene.add(m);
+      }
+      burst(o.clone().add(new THREE.Vector3(0, 0.1, 0)), 0xff8040, 4, 3, 1);
     }
     const dx = pig.position.x - portalMesh.position.x;
     const dz = pig.position.z - portalMesh.position.z;
     const dist = Math.hypot(dx, dz);
-    /* enter by running into it, or jumping while near */
     if (dist < 3.2 && (pigY > 0.35 || !onGround || dist < 2.2)) {
+      burst(portalMesh.position.clone(), 0xff6a30, 36, 12, 2);
+      burst(portalMesh.position.clone(), 0x5ad1ff, 24, 10, 2);
       enterGrokPortal();
     }
   }
