@@ -296,7 +296,7 @@
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox">LEVEL<br><span id="waveV">1</span></div>
   <div id="quota" class="hudBox">WALL TIMER<br><span id="quotaV">100</span></div>
-  <div id="weapon" class="hudBox">WEAPON [Q]<br><span id="weaponV">X BOOMERANG</span><br>RIFLE AMMO <span id="ammoV">20</span></div>
+  <div id="weapon" class="hudBox">WEAPON <span style="opacity:.8">[Q / 1·2·3]</span><br><span id="weaponV">X BOOMERANG</span><br>AMMO <span id="ammoV">20</span><br><span id="weaponTip" style="font-size:11px;opacity:.85">1 Boom · 2 Rifle · Q swap</span></div>
   <div id="lives" class="hudBox">🐷🐷🐷🐷🐷🐷🐷🐷🐷</div>
   <div id="chargeWrap" class="hudBox">
     <div id="chargeLabel">X CHARGE</div>
@@ -331,7 +331,7 @@
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
     <button type="button" class="mbtn jump" id="mJump">JUMP</button>
     <button type="button" class="mbtn boom" id="mBoom">X<br>BOOM</button>
-    <button type="button" class="mbtn rifle" id="mRifle">RIFLE</button>
+    <button type="button" class="mbtn rifle" id="mRifle">FIRE</button>
   </div>
 </div>
 <script type="importmap">
@@ -1766,14 +1766,10 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
     g.add(boss);
     g.userData.bossFigure = boss;
 
-    const tag = textSprite("BOSS' CYBERTRUCK", { size: 44, color: "#ffd94a", strokeW: 9, maxWidth: 0 });
-    tag.scale.multiplyScalar(0.75 * Math.min(s, 1.4));
-    tag.position.set(0, 2.85 * s, 0);
+    const tag = textSprite("BOSS", { size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.55 * Math.min(s, 1.4));
+    tag.position.set(0, 2.6 * s, 0);
     g.add(tag);
-    const tag2 = textSprite("LAUNCH OPS", { size: 30, color: "#ff6a4a", strokeW: 6, maxWidth: 0 });
-    tag2.scale.multiplyScalar(0.6 * Math.min(s, 1.4));
-    tag2.position.set(0, 2.45 * s, 0);
-    g.add(tag2);
   }
 
   g.position.set(x, y, z);
@@ -1851,20 +1847,22 @@ function buildStarbase() {
   /* concrete launch pad at far end */
   g.add(box(48, 0.1, 24, 0x6a7078, 0, 0.06, lotZ0 + lotDepth - 14));
 
-  /* jagged open wall remains (left / right stubs) — middle is OPEN to sky */
-  g.add(box(28, 5.5, 0.8, 0x4a5058, -46, 2.75, lotZ0));
-  g.add(box(28, 5.5, 0.8, 0x4a5058, 46, 2.75, lotZ0));
-  /* broken header beam over the big opening */
-  g.add(box(36, 0.55, 0.9, 0x3a4048, 0, 5.6, lotZ0));
-  /* rubble at threshold */
-  for (const [rx, rz, rw] of [[-8, 1.5, 1.4], [5, 2, 1.1], [-3, 2.5, 1.6], [12, 1.2, 1.0], [-14, 1.8, 1.3]]) {
-    g.add(box(rw, 0.4, 0.9, 0x5a6068, rx, 0.25, lotZ0 + rz));
-  }
-  g.add(box(0.18, 1.5, 0.18, 0xf0c020, -18, 0.75, lotZ0 + 1));
-  g.add(box(0.18, 1.5, 0.18, 0xf0c020, 18, 0.75, lotZ0 + 1));
-  const exitTag = textSprite("★ OUTSIDE — STARBASE LOT ★", { size: 44, color: "#ffd94a", strokeW: 8, maxWidth: 0 });
-  exitTag.scale.multiplyScalar(1.1);
-  exitTag.position.set(0, 6.4, lotZ0 + 0.6);
+  /* permanent open sliding door between lobby and lot */
+  const doorW = 10, doorH = 5.2, wallH2 = 6.2;
+  const sideW = (FLOOR_W - doorW) / 2;
+  g.add(box(sideW, wallH2, 0.7, 0x4a5058, -(doorW / 2 + sideW / 2), wallH2 / 2, lotZ0));
+  g.add(box(sideW, wallH2, 0.7, 0x4a5058, (doorW / 2 + sideW / 2), wallH2 / 2, lotZ0));
+  g.add(box(doorW + 1.2, 0.45, 0.85, 0x3a4048, 0, doorH + 0.35, lotZ0));
+  g.add(box(0.25, doorH, 0.5, 0x2a2e34, -doorW / 2, doorH / 2, lotZ0));
+  g.add(box(0.25, doorH, 0.5, 0x2a2e34, doorW / 2, doorH / 2, lotZ0));
+  g.add(box(doorW * 0.48, doorH - 0.3, 0.12, 0x6a8aaa, -doorW * 0.72, doorH / 2 - 0.1, lotZ0 + 0.35));
+  g.add(box(doorW * 0.48, doorH - 0.3, 0.12, 0x6a8aaa, doorW * 0.72, doorH / 2 - 0.1, lotZ0 + 0.35));
+  g.add(box(doorW * 0.4, doorH * 0.55, 0.04, 0xa8d0e8, -doorW * 0.72, doorH * 0.55, lotZ0 + 0.42));
+  g.add(box(doorW * 0.4, doorH * 0.55, 0.04, 0xa8d0e8, doorW * 0.72, doorH * 0.55, lotZ0 + 0.42));
+  g.add(box(doorW, 0.08, 1.6, 0x3a3e44, 0, 0.05, lotZ0 + 0.2));
+  const exitTag = textSprite("EXIT  ·  LOT", { size: 32, color: "#c8d0d8", strokeW: 5, maxWidth: 0 });
+  exitTag.scale.multiplyScalar(0.7);
+  exitTag.position.set(0, doorH + 0.9, lotZ0 + 0.5);
   g.add(exitTag);
 
   /* parking grid: many trucks, some EMPTY spots */
@@ -1897,10 +1895,7 @@ function buildStarbase() {
   g.add(buildRocketShip(11, padZ + 2, 31));
   blockArea(-11, padZ, 3.5, 3.5, 32);
   blockArea(11, padZ + 2, 3.5, 3.5, 30);
-  const rocketLabel = textSprite("STARSHIP PAD", { size: 40, color: "#e8eef8", strokeW: 7, maxWidth: 0 });
-  rocketLabel.scale.multiplyScalar(1.2);
-  rocketLabel.position.set(0, 4, padZ + 8);
-  g.add(rocketLabel);
+  /* no pad label clutter */
 
   /* BOSS cybertruck — TWICE as big — parked right in front of the rockets */
   bossTruck = buildCybertruck(0, 0, padZ + 10, 0, 2.0, true);
@@ -1922,12 +1917,15 @@ function buildStarbase() {
   {
     const facadeZ = lotZ0 - 0.5;
     const W = 54, H = 17, D = 9;
-    const glass = new THREE.Mesh(
-      new THREE.BoxGeometry(W, H, D),
-      new THREE.MeshLambertMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.95 })
-    );
-    glass.position.set(0, H / 2, facadeZ - D / 2);
-    g.add(glass);
+    const gap = 12;
+    const wingW = (W - gap) / 2;
+    const glassM = new THREE.MeshLambertMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.95 });
+    const leftG = new THREE.Mesh(new THREE.BoxGeometry(wingW, H, D), glassM);
+    leftG.position.set(-(gap + wingW) / 2, H / 2, facadeZ - D / 2);
+    g.add(leftG);
+    const rightG = new THREE.Mesh(new THREE.BoxGeometry(wingW, H, D), glassM);
+    rightG.position.set((gap + wingW) / 2, H / 2, facadeZ - D / 2);
+    g.add(rightG);
     for (let i = -7; i <= 7; i++) {
       g.add(box(0.12, H, 0.1, 0x0a0c10, i * (W / 15), H / 2, facadeZ + 0.08));
     }
@@ -3118,8 +3116,21 @@ addEventListener("keydown", e => {
   if (mode === "play" && (e.code === "KeyQ" || e.code === "Tab")) {
     e.preventDefault();
     cycleWeapon();
-    locked = false; lockTarget = null; lockT = 0;
     beep(500, 0.05);
+  }
+  if (mode === "play" && (e.code === "Digit1" || e.code === "Numpad1")) {
+    e.preventDefault(); selectWeapon(0); beep(420, 0.04);
+  }
+  if (mode === "play" && (e.code === "Digit2" || e.code === "Numpad2")) {
+    e.preventDefault(); selectWeapon(1); beep(480, 0.04);
+  }
+  if (mode === "play" && (e.code === "Digit3" || e.code === "Numpad3")) {
+    e.preventDefault(); selectWeapon(2); beep(540, 0.04);
+  }
+  if (mode === "play" && e.code === "KeyF") {
+    e.preventDefault();
+    if (flameUnlocked) { selectWeapon(2); flameFiring = true; }
+    else showMsg("PICK UP FLAMETHROWER BY THE CYBERTRUCKS");
   }
   if (mode === "portal" && e.code === "Enter") { resumeFromPortal(); return; }
   if (mode === "over" && e.code === "Enter") startGame();
@@ -3130,6 +3141,7 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => {
   keys[e.code] = false;
   if (e.key && e.key.length === 1) keys["Key" + e.key.toUpperCase()] = false;
+  if (e.code === "KeyF") flameFiring = false;
 });
 
 document.addEventListener("mousemove", e => {
@@ -3934,19 +3946,42 @@ function hitscanWorld(origin, dir, maxDist = 55) {
   return best;
 }
 
-function cycleWeapon() {
-  const maxW = flameUnlocked ? 3 : 2;
-  weaponIdx = (weaponIdx + 1) % maxW;
+function applyWeaponHud() {
   const names = ["X BOOMERANG", "DEMONETIZER", "NOT-A-FLAMETHROWER"];
   if ($("weaponV")) $("weaponV").textContent = names[weaponIdx] || "X BOOMERANG";
   if ($("chargeLabel")) {
     $("chargeLabel").textContent = weaponIdx === 0 ? "X CHARGE" : weaponIdx === 1 ? "LOCK-ON" : "FUEL";
   }
+  const tip = $("weaponTip");
+  if (tip) {
+    tip.textContent = flameUnlocked
+      ? "1 Boom · 2 Rifle · 3 Flame · Q/SWAP · HOLD FIRE / F"
+      : "1 Boom · 2 Rifle · Q/SWAP · (get flame on lot)";
+  }
   if (typeof rifleHeld !== "undefined" && rifleHeld) rifleHeld.visible = false;
   if (typeof rifleSlung !== "undefined" && rifleSlung) rifleSlung.visible = weaponIdx !== 2;
   if (flameWpn) flameWpn.visible = weaponIdx === 2;
+  const mR = $("mRifle");
+  if (mR) mR.innerHTML = weaponIdx === 2 ? "FLAME<br>HOLD" : weaponIdx === 1 ? "RIFLE" : "BOOM";
+  const mS = $("mSwap");
+  if (mS) mS.innerHTML = flameUnlocked ? "SWAP<br>WPN 🔥" : "SWAP<br>WPN";
+}
+function selectWeapon(idx) {
+  if (idx === 2 && !flameUnlocked) {
+    showMsg("FIND NOT-A-FLAMETHROWER BY THE TRUCKS");
+    return;
+  }
+  const maxW = flameUnlocked ? 3 : 2;
+  weaponIdx = ((idx % maxW) + maxW) % maxW;
   locked = false; lockTarget = null; lockT = 0;
-  if (weaponIdx === 2) showMsg("NOT-A-FLAMETHROWER — HOLD FIRE");
+  applyWeaponHud();
+  if (weaponIdx === 2) showMsg("FLAMETHROWER — HOLD LEFT CLICK / FLAME / F");
+  else if (weaponIdx === 1) showMsg("DEMONETIZER READY");
+  else showMsg("X BOOMERANG READY");
+}
+function cycleWeapon() {
+  const maxW = flameUnlocked ? 3 : 2;
+  selectWeapon((weaponIdx + 1) % maxW);
 }
 
 function fireFlamethrower(dt) {
@@ -4620,15 +4655,14 @@ function update(dt) {
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "flamethrower") {
         flameUnlocked = true;
-        flameFuel = 200; /* full tank */
+        flameFuel = 200;
         weaponIdx = 2;
         if (flameWpn) flameWpn.visible = true;
         if (rifleSlung) rifleSlung.visible = false;
-        if ($("weaponV")) $("weaponV").textContent = "NOT-A-FLAMETHROWER";
-        if ($("chargeLabel")) $("chargeLabel").textContent = "FUEL";
+        applyWeaponHud();
         const am = $("ammoV"); if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
-        showMsg("NOT A FLAMETHROWER — Q / SWAP WPN TO SELECT · HOLD FIRE");
-        floatText(pu.mesh.position.clone(), "🔥 FUEL 200", { size: 40, color: "#ff6a00", strokeW: 7, life: 1.4 }, 0.9);
+        showMsg("🔥 FLAME EQUIPPED — HOLD FIRE · 3 or SWAP to reselect");
+        floatText(pu.mesh.position.clone(), "🔥 HOLD FIRE", { size: 44, color: "#ff6a00", strokeW: 8, life: 1.8 }, 1.0);
         SFX.purge();
         pu.mesh.visible = false;
       } else if (pu.kind === "pill") {
