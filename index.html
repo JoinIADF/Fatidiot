@@ -1918,6 +1918,64 @@ function buildStarbase() {
     g.add(box(1.2, 0.15, 0.4, 0x33363a, lx, 8.1, lz));
   }
 
+  /* Exterior X HQ when looking back from the lot (glass + white X + wing) */
+  {
+    const facadeZ = lotZ0 - 0.5;
+    const W = 54, H = 17, D = 9;
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(W, H, D),
+      new THREE.MeshLambertMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.95 })
+    );
+    glass.position.set(0, H / 2, facadeZ - D / 2);
+    g.add(glass);
+    for (let i = -7; i <= 7; i++) {
+      g.add(box(0.12, H, 0.1, 0x0a0c10, i * (W / 15), H / 2, facadeZ + 0.08));
+    }
+    for (let j = 0; j < 8; j++) {
+      g.add(box(W, 0.1, 0.1, 0x0a0c10, 0, 1.0 + j * 2.05, facadeZ + 0.08));
+    }
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col < 12; col++) {
+        if (Math.random() < 0.3) {
+          g.add(box(1.1, 0.85, 0.05, 0x3a4a5a, -22 + col * 3.8, 2.8 + row * 2.2, facadeZ + 0.12));
+        }
+      }
+    }
+    const logo = new THREE.Group();
+    const mkArm = (rz) => { const a = box(12, 1.4, 0.4, 0xf2f2f2, 0, 0, 0); a.rotation.z = rz; logo.add(a); };
+    mkArm(0.7); mkArm(-0.7);
+    logo.position.set(0, H * 0.6, facadeZ + 0.4);
+    g.add(logo);
+    g.add(box(30, 12, 14, 0xececec, W / 2 + 12, 6, facadeZ - 5));
+    g.add(box(30, 0.4, 14, 0xd0d0d0, W / 2 + 12, 12.2, facadeZ - 5));
+    g.add(box(14, 0.3, 5.5, 0x22262c, 0, 3.5, facadeZ + 3.2));
+    g.add(box(0.35, 3.5, 0.35, 0x22262c, -6, 1.75, facadeZ + 5));
+    g.add(box(0.35, 3.5, 0.35, 0x22262c, 6, 1.75, facadeZ + 5));
+    for (const [px, pz] of [[-16, 5], [-10, 6], [10, 6], [16, 5], [-22, 7], [22, 7]]) {
+      g.add(cyl(0.24, 0.32, 5.5, 0x8a6a40, px, 2.75, facadeZ + pz, 8));
+      for (let i = 0; i < 5; i++) {
+        const fr = box(0.12, 0.06, 2.5, 0x2d8a3e, px, 5.5, facadeZ + pz);
+        fr.rotation.y = (i / 5) * Math.PI * 2; fr.rotation.x = 0.5; g.add(fr);
+      }
+    }
+    g.add(box(42, 0.4, 3.5, 0x5a6068, 0, 0.18, facadeZ + 8));
+  }
+
+  /* Not-A-Flamethrower on the ground by the truck row */
+  {
+    const ft = buildFlamethrower();
+    ft.scale.setScalar(2.0);
+    ft.position.set(14, 0.55, lotZ0 + 16);
+    ft.rotation.set(0, -0.7, 0.15);
+    g.add(ft);
+    const tag = textSprite("NOT A FLAMETHROWER  [PICK UP]", { size: 34, color: "#ff6a00", strokeW: 7, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.9);
+    tag.position.set(14, 2.1, lotZ0 + 16);
+    g.add(tag);
+    g.userData.flamePickupMesh = ft;
+    g.userData.flamePickupPos = new THREE.Vector3(14, 0.4, lotZ0 + 16);
+  }
+
   scene.add(g);
 }
 
@@ -2079,6 +2137,13 @@ function activateStarbase() {
   pig.position.set(0, 0, FLOOR_D / 2 - 2);
   pigY = 0; pigVy = 0;
   bossPhraseIdx = 0;
+  if (starbaseGroup.userData.flamePickupMesh && !starbaseGroup.userData.flameSpawned) {
+    starbaseGroup.userData.flameSpawned = true;
+    pickups.push({
+      mesh: starbaseGroup.userData.flamePickupMesh,
+      t: 0, kind: "flamethrower", amount: 0, eject: false, vel: null, landY: 0.4,
+    });
+  }
   showMsg("HQ LOBBY — WALK OUT TO THE LOT");
 }
 
@@ -2461,6 +2526,35 @@ const rifleSlung = buildRifle();
 rifleSlung.rotation.set(0.35, Math.PI / 2, -0.45); /* tilt up over shoulder, slight roll */
 rifleSlung.position.set(0.42, 1.28, -0.38);       /* high, right, on the back */
 rifleSlung.scale.setScalar(1.45);                  /* big enough to read */
+
+function buildFlamethrower() {
+  const g = new THREE.Group();
+  const white = 0xf2f2f0, black = 0x1a1c1e, gray = 0x2a2e32;
+  g.add(box(1.35, 0.22, 0.2, white, 0.1, 0.05, 0));
+  g.add(box(0.9, 0.18, 0.22, black, -0.15, -0.02, 0));
+  const barrel = cyl(0.07, 0.09, 0.55, gray, 0.95, 0.04, 0, 10);
+  barrel.rotation.z = Math.PI / 2; g.add(barrel);
+  const noz = cyl(0.12, 0.14, 0.28, black, 1.4, 0.04, 0, 10);
+  noz.rotation.z = Math.PI / 2; g.add(noz);
+  const tank = cyl(0.12, 0.12, 0.55, black, 0.15, 0.32, 0, 12);
+  tank.rotation.z = Math.PI / 2; g.add(tank);
+  g.add(box(0.08, 0.08, 0.08, 0xc4a060, 0.45, 0.38, 0));
+  g.add(box(0.04, 0.04, 0.35, black, -0.35, 0.28, 0.05));
+  g.add(box(0.14, 0.35, 0.14, black, -0.25, -0.2, 0));
+  g.add(box(0.45, 0.16, 0.12, black, -0.7, 0.0, 0));
+  g.add(box(0.12, 0.28, 0.18, black, -0.95, -0.05, 0));
+  const mark = textSprite("BORING CO.", { size: 20, color: "#111111", strokeW: 3, maxWidth: 0 });
+  mark.scale.multiplyScalar(0.4);
+  mark.position.set(0.1, 0.22, 0.12);
+  g.add(mark);
+  return g;
+}
+flameWpn = buildFlamethrower();
+flameWpn.visible = false;
+flameWpn.rotation.set(0.2, Math.PI / 2, -0.3);
+flameWpn.position.set(-0.35, 1.15, -0.35);
+flameWpn.scale.setScalar(1.2);
+pig.add(flameWpn);
 rifleSlung.visible = true;
 pig.add(rifleSlung);
 
@@ -2866,7 +2960,9 @@ let mode = "title"; // title | play | over
 let score = 0, high = Number(localStorage.getItem(HS_KEY) || 0);
 let lives = 9, wave = 1, spawnQueue = 0, spawnT = 0, betweenT = 0;
 let invuln = 0, hitstop = 0, shake = 0;
-let weaponIdx = 0; // 0 boomerang, 1 rifle
+let weaponIdx = 0; // 0 boomerang, 1 rifle, 2 flamethrower
+let flameUnlocked = false, flameFuel = 0, flameCd = 0, flameFiring = false;
+let flameWpn = null;
 let charging = false, chargeT = 0, boomsOut = 0;
 let rifleCd = 0, lockTarget = null, lockT = 0, locked = false, ammo = 20;
 function pickDeepVoice() {
@@ -2994,11 +3090,14 @@ addEventListener("keydown", e => {
   if (e.code === "Space") e.preventDefault();
   if (mode === "play" && (e.code === "KeyQ" || e.code === "Tab")) {
     e.preventDefault();
-    weaponIdx = 1 - weaponIdx;
-    $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
-    $("chargeLabel").textContent = weaponIdx ? "LOCK-ON" : "X CHARGE";
+    const maxW = flameUnlocked ? 3 : 2;
+    weaponIdx = (weaponIdx + 1) % maxW;
+    const names = ["X BOOMERANG", "DEMONETIZER", "NOT-A-FLAMETHROWER"];
+    $("weaponV").textContent = names[weaponIdx] || "X BOOMERANG";
+    $("chargeLabel").textContent = weaponIdx === 0 ? "X CHARGE" : weaponIdx === 1 ? "LOCK-ON" : "FUEL";
     rifleHeld.visible = false;
-    rifleSlung.visible = true; /* always on back, facing backwards */
+    rifleSlung.visible = weaponIdx !== 2;
+    if (flameWpn) flameWpn.visible = weaponIdx === 2;
     locked = false; lockTarget = null; lockT = 0;
     beep(500, 0.05);
   }
@@ -3023,9 +3122,13 @@ renderer.domElement.addEventListener("mousedown", e => {
   if (!isMobile() && document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock(); return; }
   if (e.button === 0) {
     if (weaponIdx === 0) { charging = true; chargeT = 0; }
+    else if (weaponIdx === 2) { flameFiring = true; }
     else fireRifle();
   }
-  if (e.button === 2) fireRifle(); /* rifle always on right click */
+  if (e.button === 2) {
+    if (weaponIdx === 2) flameFiring = true;
+    else fireRifle();
+  }
 });
 addEventListener("contextmenu", e => e.preventDefault());
 addEventListener("mouseup", e => {
@@ -3033,6 +3136,7 @@ addEventListener("mouseup", e => {
     throwBoomerang(chargeT > 0.45);
     charging = false; chargeT = 0;
   }
+  if (e.button === 0 || e.button === 2) flameFiring = false;
 });
 overlay.addEventListener("click", () => {
   ac();
@@ -3059,6 +3163,9 @@ function startGame() {
   levelUpT = 0;
   clearLevelPortal();
   if (typeof deactivateStarbase === "function") deactivateStarbase();
+  flameUnlocked = false; flameFuel = 0; flameFiring = false; weaponIdx = 0;
+  if (flameWpn) flameWpn.visible = false;
+  if (rifleSlung) rifleSlung.visible = true;
   vendingsOpened = 0;
   sleepBagGranted = false;
   objectPhraseCd = 0;
@@ -3799,6 +3906,46 @@ function hitscanWorld(origin, dir, maxDist = 55) {
   return best;
 }
 
+function fireFlamethrower(dt) {
+  if (!flameUnlocked || weaponIdx !== 2) return;
+  if (flameFuel <= 0) {
+    if (Math.random() < 0.04) beep(120, 0.04, "square", 0.03);
+    return;
+  }
+  flameFuel = Math.max(0, flameFuel - 22 * dt);
+  const am = $("ammoV");
+  if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
+  const origin = pig.position.clone().add(new THREE.Vector3(0, 1.15, 0));
+  const dir = aimDir();
+  for (let i = 0; i < 5; i++) {
+    const spread = new THREE.Vector3((Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.25, (Math.random() - 0.5) * 0.35);
+    const vel = dir.clone().add(spread).normalize().multiplyScalar(14 + Math.random() * 6);
+    const col = pick([0xff6a00, 0xffaa00, 0xff3300, 0xffe080]);
+    const m = new THREE.Mesh(PART_GEO, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9 }));
+    m.position.copy(origin);
+    m.scale.setScalar(1.2 + Math.random() * 1.8);
+    particles.push({ mesh: m, grav: -2, vel, life: 0.25 + Math.random() * 0.2 });
+    scene.add(m);
+  }
+  shake = Math.max(shake, 0.12);
+  for (const e of enemies) {
+    if (e.dying != null) continue;
+    const toE = e.mesh.position.clone().sub(pig.position); toE.y = 0;
+    const dist = toE.length();
+    if (dist > 14 || dist < 0.4) continue;
+    toE.normalize();
+    if (toE.dot(dir) < 0.72) continue;
+    e.hp -= 14 * dt;
+    if (Math.random() < 0.12) burst(e.mesh.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xff6a00, 3, 3);
+    if (e.hp <= 0) {
+      if (e.type === "spammer") demonetize(e);
+      else { killEnemy(e); score += e.type === "reporter" ? 40 : 25; tickWallTimer(1); }
+      updateHud();
+    }
+  }
+  if (Math.random() < 0.18) { try { beep(70 + Math.random() * 50, 0.05, "sawtooth", 0.025); } catch (_) {} }
+}
+
 function fireRifle() {
   if (rifleCd > 0) return;
   if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
@@ -4374,11 +4521,14 @@ function update(dt) {
   pig.visible = invuln <= 0 || Math.sin(t * 30) > -0.3;
 
   /* charge */
+  if (flameFiring && mode === "play") fireFlamethrower(dt);
   if (charging) chargeT = Math.min(1, chargeT + dt);
   $("chargeFill").style.width = weaponIdx === 0
     ? `${Math.round((charging ? chargeT : 0) * 100)}%`
-    : `${Math.round(lockT / 0.5 * 100)}%`;
-  $("chargeFill").style.background = weaponIdx === 0 ? (chargeT > 0.45 ? "#ffd94a" : "#6cf") : (locked ? "#ff5040" : "#ffd200");
+    : weaponIdx === 2
+      ? `${Math.round(Math.min(100, flameFuel))}%`
+      : `${Math.round(lockT / 0.5 * 100)}%`;
+  $("chargeFill").style.background = weaponIdx === 0 ? (chargeT > 0.45 ? "#ffd94a" : "#6cf") : weaponIdx === 2 ? "#ff6a00" : (locked ? "#ff5040" : "#ffd200");
 
   /* ammo pickups */
   for (let i = pickups.length - 1; i >= 0; i--) {
@@ -4408,9 +4558,22 @@ function update(dt) {
       const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag") ? 0.55 : 0.4;
       pu.mesh.position.y = bob + Math.sin(pu.t * 3) * 0.12;
     }
-    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag") ? 1.6 : 1.3;
+    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag" || pu.kind === "flamethrower") ? 1.9 : 1.3;
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
-      if (pu.kind === "pill") {
+      if (pu.kind === "flamethrower") {
+        flameUnlocked = true;
+        flameFuel = 100;
+        weaponIdx = 2;
+        if (flameWpn) flameWpn.visible = true;
+        rifleSlung.visible = false;
+        $("weaponV").textContent = "NOT-A-FLAMETHROWER";
+        $("chargeLabel").textContent = "FUEL";
+        showMsg("NOT A FLAMETHROWER ACQUIRED");
+        floatText(pu.mesh.position.clone(), "🔥 BORING CO.", { size: 40, color: "#ff6a00", strokeW: 7, life: 1.4 }, 0.9);
+        SFX.purge();
+        /* hide world prop but don't destroy if parented to starbase */
+        pu.mesh.visible = false;
+      } else if (pu.kind === "pill") {
         speedBoost = Math.min(12, speedBoost + 5.5);
         SFX.pill();
         floatText(pu.mesh.position.clone(), "RX SPEED!", { size: 40, color: "#ff6ad5", strokeW: 6 }, 1.0);
@@ -4441,7 +4604,11 @@ function update(dt) {
         SFX.pickup();
         floatText(pu.mesh.position.clone(), `+${got} AMMO`, { size: 36, color: "#ffe27a", strokeW: 5 }, 0.9);
       }
-      scene.remove(pu.mesh);
+      if (pu.kind === "flamethrower") {
+        pu.mesh.visible = false;
+      } else {
+        scene.remove(pu.mesh);
+      }
       pickups.splice(i, 1);
     }
   }
@@ -4720,8 +4887,15 @@ function update(dt) {
       spawnQueue--;
       const r = Math.random();
       let kind = "bot";
-      if (r < 0.18) kind = "reporter";
-      else if (r < 0.18 + Math.min(0.4, 0.28 + wave * 0.03)) kind = "spammer";
+      if (typeof starbaseActive !== "undefined" && starbaseActive) {
+        /* L2 media swarm: mostly reporters, few bots */
+        if (r < 0.58) kind = "reporter";
+        else if (r < 0.82) kind = "spammer";
+        else kind = "bot";
+      } else {
+        if (r < 0.12) kind = "reporter";
+        else if (r < 0.12 + Math.min(0.4, 0.28 + wave * 0.03)) kind = "spammer";
+      }
       spawnEnemy(kind);
     }
   } else if (mode === "play" && levelUpT <= 0) {
