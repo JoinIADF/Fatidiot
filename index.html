@@ -315,7 +315,8 @@
   <span class="mobCtrl" style="display:none">LEFT stick — move · drag RIGHT half — aim<br>
   JUMP · X BOOM · RIFLE · SWAP buttons</span><br>
   Shoot vendings for RX · PCs/servers for complaints · CEO office rants<br>
-  Jump out windows to escape</p>
+  Jump out windows to escape<br>
+  <span style="opacity:.75;font-size:13px">Desktop: press <b>2</b> for Starbase (level 2) preview</span></p>
   <p class="go" id="overlayGo">TAP / CLICK TO ENLIST</p>
 </div>
 <div id="portalHint">JUMP INTO THE GROK PORTAL → NEXT LEVEL</div>
@@ -2617,6 +2618,9 @@ addEventListener("keydown", e => {
   }
   if (mode === "portal" && e.code === "Enter") { resumeFromPortal(); return; }
   if (mode === "over" && e.code === "Enter") startGame();
+  if ((mode === "title" || mode === "over") && (e.code === "Digit2" || e.code === "Numpad2")) {
+    previewLevel2();
+  }
 });
 addEventListener("keyup", e => {
   keys[e.code] = false;
@@ -4570,7 +4574,29 @@ setInterval(() => {
   if (mode === "play" && mobileFireHeld && weaponIdx === 1) fireRifle();
 }, 160);
 
-window.__game = { startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile, get enemies() { return enemies; }, get pig() { return pig; } };
+function previewLevel2() {
+  if (mode === "title" || mode === "over" || mode === "portal") startGame();
+  /* jump straight into Starbase shift */
+  wave = 1;
+  wallQuota = 0;
+  clearLevelPortal();
+  levelUpT = 0;
+  levelUp(); /* wave -> 2, activateStarbase */
+  showMsg("STARBASE PREVIEW");
+  updateHud();
+}
+window.__game = {
+  startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
+  previewLevel2, activateStarbase, levelUp,
+  get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
+};
+/* deep-link: ?level=2 skips to Starbase for preview */
+try {
+  const q = new URLSearchParams(location.search);
+  if (q.get("level") === "2" || q.get("starbase") === "1") {
+    setTimeout(() => { try { previewLevel2(); } catch (e) { console.error(e); } }, 400);
+  }
+} catch (_) {}
 window.__cam = camera;
 window.__renderer = renderer;
 window.__scene = scene;
