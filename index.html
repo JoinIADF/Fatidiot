@@ -2382,6 +2382,7 @@ addEventListener("keydown", e => {
     locked = false; lockTarget = null; lockT = 0;
     beep(500, 0.05);
   }
+  if (mode === "portal" && e.code === "Enter") { resumeFromPortal(); return; }
   if (mode === "over" && e.code === "Enter") startGame();
 });
 addEventListener("keyup", e => {
