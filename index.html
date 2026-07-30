@@ -4443,8 +4443,9 @@ function update(dt) {
         gu.spawnT = rand(2.4, 3.6);
         const roll = Math.random();
         if (roll < 0.45) spawnEnemy("bot");
-        else if (roll < 0.75) spawnEnemy("spammer");
-        else if (roll < 0.92) spawnEnemy("reporter");
+        else if (roll < 0.80) spawnEnemy("spammer");
+        else if (wave >= 2 && roll < 0.95) spawnEnemy("reporter");
+        /* L1 dog rage: bots/spammers only */
         floatText(grok.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
           pick(["SIC 'EM", "MORE BOTS", "SPAM THEM", "GO GET HIM", "BARK BARK"]),
           { size: 32, color: "#ff6a4a", strokeW: 5 }, 0.75);
@@ -4986,13 +4987,14 @@ function update(dt) {
       const r = Math.random();
       let kind = "bot";
       if (typeof starbaseActive !== "undefined" && starbaseActive) {
-        /* L2: fewer reporters */
+        /* L2 only: reporters */
         if (r < 0.32) kind = "reporter";
         else if (r < 0.58) kind = "spammer";
         else kind = "bot";
       } else {
-        if (r < 0.08) kind = "reporter";
-        else if (r < 0.08 + Math.min(0.32, 0.22 + wave * 0.03)) kind = "spammer";
+        /* Level 1: bots + spammers only — no media pack */
+        if (r < Math.min(0.38, 0.28 + wave * 0.03)) kind = "spammer";
+        else kind = "bot";
       }
       spawnEnemy(kind);
     }
