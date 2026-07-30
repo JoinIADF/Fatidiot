@@ -1511,6 +1511,10 @@ for (const c of computers) {
 
 /* Elon rant text */
 const RANTS = BOSS_KILL_PHRASES; /* full boss list for door ambient too */
+let rantTimer = 2.5;
+let rantIdx = 0;
+let rantSprite = null;
+let rantLife = 0;
 function spamLabelTex() {
   /* modeled on the real can: deep navy label, yellow serif SPAM®, burger art */
   const t = canvasTex(512, 256, (g, w, h) => {
