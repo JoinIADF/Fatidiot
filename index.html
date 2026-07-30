@@ -1413,14 +1413,14 @@ bossHitbox.z = bossOffice.z;
     new THREE.BoxGeometry(4.8, 1.15, 0.12),
     new THREE.MeshLambertMaterial({ map: bossSignTex })
   );
-  bossSign.position.set(0, 3.85, 0.2);
+  bossSign.position.set(0, 3.55, 0.2);
   bossSign.castShadow = true;
   front.add(bossSign);
-  /* lit world-space label so it reads from distance */
-  const bossTag = textSprite("BOSS' OFFICE", { size: 64, color: "#ffd94a", strokeW: 10, maxWidth: 0 });
-  bossTag.scale.multiplyScalar(1.15);
-  bossTag.position.set(0, 5.05, 0.35);
-  front.add(bossTag);
+  /* crown frieze / cornice across the top of the facade (was present as top trim) */
+  front.add(box(W + 0.2, 0.28, 0.4, 0x3c2c1e, 0, H + 0.05, 0.08));
+  front.add(box(W + 0.35, 0.12, 0.5, 0x2a1e14, 0, H + 0.22, 0.05));
+  /* gold accent strip under frieze */
+  front.add(box(W - 0.4, 0.06, 0.14, 0xd4a84a, 0, H - 0.12, 0.18));
   /* windows with twisted blinds each side of door */
   const glassM = new THREE.MeshLambertMaterial({ color: 0xbcd8ea, transparent: true, opacity: 0.12 });
   for (const wx of [-3.4, 3.4]) {
@@ -3254,7 +3254,7 @@ function update(dt) {
     bossHitbox.phraseT = Math.max(0, bossHitbox.phraseT - dt);
     if (bossHitbox.phraseT <= 0 && !bossPhraseActive()) {
       /* slow, single-file rants */
-      tryEmitBossPhrase(elon.position.clone().add(new THREE.Vector3(0, 3.95, 0)));
+      tryEmitBossPhrase(elon.position.clone().add(new THREE.Vector3(0, 4.6, 0)));
       if (bossHitbox.phraseT <= 0) bossHitbox.phraseT = rand(4.0, 5.5);
     }
     if (bossHitbox.stormT <= 0) {
@@ -3275,9 +3275,9 @@ function update(dt) {
     rantSprite = textSprite(RANTS[rantIdx % RANTS.length], {
       size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 0
     });
-    rantSprite.scale.multiplyScalar(0.42);
-    /* one clean line above the CEO door */
-    rantSprite.position.set(bossOffice.x, 3.95, bossOffice.z + 5.2);
+    rantSprite.scale.multiplyScalar(0.55);
+    /* one clean line ABOVE the office frieze (not the BOSS' OFFICE poster) */
+    rantSprite.position.set(bossOffice.x, 5.6, bossOffice.z + 5.2);
     scene.add(rantSprite);
     rantIdx++; rantLife = 3.8; rantTimer = 8.5;
     eu.rage = 2.2;
@@ -3294,7 +3294,8 @@ function update(dt) {
       /* keep rants compact and fully under the ceiling (wallH ≈ 7) */
       const s = Math.min(1.55, 14 / aspect) * grow * fade;
       rantSprite.scale.set(aspect * s, s, 1);
-      rantSprite.position.y = 3.0 + (4.5 - rantLife) * 0.35;
+      /* stay high above plaque / frieze */
+      rantSprite.position.y = 5.35 + (4.5 - rantLife) * 0.25;
     }
     if (rantLife <= 0) { scene.remove(rantSprite); rantSprite = null; }
   }
