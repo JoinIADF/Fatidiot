@@ -2825,12 +2825,11 @@ function hitGrok(point) {
   } else {
     floatText(p.clone().add(new THREE.Vector3(0, 0.4, 0)), "BARK!", { size: 40, color: "#ff8c2a", strokeW: 6 }, 0.9);
   }
-  /* each shot extends rage and dumps a quick wave of bots + spammers */
-  gu.rageT = Math.max(gu.rageT, 14);
-  gu.spawnT = Math.min(gu.spawnT, 0.15);
-  /* immediate partial dump */
-  for (let i = 0; i < 2; i++) spawnEnemy("bot");
-  spawnEnemy("spammer");
+  /* each shot extends rage lightly — fewer reinforcements */
+  gu.rageT = Math.max(gu.rageT, 7);
+  gu.spawnT = Math.min(gu.spawnT, 0.8);
+  /* immediate: just one extra bot */
+  spawnEnemy("bot");
   return true;
 }
 function enrageBoss() {
@@ -3288,14 +3287,14 @@ function update(dt) {
       if (Math.sin(t * 20) > 0.7) {
         burst(grok.position.clone().add(new THREE.Vector3(rand(-0.3, 0.3), 0.5, rand(-0.3, 0.3))), 0xff3030, 2, 2, 10);
       }
-      /* summon bots + spammers while enraged */
+      /* summon bots + spammers while enraged — toned down */
       gu.spawnT -= dt;
       if (gu.spawnT <= 0) {
-        gu.spawnT = rand(0.55, 0.95);
+        gu.spawnT = rand(1.6, 2.4);
         const roll = Math.random();
-        if (roll < 0.4) spawnEnemy("spammer");
-        else if (roll < 0.75) { spawnEnemy("bot"); spawnEnemy("bot"); }
-        else { spawnEnemy("spammer"); spawnEnemy("bot"); }
+        if (roll < 0.55) spawnEnemy("bot");
+        else if (roll < 0.85) spawnEnemy("spammer");
+        else { spawnEnemy("bot"); spawnEnemy("spammer"); } /* rare double */
         floatText(grok.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
           pick(["SIC 'EM", "MORE BOTS", "SPAM THEM", "GO GET HIM", "BARK BARK"]),
           { size: 32, color: "#ff6a4a", strokeW: 5 }, 0.75);
