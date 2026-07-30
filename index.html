@@ -1919,6 +1919,7 @@ function buildStarbase() {
     const W = 54, H = 17, D = 9;
     const gap = 12;
     const wingW = (W - gap) / 2;
+    const doorOpenH = 5.4; /* keep walkway clear under the X */
     const glassM = new THREE.MeshLambertMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.95 });
     const leftG = new THREE.Mesh(new THREE.BoxGeometry(wingW, H, D), glassM);
     leftG.position.set(-(gap + wingW) / 2, H / 2, facadeZ - D / 2);
@@ -1926,6 +1927,11 @@ function buildStarbase() {
     const rightG = new THREE.Mesh(new THREE.BoxGeometry(wingW, H, D), glassM);
     rightG.position.set((gap + wingW) / 2, H / 2, facadeZ - D / 2);
     g.add(rightG);
+    /* solid black face BEHIND the X (upper center only) — doorway stays open below */
+    const blackH = H - doorOpenH;
+    g.add(box(gap + 0.4, blackH, D * 0.85, 0x050608, 0, doorOpenH + blackH / 2, facadeZ - D / 2));
+    /* thin black backplate right behind the logo so no sky shows through the X */
+    g.add(box(gap + 1.5, blackH + 0.5, 0.35, 0x000000, 0, doorOpenH + blackH / 2, facadeZ + 0.15));
     for (let i = -7; i <= 7; i++) {
       g.add(box(0.12, H, 0.1, 0x0a0c10, i * (W / 15), H / 2, facadeZ + 0.08));
     }
