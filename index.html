@@ -1510,11 +1510,7 @@ for (const c of computers) {
 }
 
 /* Elon rant text */
-const RANTS = BOSS_KILL_PHRASES; /* full boss list for door ambient too */
-let rantTimer = 2.5;
-let rantIdx = 0;
-let rantSprite = null;
-let rantLife = 0;
+const RANTS = BOSS_KILL_PHRASES.slice(); /* ambient uses full boss list */
 function spamLabelTex() {
   /* modeled on the real can: deep navy label, yellow serif SPAM®, burger art */
   const t = canvasTex(512, 256, (g, w, h) => {
@@ -2525,7 +2521,7 @@ function bossPhraseActive() {
   return spamTexts.some(s => s.kind === "boss");
 }
 function tryEmitBossPhrase(origin, force = false) {
-  /* one at a time — cycle the full list so every line gets used */
+  /* one at a time — cycle full list so every line is used */
   if (bossPhraseActive()) return false;
   if (!force && bossHitbox.phraseT > 0) return false;
   emitPhrase(origin, nextBossPhrase(), {
@@ -2541,9 +2537,7 @@ function hitBossOffice(point) {
   const origin = point
     ? new THREE.Vector3(point.x, 4.2, point.z)
     : new THREE.Vector3(bossHitbox.x, 4.2, bossHitbox.z + 3.5);
-  /* force next line from the full list when possible */
   if (!tryEmitBossPhrase(origin, true)) {
-    /* one already flying — queue sooner */
     bossHitbox.phraseT = Math.min(bossHitbox.phraseT, 0.35);
   }
   return true;
@@ -2902,7 +2896,7 @@ function update(dt) {
     eu.armR.rotation.z = -2.8 - Math.sin(t * 18 + 1) * 0.35;
     bossHitbox.phraseT = Math.max(0, bossHitbox.phraseT - dt);
     if (bossHitbox.phraseT <= 0 && !bossPhraseActive()) {
-      /* single-file rants — full list, steady pace */
+      /* slow, single-file rants */
       tryEmitBossPhrase(elon.position.clone().add(new THREE.Vector3(0, 4.6, 0)));
       if (bossHitbox.phraseT <= 0) bossHitbox.phraseT = rand(2.0, 2.8);
     }
