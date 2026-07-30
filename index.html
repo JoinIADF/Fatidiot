@@ -1582,6 +1582,239 @@ const elon = new THREE.Group();
   scene.add(g);
 }
 
+
+/* ============================== STARBASE (LEVEL 2+) ============================== */
+const starbaseGroup = new THREE.Group();
+starbaseGroup.visible = false;
+let starbaseActive = false;
+let bossTruck = null;
+
+function buildCybertruck(x, y, z, rotY = 0, isBoss = false) {
+  const g = new THREE.Group();
+  const steel = 0xb8bcc0;
+  const dark = 0x1a1c1e;
+  /* angular body — flat exoskeleton */
+  g.add(box(2.4, 0.85, 5.2, steel, 0, 0.95, 0));
+  /* cabin wedge */
+  const cabin = box(2.2, 0.75, 2.4, steel, 0, 1.55, -0.35);
+  cabin.rotation.x = -0.12;
+  g.add(cabin);
+  /* windshield dark */
+  g.add(box(2.0, 0.55, 0.08, 0x0a0c10, 0, 1.7, -1.45));
+  /* bed */
+  g.add(box(2.15, 0.35, 1.8, steel, 0, 1.15, 1.55));
+  /* wheels */
+  for (const [wx, wz] of [[-1.0, -1.5], [1.0, -1.5], [-1.0, 1.5], [1.0, 1.5]]) {
+    g.add(cyl(0.42, 0.42, 0.35, dark, wx, 0.42, wz, 12));
+  }
+  /* headlights */
+  g.add(box(0.35, 0.08, 0.06, 0xe8f0ff, -0.7, 1.05, -2.55));
+  g.add(box(0.35, 0.08, 0.06, 0xe8f0ff, 0.7, 1.05, -2.55));
+  if (isBoss) {
+    /* interior glow — boss grinding on a laptop in the front seat */
+    const glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.55, 0.35),
+      new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0.85 })
+    );
+    glow.position.set(0.25, 1.55, -0.9);
+    glow.rotation.x = -0.5;
+    g.add(glow);
+    /* tiny dashboard laptop */
+    g.add(box(0.5, 0.04, 0.35, 0x22262c, 0.25, 1.42, -0.85));
+    const tag = textSprite("BOSS' CYBERTRUCK", { size: 42, color: "#ffd94a", strokeW: 8, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.7);
+    tag.position.set(0, 2.85, 0);
+    g.add(tag);
+  }
+  g.position.set(x, y, z);
+  g.rotation.y = rotY;
+  g.userData.isBossTruck = isBoss;
+  return g;
+}
+
+function buildStarship(x, z, h = 28) {
+  const g = new THREE.Group();
+  const steel = 0xc5cdd4;
+  /* stack */
+  g.add(cyl(2.4, 2.6, h * 0.72, steel, 0, h * 0.36, 0, 20));
+  /* nose */
+  g.add(cyl(0.15, 2.4, h * 0.22, steel, 0, h * 0.72 + h * 0.11, 0, 16));
+  /* fins */
+  for (const a of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) {
+    const fin = box(0.12, h * 0.18, 1.8, steel, Math.cos(a) * 2.2, h * 0.12, Math.sin(a) * 2.2);
+    g.add(fin);
+  }
+  /* heat tile band */
+  g.add(cyl(2.62, 2.62, 1.2, 0x3a3a3a, 0, 2.2, 0, 20));
+  g.position.set(x, 0, z);
+  return g;
+}
+
+function buildStarbase() {
+  const g = starbaseGroup;
+  while (g.children.length) g.remove(g.children[0]);
+
+  /* asphalt lot */
+  const asphalt = canvasTex(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = "#3a3d42"; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "#2e3136"; ctx.lineWidth = 2;
+    for (let i = 0; i < 20; i++) {
+      ctx.beginPath();
+      ctx.moveTo(Math.random() * w, Math.random() * h);
+      ctx.lineTo(Math.random() * w, Math.random() * h);
+      ctx.stroke();
+    }
+    /* parking lines */
+    ctx.strokeStyle = "#c8c8a8"; ctx.lineWidth = 3;
+    for (let x = 40; x < w; x += 48) {
+      ctx.beginPath(); ctx.moveTo(x, 20); ctx.lineTo(x, h - 20); ctx.stroke();
+    }
+  });
+  asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
+  asphalt.repeat.set(8, 6);
+  const lot = new THREE.Mesh(
+    new THREE.PlaneGeometry(FLOOR_W * 1.1, FLOOR_D * 1.1),
+    new THREE.MeshLambertMaterial({ map: asphalt })
+  );
+  lot.rotation.x = -Math.PI / 2;
+  lot.position.y = 0.04;
+  g.add(lot);
+
+  /* outdoor sky dome tint via large far planes / photo backdrops */
+  const loader = new THREE.TextureLoader();
+  const mkWall = (url, w, h, x, y, z, ry = 0) => {
+    const t = loader.load(url);
+    t.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, h),
+      new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide })
+    );
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    g.add(m);
+    return m;
+  };
+  /* HQ glass building facade (north) */
+  mkWall("./starbase-hq.jpg", 42, 22, 0, 11, -FLOOR_D / 2 + 2, 0);
+  /* SpaceX gate (west) */
+  mkWall("./starbase-gate.jpg", 28, 16, -FLOOR_W / 2 + 4, 8, 10, Math.PI / 2);
+  /* Starship photo backdrop (east-ish) */
+  mkWall("./starbase-ships.jpg", 36, 20, FLOOR_W / 2 - 6, 10, -15, -Math.PI / 2);
+
+  /* procedural Super Heavy / Starship stack pair in front of photo */
+  const shipA = buildStarship(-10, -28, 32);
+  const shipB = buildStarship(8, -30, 30);
+  g.add(shipA, shipB);
+  blockArea(-10, -28, 3.2, 3.2, 30);
+  blockArea(8, -30, 3.2, 3.2, 28);
+
+  /* tower / crane hints */
+  g.add(box(1.2, 26, 1.2, 0x8a9098, 22, 13, -22));
+  g.add(box(18, 0.4, 0.4, 0xc45a20, 22, 24, -22));
+  blockArea(22, -22, 1.5, 1.5, 26);
+
+  /* cybertruck parking rows */
+  const truckSpots = [
+    [-28, 8, 0.4], [-28, 16, 0.4], [-28, 24, 0.4],
+    [-22, 8, 0.4], [-22, 16, 0.4], [-22, 24, 0.4],
+    [24, 12, -0.5], [24, 20, -0.5], [24, 28, -0.5],
+    [18, 14, -0.5], [18, 22, -0.5],
+    [-14, 22, 1.2], [-6, 24, 1.0], [4, 22, -1.0],
+  ];
+  for (const [tx, tz, ry] of truckSpots) {
+    const tr = buildCybertruck(tx, 0, tz, ry, false);
+    g.add(tr);
+    blockArea(tx, tz, 1.4, 2.6, 2.2);
+  }
+
+  /* BOSS cybertruck parked right in front of the rockets */
+  bossTruck = buildCybertruck(0, 0, -18, 0, true);
+  g.add(bossTruck);
+  blockArea(0, -18, 1.5, 2.8, 2.4);
+
+  /* palm trees (simple) */
+  for (const [px, pz] of [[-35, -5], [-32, 12], [30, -8], [33, 15], [-20, -20], [15, 30], [-40, 25]]) {
+    const trunk = cyl(0.25, 0.35, 5.5, 0x8a6a40, px, 2.75, pz, 8);
+    g.add(trunk);
+    for (let i = 0; i < 6; i++) {
+      const fr = box(0.15, 0.08, 2.8, 0x2d8a3e, px, 5.6, pz);
+      fr.rotation.y = (i / 6) * Math.PI * 2;
+      fr.rotation.x = 0.55;
+      g.add(fr);
+    }
+  }
+
+  /* SpaceX lettering billboard near entrance */
+  const sxSign = textSprite("STARBASE", { size: 72, color: "#ffffff", strokeW: 10, maxWidth: 0 });
+  sxSign.scale.multiplyScalar(2.2);
+  sxSign.position.set(0, 8, 32);
+  g.add(sxSign);
+  const sx2 = textSprite("OUTDOOR OPS — NO PTO", { size: 40, color: "#ffd94a", strokeW: 7, maxWidth: 0 });
+  sx2.scale.multiplyScalar(1.2);
+  sx2.position.set(0, 6.2, 32);
+  g.add(sx2);
+
+  /* fence line */
+  for (let x = -50; x <= 50; x += 4) {
+    g.add(box(0.15, 2.2, 0.15, 0x22262c, x, 1.1, FLOOR_D / 2 - 3));
+  }
+
+  scene.add(g);
+}
+
+buildStarbase();
+
+function activateStarbase() {
+  if (starbaseActive) return;
+  starbaseActive = true;
+  starbaseGroup.visible = true;
+  /* outdoor atmosphere */
+  scene.background = new THREE.Color(0x87a0b8);
+  scene.fog = new THREE.Fog(0x9eb4c8, 55, 160);
+  /* move boss into the Cybertruck — still grinding on a screen */
+  if (bossTruck && typeof elon !== "undefined") {
+    const p = bossTruck.position;
+    elon.userData.homeX = p.x + 0.2;
+    elon.userData.homeZ = p.z - 0.35;
+    elon.position.set(elon.userData.homeX, 0.85, elon.userData.homeZ);
+    elon.scale.setScalar(0.92);
+    elon.rotation.y = Math.PI; /* facing dash / screen */
+    /* boss hitbox = cybertruck */
+    bossHitbox.x = p.x;
+    bossHitbox.z = p.z;
+    bossHitbox.hw = 1.8;
+    bossHitbox.hd = 3.0;
+  }
+  /* Grok chill near the trucks */
+  if (typeof grok !== "undefined" && grok.userData) {
+    grok.userData.home = new THREE.Vector3(-12, 0, -12);
+    grok.position.copy(grok.userData.home);
+  }
+  showMsg("STARBASE — JUMP THE PORTAL TO THE LOT");
+  /* reposition player outside near trucks */
+  pig.position.set(0, 0, 12);
+  pigY = 0; pigVy = 0;
+}
+
+function deactivateStarbase() {
+  starbaseActive = false;
+  starbaseGroup.visible = false;
+  scene.background = new THREE.Color(0xdfe4ea);
+  scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
+  if (typeof elon !== "undefined" && elon.userData) {
+    elon.userData.homeX = bossOffice.x;
+    elon.userData.homeZ = bossOffice.z - 0.6;
+    elon.position.set(elon.userData.homeX, 0, elon.userData.homeZ);
+    elon.scale.setScalar(1);
+    elon.rotation.y = Math.PI;
+  }
+  bossHitbox.x = bossOffice.x;
+  bossHitbox.z = bossOffice.z;
+  bossHitbox.hw = 6.2;
+  bossHitbox.hd = 4.8;
+}
+
+
 /* refresh computer aim points from world matrices */
 scene.updateMatrixWorld(true);
 for (const c of computers) {
@@ -2435,6 +2668,7 @@ function startGame() {
   speedBoost = 0; deathKind = null;
   levelUpT = 0;
   clearLevelPortal();
+  if (typeof deactivateStarbase === "function") deactivateStarbase();
   vendingsOpened = 0;
   sleepBagGranted = false;
   objectPhraseCd = 0;
@@ -2563,7 +2797,7 @@ function openLevelPortal() {
   wallQuota = 0;
   wallTimerDirty = true;
   updateHud();
-  showMsg("GROK PORTAL OPEN — JUMP IN!");
+  showMsg(starbaseActive ? "GROK PORTAL — NEXT STARBASE SHIFT!" : "GROK PORTAL OPEN — JUMP IN!");
   SFX.wave();
   SFX.purge();
   shake = Math.max(shake, 0.55);
@@ -2690,11 +2924,15 @@ function levelUp() {
   wave++;
   const next = wave * 100; /* 100, 200, 300… */
   setWallQuota(next);
+  /* Level 2+ = Starbase outdoor lot */
+  if (wave >= 2) activateStarbase();
   /* dump a surge of faster bots + spammers */
   const surge = 6 + wave * 4;
   spawnQueue += surge;
   spawnT = 0.12;
-  showMsg(`LEVEL ${wave} — TIMER ${next}`);
+  showMsg(wave >= 2
+    ? `STARBASE LV ${wave} — KILL ${next}`
+    : `LEVEL ${wave} — TIMER ${next}`);
   SFX.wave();
   SFX.purge();
   shake = Math.max(shake, 0.45);
@@ -3493,8 +3731,9 @@ function update(dt) {
     bossHitbox.stormT -= dt;
     eu.rage = Math.max(eu.rage, 1);
     eu.stormAng = (eu.stormAng || 0) + dt * 2.8;
-    const sx = eu.homeX + Math.cos(eu.stormAng) * 2.4;
-    const sz = eu.homeZ + Math.sin(eu.stormAng * 1.3) * 1.6;
+    const stormR = starbaseActive ? 0.55 : 2.4;
+    const sx = eu.homeX + Math.cos(eu.stormAng) * stormR;
+    const sz = eu.homeZ + Math.sin(eu.stormAng * 1.3) * (starbaseActive ? 0.35 : 1.6);
     elon.position.x += (sx - elon.position.x) * Math.min(1, dt * 4);
     elon.position.z += (sz - elon.position.z) * Math.min(1, dt * 4);
     elon.rotation.y = Math.atan2(pig.position.x - elon.position.x, pig.position.z - elon.position.z);
