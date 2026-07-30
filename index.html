@@ -2036,12 +2036,12 @@ function spawnEnemy(type) {
     /* bot-like spam phrase floating above */
     const phrase = pick(BOT_PHRASES);
     const botTag = textSprite(phrase, {
-      size: 31, /* +30% */
+      size: 48,
       color: variant === "heavy" ? "#ff8c2a" : variant === "scout" ? "#7cffb0" : "#ff6a6a",
-      strokeW: 5
+      strokeW: 8
     });
-    botTag.position.set(0, variant === "heavy" ? 3.15 : 2.75, 0);
-    botTag.scale.multiplyScalar(0.65); /* +30% */
+    botTag.position.set(0, variant === "heavy" ? 3.35 : 2.95, 0);
+    botTag.scale.multiplyScalar(0.95);
     e.mesh.add(botTag);
     e.tag = botTag;
     e.tagPhrase = phrase;
@@ -2049,9 +2049,9 @@ function spawnEnemy(type) {
   }
   if (e.type === "spammer") {
     const phrase = pick(SPAM_PHRASES);
-    const spamTag = textSprite(phrase, { size: 28, color: "#ffd200", strokeW: 5, maxWidth: 0 });
-    spamTag.position.set(0, 2.35, 0);
-    spamTag.scale.multiplyScalar(0.55);
+    const spamTag = textSprite(phrase, { size: 46, color: "#ffd200", strokeW: 8, maxWidth: 0 });
+    spamTag.position.set(0, 2.55, 0);
+    spamTag.scale.multiplyScalar(0.9);
     e.mesh.add(spamTag);
     e.tag = spamTag;
     e.tagPhrase = phrase;
@@ -3624,19 +3624,19 @@ function update(dt) {
           e.mesh.remove(e.tag);
           if (e.type === "spammer" || e.tagKind === "spam") {
             const phrase = pick(SPAM_PHRASES);
-            e.tag = textSprite(phrase, { size: 28, color: "#ffd200", strokeW: 5, maxWidth: 0 });
-            e.tag.position.set(0, 2.35, 0);
-            e.tag.scale.multiplyScalar(0.55);
+            e.tag = textSprite(phrase, { size: 46, color: "#ffd200", strokeW: 8, maxWidth: 0 });
+            e.tag.position.set(0, 2.55, 0);
+            e.tag.scale.multiplyScalar(0.9);
             e.tagKind = "spam";
           } else {
             const phrase = pick(BOT_PHRASES);
             e.tag = textSprite(phrase, {
-              size: 31,
+              size: 48,
               color: e.variant === "heavy" ? "#ff8c2a" : e.variant === "scout" ? "#7cffb0" : "#ff6a6a",
-              strokeW: 5
+              strokeW: 8
             });
-            e.tag.position.set(0, e.variant === "heavy" ? 3.15 : 2.75, 0);
-            e.tag.scale.multiplyScalar(0.65);
+            e.tag.position.set(0, e.variant === "heavy" ? 3.35 : 2.95, 0);
+            e.tag.scale.multiplyScalar(0.95);
           }
           e.mesh.add(e.tag);
         }
