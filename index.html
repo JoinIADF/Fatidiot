@@ -1976,6 +1976,30 @@ function buildStarbase() {
     g.userData.flamePickupPos = new THREE.Vector3(14, 0.4, lotZ0 + 16);
   }
 
+  /* ROCKET FUEL refill station near the Starships */
+  {
+    const tankG = new THREE.Group();
+    /* big orange/white fuel tank */
+    tankG.add(cyl(1.6, 1.6, 4.2, 0xe8a020, 0, 2.3, 0, 16));
+    tankG.add(cyl(1.65, 1.65, 0.35, 0xf2f2f0, 0, 4.3, 0, 16));
+    tankG.add(cyl(1.65, 1.65, 0.35, 0xf2f2f0, 0, 0.4, 0, 16));
+    tankG.add(box(0.5, 1.2, 0.5, 0x3a3e42, 1.4, 1.2, 0)); /* pump stand */
+    tankG.add(box(0.25, 0.25, 1.2, 0x22262c, 1.4, 1.8, 0.5)); /* hose */
+    tankG.add(box(3.5, 0.15, 3.5, 0x4a4e54, 0, 0.08, 0)); /* pad */
+    const label = textSprite("ROCKET FUEL", { size: 48, color: "#ffd94a", strokeW: 9, maxWidth: 0 });
+    label.scale.multiplyScalar(1.1);
+    label.position.set(0, 5.2, 0);
+    tankG.add(label);
+    const label2 = textSprite("REFILL FLAMETHROWER", { size: 28, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
+    label2.scale.multiplyScalar(0.85);
+    label2.position.set(0, 4.7, 0);
+    tankG.add(label2);
+    tankG.position.set(-4, 0, padZ + 6);
+    g.add(tankG);
+    blockArea(-4, padZ + 6, 2.0, 2.0, 4.5);
+    g.userData.fuelTankPos = new THREE.Vector3(-4, 0, padZ + 6);
+  }
+
   scene.add(g);
 }
 
@@ -2134,7 +2158,8 @@ function activateStarbase() {
     grok.userData.home = new THREE.Vector3(-8, 0, FLOOR_D / 2 + 6);
     grok.position.copy(grok.userData.home);
   }
-  pig.position.set(0, 0, FLOOR_D / 2 - 2);
+  /* start out on the lot — past the wall so camera isn't jammed into the ceiling */
+  pig.position.set(0, 0, FLOOR_D / 2 + 14);
   pigY = 0; pigVy = 0;
   bossPhraseIdx = 0;
   if (starbaseGroup.userData.flamePickupMesh && !starbaseGroup.userData.flameSpawned) {
@@ -3091,14 +3116,7 @@ addEventListener("keydown", e => {
   if (e.code === "Space") e.preventDefault();
   if (mode === "play" && (e.code === "KeyQ" || e.code === "Tab")) {
     e.preventDefault();
-    const maxW = flameUnlocked ? 3 : 2;
-    weaponIdx = (weaponIdx + 1) % maxW;
-    const names = ["X BOOMERANG", "DEMONETIZER", "NOT-A-FLAMETHROWER"];
-    $("weaponV").textContent = names[weaponIdx] || "X BOOMERANG";
-    $("chargeLabel").textContent = weaponIdx === 0 ? "X CHARGE" : weaponIdx === 1 ? "LOCK-ON" : "FUEL";
-    rifleHeld.visible = false;
-    rifleSlung.visible = weaponIdx !== 2;
-    if (flameWpn) flameWpn.visible = weaponIdx === 2;
+    cycleWeapon();
     locked = false; lockTarget = null; lockT = 0;
     beep(500, 0.05);
   }
@@ -3907,13 +3925,29 @@ function hitscanWorld(origin, dir, maxDist = 55) {
   return best;
 }
 
+function cycleWeapon() {
+  const maxW = flameUnlocked ? 3 : 2;
+  weaponIdx = (weaponIdx + 1) % maxW;
+  const names = ["X BOOMERANG", "DEMONETIZER", "NOT-A-FLAMETHROWER"];
+  if ($("weaponV")) $("weaponV").textContent = names[weaponIdx] || "X BOOMERANG";
+  if ($("chargeLabel")) {
+    $("chargeLabel").textContent = weaponIdx === 0 ? "X CHARGE" : weaponIdx === 1 ? "LOCK-ON" : "FUEL";
+  }
+  if (typeof rifleHeld !== "undefined" && rifleHeld) rifleHeld.visible = false;
+  if (typeof rifleSlung !== "undefined" && rifleSlung) rifleSlung.visible = weaponIdx !== 2;
+  if (flameWpn) flameWpn.visible = weaponIdx === 2;
+  locked = false; lockTarget = null; lockT = 0;
+  if (weaponIdx === 2) showMsg("NOT-A-FLAMETHROWER — HOLD FIRE");
+}
+
 function fireFlamethrower(dt) {
   if (!flameUnlocked || weaponIdx !== 2) return;
   if (flameFuel <= 0) {
     if (Math.random() < 0.04) beep(120, 0.04, "square", 0.03);
     return;
   }
-  flameFuel = Math.max(0, flameFuel - 22 * dt);
+  /* burn ~12 fuel/sec → ~16s continuous with full tank */
+  flameFuel = Math.max(0, flameFuel - 12 * dt);
   const am = $("ammoV");
   if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.15, 0));
@@ -4523,11 +4557,24 @@ function update(dt) {
 
   /* charge */
   if (flameFiring && mode === "play") fireFlamethrower(dt);
+  /* rocket fuel station refill */
+  if (mode === "play" && starbaseActive && flameUnlocked && starbaseGroup.userData.fuelTankPos) {
+    const fp = starbaseGroup.userData.fuelTankPos;
+    if (Math.hypot(pig.position.x - fp.x, pig.position.z - fp.z) < 4.5) {
+      if (flameFuel < 200) {
+        flameFuel = Math.min(200, flameFuel + 55 * dt);
+        if (Math.random() < 0.08) {
+          showMsg("ROCKET FUEL +REFILL");
+          const am = $("ammoV"); if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
+        }
+      }
+    }
+  }
   if (charging) chargeT = Math.min(1, chargeT + dt);
   $("chargeFill").style.width = weaponIdx === 0
     ? `${Math.round((charging ? chargeT : 0) * 100)}%`
     : weaponIdx === 2
-      ? `${Math.round(Math.min(100, flameFuel))}%`
+      ? `${Math.round(Math.min(100, (flameFuel / 200) * 100))}%`
       : `${Math.round(lockT / 0.5 * 100)}%`;
   $("chargeFill").style.background = weaponIdx === 0 ? (chargeT > 0.45 ? "#ffd94a" : "#6cf") : weaponIdx === 2 ? "#ff6a00" : (locked ? "#ff5040" : "#ffd200");
 
@@ -4563,16 +4610,16 @@ function update(dt) {
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "flamethrower") {
         flameUnlocked = true;
-        flameFuel = 100;
+        flameFuel = 200; /* full tank */
         weaponIdx = 2;
         if (flameWpn) flameWpn.visible = true;
-        rifleSlung.visible = false;
-        $("weaponV").textContent = "NOT-A-FLAMETHROWER";
-        $("chargeLabel").textContent = "FUEL";
-        showMsg("NOT A FLAMETHROWER ACQUIRED");
-        floatText(pu.mesh.position.clone(), "🔥 BORING CO.", { size: 40, color: "#ff6a00", strokeW: 7, life: 1.4 }, 0.9);
+        if (rifleSlung) rifleSlung.visible = false;
+        if ($("weaponV")) $("weaponV").textContent = "NOT-A-FLAMETHROWER";
+        if ($("chargeLabel")) $("chargeLabel").textContent = "FUEL";
+        const am = $("ammoV"); if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
+        showMsg("NOT A FLAMETHROWER — Q / SWAP WPN TO SELECT · HOLD FIRE");
+        floatText(pu.mesh.position.clone(), "🔥 FUEL 200", { size: 40, color: "#ff6a00", strokeW: 7, life: 1.4 }, 0.9);
         SFX.purge();
-        /* hide world prop but don't destroy if parented to starbase */
         pu.mesh.visible = false;
       } else if (pu.kind === "pill") {
         speedBoost = Math.min(12, speedBoost + 5.5);
@@ -5170,14 +5217,34 @@ function bindMobileControls() {
     mobileFireHeld = true;
   }, () => { mobileFireHeld = false; });
   hold($("mSwap"), () => {
-    weaponIdx = 1 - weaponIdx;
-    if ($("weaponV")) $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
-    if ($("chargeLabel")) $("chargeLabel").textContent = weaponIdx ? "LOCK-ON" : "X CHARGE";
+    if (typeof cycleWeapon === "function") cycleWeapon();
+    else {
+      weaponIdx = 1 - weaponIdx;
+      if ($("weaponV")) $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
+    }
   });
+  /* RIFLE button also fires flamethrower when selected */
+  const mR = $("mRifle");
+  if (mR) {
+    const on = (e) => {
+      e.preventDefault();
+      if (mode !== "play") return;
+      if (weaponIdx === 2) flameFiring = true;
+      else if (weaponIdx === 1) fireRifle();
+      else { /* boomerang: treat as fire boom */ throwBoomerang(false); }
+    };
+    const off = () => { flameFiring = false; };
+    mR.addEventListener("pointerdown", on);
+    mR.addEventListener("pointerup", off);
+    mR.addEventListener("pointerleave", off);
+    mR.addEventListener("pointercancel", off);
+  }
 }
 bindMobileControls();
 setInterval(() => {
-  if (mode === "play" && mobileFireHeld && weaponIdx === 1) fireRifle();
+  if (mode !== "play") return;
+  if (mobileFireHeld && weaponIdx === 1) fireRifle();
+  if (mobileFireHeld && weaponIdx === 2) flameFiring = true;
 }, 160);
 
 function previewLevel2() {
