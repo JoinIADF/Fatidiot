@@ -558,6 +558,13 @@ const OUTAGE_COMPLAINTS = [
   "latency measured in weekends", "the rack is the product", "reboot it with a hog",
   "SRE is on a sleeping bag", "uptime? never heard of her", "error: weekend required"
 ];
+let bossPhraseIdx = 0;
+function nextBossPhrase() {
+  const t = BOSS_KILL_PHRASES[bossPhraseIdx % BOSS_KILL_PHRASES.length];
+  bossPhraseIdx++;
+  return t;
+}
+
 const vendingMachines = [];
 const computers = [];
 const servers = []; /* {mesh, x, y, z, hp, cool} */
@@ -1503,396 +1510,7 @@ for (const c of computers) {
 }
 
 /* Elon rant text */
-const RANTS = [
-  "No one goes home this weekend!",
-  "Cancel your plans, the server is out again!",
-  "Grab a sleeping bag from the vending machine, you're going to need it!",
-  "Nobody leaves until the timeline is pure.",
-  "Sleeping bags are free. Weekends are not.",
-  "Why is there still spam. Why.",
-  "PTO means Please Try Overtime.",
-  "Ship it before Sunday or ship your resume.",
-  "Bots are employees. You're a vibe.",
-  "If you can read this, you're still on the clock."
-]
-let rantSprite = null, rantTimer = 4, rantIdx = 0, rantLife = 0;
-
-/* Grok the shiba */
-const grok = new THREE.Group();
-{
-  /* bed with GROK on the rim */
-  const rimTex = canvasTex(512, 96, (g, w, h) => {
-    g.fillStyle = "#7c2430"; g.fillRect(0, 0, w, h);
-    g.fillStyle = "#fff"; g.font = "bold 64px Arial Black"; g.textAlign = "center"; g.textBaseline = "middle";
-    g.fillText("GROK", w / 2, h / 2 + 4);
-  });
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.15, 0.5, 24, 1, true),
-    new THREE.MeshLambertMaterial({ map: rimTex, side: THREE.DoubleSide }));
-  rim.position.y = 0.25; rim.castShadow = true;
-  rim.rotation.y = Math.PI; /* GROK reads on the front, facing the floor */
-  grok.add(rim);
-  grok.add(cyl(1.0, 1.0, 0.22, 0x9c3240, 0, 0.12, 0, 24)); // cushion
-  /* dog: curled shiba */
-  const dog = new THREE.Group();
-  const orange = 0xd98c4a, cream = 0xf5ecd8;
-  const body = sph(0.52, orange, 0, 0.45, 0); body.scale.set(1.25, 0.75, 1.0);
-  const hind = sph(0.42, orange, -0.45, 0.42, 0.1);
-  const chest = sph(0.3, cream, 0.42, 0.4, 0.12);
-  dog.add(body, hind, chest);
-  /* head resting on paws */
-  const head = new THREE.Group();
-  head.add(sph(0.3, orange, 0, 0, 0));
-  const muzzle = box(0.26, 0.18, 0.3, cream, 0, -0.08, 0.26);
-  head.add(muzzle, sph(0.05, 0x1c1410, 0, -0.04, 0.43));
-  /* closed happy eyes */
-  for (const s of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.014, 6, 10, Math.PI),
-      mat(0x1c1410));
-    eye.position.set(0.13 * s, 0.08, 0.27);
-    eye.rotation.x = Math.PI;
-    head.add(eye);
-    /* ears: orange out, cream in */
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 4), mat(orange));
-    ear.position.set(0.16 * s, 0.32, 0.02); ear.rotation.z = -0.25 * s;
-    head.add(ear);
-    const earIn = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 4), mat(cream));
-    earIn.position.set(0.16 * s, 0.28, 0.06);
-    head.add(earIn);
-    /* cheeks */
-    head.add(sph(0.1, cream, 0.2 * s, -0.05, 0.2));
-  }
-  head.position.set(0.55, 0.32, 0.25); head.rotation.y = 0.4;
-  dog.add(head);
-  /* front paws under chin */
-  dog.add(box(0.14, 0.1, 0.4, cream, 0.55, 0.1, 0.35), box(0.14, 0.1, 0.4, cream, 0.75, 0.1, 0.22));
-  /* curled tail over hip */
-  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.1, 8, 12, Math.PI * 1.5), mat(orange));
-  tail.position.set(-0.6, 0.62, 0.05); tail.rotation.y = Math.PI / 2;
-  const tailTip = sph(0.09, cream, -0.6, 0.82, 0.05);
-  dog.add(tail, tailTip);
-  dog.userData = { head, body };
-  grok.add(dog);
-  /* Shiba stays on the bed — shootable, enrages but never leaves */
-  grok.userData = {
-    dog,
-    home: new THREE.Vector3(bossOffice.x + 9.5, 0, bossOffice.z + 5.2),
-    enraged: false,
-    rageT: 0,
-    spawnT: 0,
-    cool: 0,
-  };
-  grok.position.copy(grok.userData.home);
-  addOutline(dog, 1.05);
-  scene.add(grok);
-  blockArea(grok.position.x, grok.position.z, 1.2, 1.2);
-}
-let zzzTimer = 2;
-
-/* ============================== RIPPED-OUT KITCHEN SINK ============================== */
-/* Dumped out front of the CEO office, next to Grok — the place took everything,
-   including the kitchen sink… then left that on the curb too. */
-{
-  const g = new THREE.Group();
-  /* battered base cabinet (door missing, hollow guts exposed) */
-  g.add(box(1.15, 0.74, 0.72, 0x6a6e72, 0, 0.37, 0));
-  g.add(box(0.95, 0.55, 0.55, 0x1a1c20, 0, 0.34, 0.06));           // dark interior
-  g.add(box(0.08, 0.5, 0.5, 0x55585c, -0.52, 0.35, 0.08));         // left panel remnant
-  /* stainless basin, slightly crooked on the cabinet */
-  const basin = box(1.02, 0.1, 0.62, 0xc5ced6, 0.04, 0.8, 0.02);
-  basin.rotation.z = 0.04;
-  g.add(basin);
-  const well = box(0.72, 0.16, 0.42, 0x8a949c, 0.04, 0.72, 0.04);
-  g.add(well);
-  g.add(cyl(0.07, 0.07, 0.05, 0x2a2e32, 0.04, 0.62, 0.04));        // drain
-  /* faucet bent hard to the side — not installable anymore */
-  const faucet = new THREE.Group();
-  faucet.add(cyl(0.038, 0.042, 0.3, 0x9aa3ab, 0, 0.15, 0));
-  const spout = cyl(0.032, 0.032, 0.34, 0x9aa3ab, 0.14, 0.28, 0);
-  spout.rotation.z = Math.PI / 2;
-  faucet.add(spout);
-  faucet.add(sph(0.045, 0x7a828a, 0.3, 0.28, 0));
-  faucet.add(cyl(0.05, 0.05, 0.06, 0xb0b8c0, -0.08, 0.08, 0.06));  // handle stump
-  faucet.position.set(-0.28, 0.84, -0.16);
-  faucet.rotation.z = 0.55;
-  faucet.rotation.y = 0.35;
-  g.add(faucet);
-  /* copper supply lines ripped free, dangling out the back */
-  const p1 = cyl(0.038, 0.038, 0.85, 0xb87333, -0.28, 0.22, -0.55);
-  p1.rotation.x = 1.15; p1.rotation.z = 0.45;
-  const p2 = cyl(0.034, 0.034, 0.7, 0xc4843a, 0.22, 0.12, -0.52);
-  p2.rotation.x = 0.95; p2.rotation.z = -0.55;
-  g.add(p1, p2);
-  g.add(sph(0.06, 0x9a5a20, -0.28, 0.04, -0.42));
-  g.add(sph(0.055, 0x9a5a20, 0.22, 0.02, -0.48));
-  /* flexible braided hose loop, still clamped to nothing */
-  const hose = new THREE.Mesh(
-    new THREE.TorusGeometry(0.2, 0.028, 6, 14, Math.PI * 1.2),
-    mat(0x3a2a1a)
-  );
-  hose.position.set(0.12, 0.18, -0.58);
-  hose.rotation.x = Math.PI / 2;
-  hose.rotation.z = 0.7;
-  g.add(hose);
-  /* floor stain / sad little puddle */
-  const puddle = new THREE.Mesh(
-    new THREE.CircleGeometry(0.85, 18),
-    new THREE.MeshLambertMaterial({ color: 0x3d5a68, transparent: true, opacity: 0.38 })
-  );
-  puddle.rotation.x = -Math.PI / 2;
-  puddle.position.set(0.35, 0.015, 0.45);
-  puddle.scale.set(1.2, 0.75, 1);
-  g.add(puddle);
-  /* debris kicked out with it */
-  g.add(box(0.28, 0.04, 0.22, 0xd0cabc, 0.75, 0.03, 0.55));         // broken tile
-  g.add(box(0.14, 0.05, 0.1, 0xff8c4a, -0.6, 0.04, 0.4));           // dried sponge
-  g.add(box(0.38, 0.42, 0.07, 0xe8e0d0, -0.78, 0.24, -0.28));       // drywall chunk
-  g.add(cyl(0.02, 0.02, 0.35, 0x555555, 0.55, 0.04, -0.35));        // stray pipe stub on floor
-  /* dump pose — tipped, out front of the CEO office beside Grok's bed */
-  g.position.set(bossOffice.x + 7.8, 0.02, bossOffice.z + 5.1);
-  g.rotation.y = -0.85;
-  g.rotation.z = 0.09;
-  g.rotation.x = 0.05;
-  addOutline(g, 1.04);
-  scene.add(g);
-  blockArea(bossOffice.x + 7.8, bossOffice.z + 5.1, 0.85, 0.7);
-}
-
-/* ============================== PIG ============================== */
-const pig = new THREE.Group();
-const pigParts = {};
-{
-  const PINK = 0xd6a290, PINKD = 0xb8836f, KHAKI = 0xb5a06a, KHAKI2 = 0x9a8656, OLIVE = 0x6b6b3f, TAN = 0x8a774a;
-  /* slab body: long, low, fat */
-  const body = sph(0.62, PINK, 0, 0.62, 0);
-  body.scale.set(1.35, 0.95, 1.6);
-  pig.add(body);
-  /* legs: stubby */
-  for (const [lx, lz, k] of [[-0.34, 0.55, "fl"], [0.34, 0.55, "fr"], [-0.34, -0.6, "bl"], [0.34, -0.6, "br"]]) {
-    const leg = new THREE.Group();
-    leg.add(cyl(0.13, 0.15, 0.4, PINK, 0, -0.2, 0));
-    leg.add(cyl(0.15, 0.16, 0.1, PINKD, 0, -0.42, 0));
-    leg.position.set(lx, 0.45, lz);
-    pig.add(leg);
-    pigParts[k] = leg;
-  }
-  /* curly tail */
-  const tail = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.04, 6, 12, Math.PI * 1.6), mat(PINK));
-  tail.position.set(0, 0.85, -0.95); tail.rotation.x = 0.4;
-  pig.add(tail);
-  /* ---- SCULPTED HALF-MAN / HALF-PIG HEAD — geometry, no photo paste ---- */
-  const SKIN = 0xd9a583, SKIND = 0xbd8a68, SNOUTP = 0xd98f7e, SNOUTD = 0xb06a5c, HAIR = 0x2e2118;
-  const headG = new THREE.Group();
-  /* skull with a proper tall forehead */
-  const mhead = sph(0.5, SKIN, 0, 0.05, 0); mhead.scale.set(1.05, 1.05, 0.9);
-  headG.add(mhead);
-  const forehead = sph(0.34, SKIN, 0, 0.36, 0.16); forehead.scale.set(1.35, 0.8, 0.8);
-  headG.add(forehead);
-  /* dark hair emerging under the helmet: fringe + sideburns */
-  const fringe = sph(0.37, HAIR, 0, 0.52, 0.1); fringe.scale.set(1.35, 0.45, 0.95);
-  headG.add(fringe);
-  for (const s of [-1, 1]) {
-    const burn = box(0.1, 0.32, 0.12, HAIR, 0.48 * s, 0.14, 0.06);
-    burn.rotation.z = -0.1 * s;
-    headG.add(burn);
-  }
-  /* massive jowls + chin roll + neck folds */
-  headG.add(sph(0.2, SKIN, -0.28, -0.22, 0.14));
-  headG.add(sph(0.2, SKIN, 0.28, -0.22, 0.14));
-  headG.add(sph(0.24, SKIN, 0, -0.32, 0.1));
-  const neck1 = sph(0.44, SKIN, 0, -0.4, -0.08); neck1.scale.set(1.15, 0.5, 0.9);
-  const neck2 = sph(0.4, SKIND, 0, -0.54, -0.1); neck2.scale.set(1.1, 0.38, 0.85);
-  headG.add(neck1, neck2);
-  /* OPEN eyes: whites + dark irises under slight brows, cheeks pushed up by the grin */
-  for (const s of [-1, 1]) {
-    /* wide almond eyes set high, like the reference squint */
-    const white = sph(0.075, 0xf2ead8, 0.21 * s, 0.24, 0.4);
-    white.scale.set(1.9, 0.6, 0.55);
-    const iris = sph(0.038, 0x3a2818, 0.19 * s, 0.24, 0.44);
-    iris.scale.set(1.2, 0.85, 1);
-    headG.add(white, iris);
-    const browB = box(0.24, 0.055, 0.06, 0x4a3424, 0.21 * s, 0.33, 0.4);
-    browB.rotation.z = -0.14 * s;
-    headG.add(browB);
-    /* crow's-feet smile crease + cheek apple */
-    const crease = box(0.03, 0.13, 0.02, SKIND, 0.37 * s, 0.12, 0.36);
-    crease.rotation.z = 0.55 * s;
-    headG.add(crease);
-    headG.add(sph(0.11, SKIN, 0.28 * s, -0.06, 0.32));
-  }
-  /* BIG upturned pig snout, front and center */
-  const snout = cyl(0.2, 0.23, 0.28, SNOUTP, 0, -0.1, 0.46);
-  snout.rotation.x = Math.PI / 2 - 0.15; snout.scale.x = 1.4;
-  const snoutCap = cyl(0.205, 0.205, 0.04, SNOUTD, 0, -0.08, 0.59);
-  snoutCap.rotation.x = Math.PI / 2 - 0.15; snoutCap.scale.x = 1.4;
-  headG.add(snout, snoutCap);
-  for (const s of [-1, 1]) {
-    const nos = cyl(0.048, 0.048, 0.045, 0x5e3028, 0.11 * s, -0.06, 0.61);
-    nos.rotation.x = Math.PI / 2 - 0.15;
-    nos.scale.set(1, 1, 1.7);
-    headG.add(nos);
-  }
-  /* WIDE grin like the photo: broad arc curving up into the cheeks + lower lip roll */
-  const grin = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 6, 20, Math.PI * 0.8), mat(0x4e2a20));
-  grin.position.set(0, -0.2, 0.43);
-  grin.rotation.z = Math.PI + Math.PI * 0.1;
-  headG.add(grin);
-  const lipLo = sph(0.16, SKIND, 0, -0.34, 0.33); lipLo.scale.set(1.7, 0.45, 0.6);
-  headG.add(lipLo);
-  /* pig ears under the helmet rim */
-  for (const s of [-1, 1]) {
-    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.28, 4), mat(SKIN));
-    ear.position.set(0.46 * s, 0.36, -0.06); ear.rotation.z = -0.75 * s; ear.rotation.x = 0.3;
-    headG.add(ear);
-    pigParts["ear" + (s > 0 ? "R" : "L")] = ear;
-  }
-  /* ARMY HELMET: camo-blotch dome sitting high — forehead and hair show under it */
-  const helmTex = canvasTex(128, 64, (g2, w, h) => {
-    g2.fillStyle = "#6b6b3f"; g2.fillRect(0, 0, w, h);
-    for (let i = 0; i < 26; i++) {
-      g2.fillStyle = pick(["#8a7a4a", "#4c5230", "#7a6a3c", "#5a5a34"]);
-      g2.beginPath(); g2.ellipse(rand(0, w), rand(0, h), rand(6, 16), rand(4, 9), rand(0, 3), 0, Math.PI * 2); g2.fill();
-    }
-  });
-  const helm = new THREE.Mesh(new THREE.SphereGeometry(0.52, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-    new THREE.MeshLambertMaterial({ map: helmTex, flatShading: true }));
-  helm.position.set(0, 0.44, -0.04); helm.scale.set(1.12, 0.8, 1.06);
-  helm.castShadow = true;
-  headG.add(helm);
-  const brimH = cyl(0.56, 0.6, 0.08, 0x5a5a34, 0, 0.46, -0.04, 14);
-  brimH.scale.set(1.12, 1, 1.06);
-  headG.add(brimH);
-  for (const s of [-1, 1]) {
-    const strap = box(0.045, 0.5, 0.03, 0x3c3626, 0.53 * s, 0.02, 0.12);
-    strap.rotation.z = -0.15 * s;
-    headG.add(strap);
-  }
-  headG.scale.setScalar(0.85);
-  headG.position.set(0, 1.22, 0.68);
-  pig.add(headG);
-  pigParts.head = headG;
-  /* vest wrapping torso + pouches + straps */
-  const vest = cyl(0.68, 0.72, 0.62, KHAKI, 0, 0.78, 0.12, 12);
-  vest.scale.z = 0.92;
-  pig.add(vest);
-  for (const [px, pz] of [[-0.35, 0.62], [0.35, 0.62], [0, 0.7], [-0.55, 0.15], [0.55, 0.15]]) {
-    pig.add(box(0.22, 0.2, 0.12, TAN, px, 0.78, pz));
-    pig.add(box(0.24, 0.05, 0.13, 0x2c2620, px, 0.86, pz));
-  }
-  /* backpack + antenna with red tip */
-  pig.add(box(0.5, 0.4, 0.3, TAN, 0, 1.05, -0.35));
-  const ant = cyl(0.015, 0.015, 0.9, 0x1c1c1c, 0.18, 1.6, -0.4);
-  pig.add(ant, sph(0.045, 0xdd2a2a, 0.18, 2.06, -0.4));
-  /* US flag patch on left shoulder */
-  const flagTex = canvasTex(32, 20, (g, w, h) => {
-    g.fillStyle = "#b22234"; g.fillRect(0, 0, w, h);
-    g.fillStyle = "#fff"; for (let i = 1; i < 6; i += 2) g.fillRect(0, i * (h / 6), w, h / 6);
-    g.fillStyle = "#3c3b6e"; g.fillRect(0, 0, w * 0.45, h * 0.55);
-  });
-  flagTex.magFilter = THREE.NearestFilter;
-  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.15),
-    new THREE.MeshLambertMaterial({ map: flagTex }));
-  flag.position.set(-0.68, 0.9, 0.3); flag.rotation.y = -Math.PI / 2.3;
-  pig.add(flag);
-  addOutline(pig, 1.05);
-  pig.position.set(0, 0, 8);
-  scene.add(pig);
-}
-/* rifle model (shared builder) */
-function buildRifle() {
-  /* chunky Demonetizer — reads clearly on the pig silhouette */
-  const g = new THREE.Group();
-  /* receiver */
-  g.add(box(1.15, 0.18, 0.16, 0x14181e, 0, 0, 0));
-  g.add(box(1.05, 0.1, 0.18, 0x2a3038, 0.02, 0.06, 0)); /* top rail */
-  /* long barrel (local +X) */
-  const barrel = cyl(0.045, 0.04, 0.95, 0x3a4048, 0.95, 0.02, 0, 10);
-  barrel.rotation.z = Math.PI / 2;
-  g.add(barrel);
-  /* muzzle brake */
-  g.add(box(0.14, 0.1, 0.1, 0xffd200, 1.42, 0.02, 0));
-  /* mag */
-  g.add(box(0.14, 0.32, 0.12, 0x22262c, 0.08, -0.22, 0));
-  /* wooden stock */
-  g.add(box(0.42, 0.16, 0.14, 0xa07840, -0.72, -0.04, 0));
-  g.add(box(0.18, 0.28, 0.12, 0x8a6640, -0.95, -0.1, 0)); /* butt */
-  /* scope */
-  const scope = cyl(0.06, 0.06, 0.42, 0x0c0e12, 0.12, 0.16, 0, 10);
-  scope.rotation.z = Math.PI / 2;
-  g.add(scope);
-  /* red optic glow so it pops */
-  const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(0.04, 8, 8),
-    new THREE.MeshBasicMaterial({ color: 0xff3030 })
-  );
-  glow.position.set(0.32, 0.16, 0);
-  g.add(glow);
-  /* sling strap hint */
-  g.add(box(0.06, 0.04, 0.55, 0x4a3020, -0.2, -0.12, 0.12));
-  return g;
-}
-/* rifle always visible over shoulder, barrel pointing BACKWARDS */
-const rifleHeld = buildRifle(); /* fire math only — never shown on the front */
-rifleHeld.visible = false;
-pig.add(rifleHeld);
-const rifleSlung = buildRifle();
-/*
-  Pig faces the camera. Local -Z is the back.
-  Place high on the RIGHT shoulder so it peeks past the head from the front view.
-  Barrel points back (-Z): rifle local +X → after rot.y = +PI/2 points to -Z.
-*/
-rifleSlung.rotation.set(0.35, Math.PI / 2, -0.45); /* tilt up over shoulder, slight roll */
-rifleSlung.position.set(0.42, 1.28, -0.38);       /* high, right, on the back */
-rifleSlung.scale.setScalar(1.45);                  /* big enough to read */
-rifleSlung.visible = true;
-pig.add(rifleSlung);
-
-/* ============================== BOOMERANG ============================== */
-function buildBoomerang() {
-  /* real X.com logo texture (bg removed), double-sided flat X that spins */
-  const g = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({
-    map: X_LOGO_TEX,
-    transparent: true,
-    alphaTest: 0.08,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-  });
-  /* slight dual-plane thickness so it reads in motion */
-  const geo = new THREE.PlaneGeometry(1.35, 1.35);
-  const front = new THREE.Mesh(geo, mat);
-  const back = new THREE.Mesh(geo, mat);
-  back.rotation.y = Math.PI;
-  back.position.z = -0.02;
-  front.position.z = 0.02;
-  g.add(front, back);
-  /* thin dark core so silhouette holds when edge-on */
-  const core = new THREE.Mesh(
-    new THREE.BoxGeometry(0.08, 0.08, 0.06),
-    new THREE.MeshBasicMaterial({ color: 0x0a0a0a })
-  );
-  g.add(core);
-  return g;
-}
-
-
-/* ============================== PURGE BUTTON ============================== */
-const purgeBtn = new THREE.Group();
-{
-  purgeBtn.add(cyl(1.0, 1.2, 0.24, 0x8a1f1f, 0, 0.12, 0, 16));
-  const cap = cyl(0.6, 0.66, 0.3, 0xd93030, 0, 0.4, 0, 16);
-  purgeBtn.add(cap);
-  purgeBtn.add(cyl(0.24, 0.24, 0.06, 0xf2f2f2, 0, 0.57, 0, 16));
-  purgeBtn.userData.cap = cap;
-  const t1 = textSprite("BOT PURGE", { size: 60, color: "#ff5040", strokeW: 8 });
-  t1.position.y = 1.7; t1.scale.multiplyScalar(1.2);
-  purgeBtn.add(t1);
-  purgeBtn.position.set(-10, 0, 10);
-  scene.add(purgeBtn);
-}
-let purgeCooldown = 0;
-
-/* ============================== ENEMIES ============================== */
-const enemies = [];
+const RANTS = BOSS_KILL_PHRASES; /* full boss list for door ambient too */
 function spamLabelTex() {
   /* modeled on the real can: deep navy label, yellow serif SPAM®, burger art */
   const t = canvasTex(512, 256, (g, w, h) => {
@@ -2346,6 +1964,7 @@ function startGame() {
   objectPhraseCd = 0;
   setWallQuota(100);
   bossHitbox.enraged = false; bossHitbox.stormT = 0; bossHitbox.phraseT = 0;
+  bossPhraseIdx = 0;
   if (typeof elon !== "undefined" && elon.userData) {
     elon.position.set(elon.userData.homeX, 0, elon.userData.homeZ);
     elon.userData.rage = 0;
@@ -2901,14 +2520,14 @@ function enrageBoss() {
 function bossPhraseActive() {
   return spamTexts.some(s => s.kind === "boss");
 }
-function tryEmitBossPhrase(origin) {
-  /* one at a time, slow pace */
-  if (bossPhraseActive()) return false;
-  if (bossHitbox.phraseT > 0) return false;
-  emitPhrase(origin, pick(BOSS_KILL_PHRASES), {
-    deadly: true, color: "#4caf6a", speed: 7.2, life: 6.5, kind: "boss"
+function tryEmitBossPhrase(origin, force = false) {
+  /* one at a time — cycle the full list so every line gets used */
+  if (!force && bossPhraseActive()) return false;
+  if (!force && bossHitbox.phraseT > 0) return false;
+  emitPhrase(origin, nextBossPhrase(), {
+    deadly: true, color: "#4caf6a", speed: 7.2, life: 4.2, kind: "boss"
   });
-  bossHitbox.phraseT = 4.2; /* cooldown before next line */
+  bossHitbox.phraseT = force ? 1.6 : 2.2;
   return true;
 }
 function hitBossOffice(point) {
@@ -2916,9 +2535,13 @@ function hitBossOffice(point) {
   SFX.hit();
   burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
   const origin = point
-    ? new THREE.Vector3(point.x, 3.95, point.z)
-    : new THREE.Vector3(bossHitbox.x, 3.95, bossHitbox.z + 3.5);
-  tryEmitBossPhrase(origin);
+    ? new THREE.Vector3(point.x, 4.2, point.z)
+    : new THREE.Vector3(bossHitbox.x, 4.2, bossHitbox.z + 3.5);
+  /* force next line from the full list when possible */
+  if (!tryEmitBossPhrase(origin, true)) {
+    /* one already flying — queue sooner */
+    bossHitbox.phraseT = Math.min(bossHitbox.phraseT, 0.35);
+  }
   return true;
 }
 function hitscanWorld(origin, dir, maxDist = 55) {
@@ -3275,9 +2898,9 @@ function update(dt) {
     eu.armR.rotation.z = -2.8 - Math.sin(t * 18 + 1) * 0.35;
     bossHitbox.phraseT = Math.max(0, bossHitbox.phraseT - dt);
     if (bossHitbox.phraseT <= 0 && !bossPhraseActive()) {
-      /* slow, single-file rants */
+      /* single-file rants — full list, steady pace */
       tryEmitBossPhrase(elon.position.clone().add(new THREE.Vector3(0, 4.6, 0)));
-      if (bossHitbox.phraseT <= 0) bossHitbox.phraseT = rand(4.0, 5.5);
+      if (bossHitbox.phraseT <= 0) bossHitbox.phraseT = rand(2.0, 2.8);
     }
     if (bossHitbox.stormT <= 0) {
       bossHitbox.enraged = false;
