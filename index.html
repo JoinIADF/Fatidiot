@@ -2391,7 +2391,11 @@ function beginWave() {
   SFX.wave();
 }
 let msgT = 0;
-function showMsg(t) { $("msg").textContent = t; msgT = 1.6; }
+function showMsg(t) {
+  const el = $("msg");
+  if (el) el.textContent = t;
+  msgT = 2.8;
+}
 function paintWallTimer() {
   if (!wallTimerCtx || !wallTimerCanvas) return;
   const g = wallTimerCtx;
@@ -2872,11 +2876,18 @@ function hitGrok(point) {
   return true;
 }
 function enrageBoss() {
-  if (!bossHitbox.enraged) {
-    bossHitbox.enraged = true;
-    showMsg("You'll pay for that");
-    SFX.bossRage();
-  }
+  const first = !bossHitbox.enraged;
+  bossHitbox.enraged = true;
+  /* always bark this when the office is hit */
+  showMsg("You'll pay for that");
+  floatText(
+    new THREE.Vector3(bossHitbox.x, 4.4, bossHitbox.z + 4.2),
+    "You'll pay for that",
+    { size: 44, color: "#ffd94a", strokeW: 8, life: 1.6, worldScale: 1.0, vy: 0.9 },
+    1.0
+  );
+  if (first) SFX.bossRage();
+  else SFX.hit();
   bossHitbox.stormT = Math.max(bossHitbox.stormT, 14);
   elon.userData.rage = Math.max(elon.userData.rage, 3);
   shake = Math.max(shake, 0.35);
