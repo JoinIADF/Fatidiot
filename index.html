@@ -2346,8 +2346,10 @@ function startGame() {
 }
 function beginWave() {
   /* keep floor hot — timer (not empty floor) advances levels */
-  spawnQueue = 8 + wave * 5;
-  spawnT = 0.25;
+  const base = 8 + wave * 5;
+  /* level 1: half as many enemies */
+  spawnQueue = wave === 1 ? Math.max(4, Math.ceil(base * 0.5)) : base;
+  spawnT = wave === 1 ? 0.4 : 0.25;
   showMsg(`LEVEL ${wave} — KILL ${wallQuota}`);
   SFX.wave();
 }
@@ -3700,15 +3702,18 @@ function update(dt) {
   if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
-      /* faster spawns each level */
-      spawnT = Math.max(0.22, 1.1 - wave * 0.1);
+      /* faster spawns each level; level 1 is calmer */
+      spawnT = wave === 1
+        ? Math.max(0.55, 1.5 - wave * 0.1)
+        : Math.max(0.22, 1.1 - wave * 0.1);
       spawnQueue--;
       spawnEnemy(Math.random() < Math.min(0.75, 0.45 + wave * 0.05) ? "spammer" : "bot");
     }
   } else if (mode === "play" && levelUpT <= 0) {
     /* top up so the floor never goes quiet */
-    spawnQueue = 3 + wave * 2;
-    spawnT = 0.35;
+    const top = 3 + wave * 2;
+    spawnQueue = wave === 1 ? Math.max(2, Math.ceil(top * 0.5)) : top;
+    spawnT = wave === 1 ? 0.5 : 0.35;
   }
   purgeCooldown = Math.max(0, purgeCooldown - dt);
   purgeBtn.userData.cap.position.y += (0.4 - purgeBtn.userData.cap.position.y) * dt * 3;
