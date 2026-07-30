@@ -1378,7 +1378,7 @@ bossHitbox.z = bossOffice.z;
   seg(1.2, H, -W / 2 + 0.6, H / 2);
   seg(1.2, H, W / 2 - 0.6, H / 2);
   seg(2.2, H, 0, H / 2 + 0);            // center pillar between windows? door goes here
-  /* door (closed) with X logo + CEO plate */
+  /* door (closed) with X logo */
   const doorTex = canvasTex(160, 300, (g, w, h) => {
     g.fillStyle = "#181a1e"; g.fillRect(0, 0, w, h);
     g.strokeStyle = "#2a2d33"; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16);
@@ -1390,11 +1390,37 @@ bossHitbox.z = bossOffice.z;
     new THREE.MeshLambertMaterial({ map: doorTex }));
   door.position.set(0, 1.6, 0.02); door.castShadow = true;
   front.add(door);
-  const plate = textSprite("CEO", { size: 40, color: "#d8d8d8", strokeW: 5 });
-  plate.scale.multiplyScalar(0.45);
-  plate.position.set(1.35, 2.3, 0.2);
-  front.add(plate);
   front.add(sph(0.05, 0xc8b060, 0.6, 1.55, 0.18)); // handle
+
+  /* big clear BOSS' OFFICE nameplate over the door */
+  const bossSignTex = canvasTex(640, 160, (g, w, h) => {
+    g.fillStyle = "#1a1410";
+    g.fillRect(0, 0, w, h);
+    /* gold frame */
+    g.strokeStyle = "#d4a84a";
+    g.lineWidth = 10;
+    g.strokeRect(8, 8, w - 16, h - 16);
+    g.strokeStyle = "#f0d78a";
+    g.lineWidth = 3;
+    g.strokeRect(18, 18, w - 36, h - 36);
+    g.fillStyle = "#ffd94a";
+    g.font = "bold 72px Arial Black, Arial";
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("BOSS' OFFICE", w / 2, h / 2 + 4);
+  });
+  const bossSign = new THREE.Mesh(
+    new THREE.BoxGeometry(4.8, 1.15, 0.12),
+    new THREE.MeshLambertMaterial({ map: bossSignTex })
+  );
+  bossSign.position.set(0, 3.85, 0.2);
+  bossSign.castShadow = true;
+  front.add(bossSign);
+  /* lit world-space label so it reads from distance */
+  const bossTag = textSprite("BOSS' OFFICE", { size: 64, color: "#ffd94a", strokeW: 10, maxWidth: 0 });
+  bossTag.scale.multiplyScalar(1.15);
+  bossTag.position.set(0, 5.05, 0.35);
+  front.add(bossTag);
   /* windows with twisted blinds each side of door */
   const glassM = new THREE.MeshLambertMaterial({ color: 0xbcd8ea, transparent: true, opacity: 0.12 });
   for (const wx of [-3.4, 3.4]) {
