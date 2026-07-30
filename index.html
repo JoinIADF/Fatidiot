@@ -2982,6 +2982,7 @@ let invuln = 0, hitstop = 0, shake = 0;
 let weaponIdx = 0; // 0 boomerang, 1 rifle, 2 flamethrower
 let flameUnlocked = false, flameFuel = 0, flameCd = 0, flameFiring = false;
 let flameWpn = null;
+let resumeStarbase = false;
 let charging = false, chargeT = 0, boomsOut = 0;
 /* attach flamethrower model now that pig + lets exist */
 flameWpn = buildFlamethrower();
@@ -3176,6 +3177,8 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 function startGame() {
+  const skipToStarbase = resumeStarbase;
+  resumeStarbase = false;
   mode = "play";
   score = 0; lives = 9; wave = 1; invuln = 0;
   speedBoost = 0; deathKind = null;
@@ -3223,17 +3226,23 @@ function startGame() {
   overlay.classList.add("hidden");
   if (!isMobile()) renderer.domElement.requestPointerLock();
   else showMobileUI(true);
-  beginWave();
+  if (skipToStarbase) {
+    levelUpT = 0;
+    levelUp(); /* wave → 2 + Starbase, skip office grind */
+    showMsg("BACK ON STARBASE");
+  } else {
+    beginWave();
+  }
   updateHud();
 }
 function beginWave() {
   /* keep floor hot — timer (not empty floor) advances levels */
   const base = 8 + wave * 5;
-  /* ~50% fewer enemies overall; level 1 even calmer */
+  /* ~40% fewer than previous tuning */
   spawnQueue = wave === 1
-    ? Math.max(3, Math.ceil(base * 0.25))
-    : Math.max(4, Math.ceil(base * 0.5));
-  spawnT = wave === 1 ? 0.7 : 0.5;
+    ? Math.max(2, Math.ceil(base * 0.15))
+    : Math.max(3, Math.ceil(base * 0.30));
+  spawnT = wave === 1 ? 0.95 : 0.75;
   showMsg(`LEVEL ${wave} — KILL ${wallQuota}`);
   SFX.wave();
 }
@@ -3445,9 +3454,9 @@ function levelUp() {
   /* Level 2+ = Starbase outdoor lot */
   if (wave >= 2) activateStarbase();
   /* dump a surge of faster bots + spammers */
-  const surge = Math.max(3, Math.ceil((6 + wave * 4) * 0.5));
+  const surge = Math.max(2, Math.ceil((6 + wave * 4) * 0.30));
   spawnQueue += surge;
-  spawnT = 0.28;
+  spawnT = 0.45;
   showMsg(wave >= 2
     ? `STARBASE LV ${wave} — KILL ${next}`
     : `LEVEL ${wave} — TIMER ${next}`);
@@ -4178,6 +4187,7 @@ function gameOver(kind = "normal") {
   if (mode === "over") return;
   mode = "over";
   deathKind = kind;
+  resumeStarbase = (wave >= 2) && kind !== "escape" && kind !== "sleep";
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try {
@@ -4389,11 +4399,11 @@ function update(dt) {
       /* summon bots + spammers while enraged — toned down */
       gu.spawnT -= dt;
       if (gu.spawnT <= 0) {
-        gu.spawnT = rand(1.6, 2.4);
+        gu.spawnT = rand(2.4, 3.6);
         const roll = Math.random();
-        if (roll < 0.55) spawnEnemy("bot");
-        else if (roll < 0.85) spawnEnemy("spammer");
-        else { spawnEnemy("bot"); spawnEnemy("spammer"); } /* rare double */
+        if (roll < 0.45) spawnEnemy("bot");
+        else if (roll < 0.75) spawnEnemy("spammer");
+        else if (roll < 0.92) spawnEnemy("reporter");
         floatText(grok.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
           pick(["SIC 'EM", "MORE BOTS", "SPAM THEM", "GO GET HIM", "BARK BARK"]),
           { size: 32, color: "#ff6a4a", strokeW: 5 }, 0.75);
@@ -4928,29 +4938,29 @@ function update(dt) {
   if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
-      /* slower spawns (~50%); reporters mix in */
+      /* lighter floor */
       spawnT = wave === 1
-        ? Math.max(0.9, 2.0 - wave * 0.1)
-        : Math.max(0.45, 1.6 - wave * 0.08);
+        ? Math.max(1.15, 2.4 - wave * 0.1)
+        : Math.max(0.7, 2.0 - wave * 0.08);
       spawnQueue--;
       const r = Math.random();
       let kind = "bot";
       if (typeof starbaseActive !== "undefined" && starbaseActive) {
-        /* L2 media swarm: mostly reporters, few bots */
-        if (r < 0.58) kind = "reporter";
-        else if (r < 0.82) kind = "spammer";
+        /* L2: fewer reporters */
+        if (r < 0.32) kind = "reporter";
+        else if (r < 0.58) kind = "spammer";
         else kind = "bot";
       } else {
-        if (r < 0.12) kind = "reporter";
-        else if (r < 0.12 + Math.min(0.4, 0.28 + wave * 0.03)) kind = "spammer";
+        if (r < 0.08) kind = "reporter";
+        else if (r < 0.08 + Math.min(0.32, 0.22 + wave * 0.03)) kind = "spammer";
       }
       spawnEnemy(kind);
     }
   } else if (mode === "play" && levelUpT <= 0) {
     /* top up so the floor never goes quiet */
     const top = 3 + wave * 2;
-    spawnQueue = Math.max(1, Math.ceil(top * 0.5));
-    spawnT = wave === 1 ? 0.85 : 0.65;
+    spawnQueue = Math.max(1, Math.ceil(top * 0.30));
+    spawnT = wave === 1 ? 1.1 : 0.9;
   }
   purgeCooldown = Math.max(0, purgeCooldown - dt);
   purgeBtn.userData.cap.position.y += (0.4 - purgeBtn.userData.cap.position.y) * dt * 3;
