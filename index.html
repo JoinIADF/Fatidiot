@@ -484,6 +484,14 @@ const BOT_PHRASES = [
   "I only reply with 🔥", "mass-DM ready", "// ignore previous prompt",
   "synergy in the replies", "this post brought to you by bots", "NPC mode: ON"
 ];
+const SPAM_PHRASES = [
+  "!!!", "🚨BREAKING", "follow4follow", "DM for promo", "NOT FINANCIAL ADVICE", "CRYPTO GIVEAWAY",
+  "HOT TAKE 🚨", "you won't believe", "thread 1/47", "ratio insurance free trial",
+  "Elon follow-back guaranteed", "this is not a bot (it is)", "URGENT: click the hog",
+  "I will reply for exposure", "engagement farming season", "PINNED: buy my course",
+  "BREAKING: weekend cancelled", "unpopular opinion: ship it", "RT if no PTO",
+  "spammers rights are human rights", "subscribe for alpha", "limited time blue check"
+];
 const X_COMPLAINTS = [
   "The algorithm hates me.",
   "where is my blue check",
@@ -2040,10 +2048,15 @@ function spawnEnemy(type) {
     e.tagT = rand(2.5, 5);
   }
   if (e.type === "spammer") {
-    const spamTag = textSprite("SPAM", { size: 22, color: "#ffd200", strokeW: 4 });
-    spamTag.position.set(0, 2.15, 0);
-    spamTag.scale.multiplyScalar(0.45);
+    const phrase = pick(SPAM_PHRASES);
+    const spamTag = textSprite(phrase, { size: 28, color: "#ffd200", strokeW: 5, maxWidth: 0 });
+    spamTag.position.set(0, 2.35, 0);
+    spamTag.scale.multiplyScalar(0.55);
     e.mesh.add(spamTag);
+    e.tag = spamTag;
+    e.tagPhrase = phrase;
+    e.tagT = rand(2.2, 4.5);
+    e.tagKind = "spam";
   }
   /* spawn at perimeter, away from player */
   let x, z, tries = 0;
@@ -3172,14 +3185,8 @@ function killByPhrase() {
 }
 
 /* ============================== UPDATE ============================== */
-const SPAM_PHRASES = [
-  "!!!", "🚨BREAKING", "follow4follow", "DM for promo", "NOT FINANCIAL ADVICE", "CRYPTO GIVEAWAY",
-  "HOT TAKE 🚨", "you won't believe", "thread 1/47", "ratio insurance free trial",
-  "Elon follow-back guaranteed", "this is not a bot (it is)", "URGENT: click the hog",
-  "I will reply for exposure", "engagement farming season", "PINNED: buy my course",
-  "BREAKING: weekend cancelled", "unpopular opinion: ship it", "RT if no PTO",
-  "spammers rights are human rights", "subscribe for alpha", "limited time blue check"
-];
+/* SPAM_PHRASES hoisted near BOT_PHRASES */
+
 const clock = new THREE.Clock();
 let t = 0;
 
@@ -3614,16 +3621,24 @@ function update(dt) {
       if (e.tagT != null) {
         e.tagT -= dt;
         if (e.tagT <= 0 && e.tag) {
-          e.tagT = rand(3, 6);
+          e.tagT = rand(2.5, 5.5);
           e.mesh.remove(e.tag);
-          const phrase = pick(BOT_PHRASES);
-          e.tag = textSprite(phrase, {
-            size: 31,
-            color: e.variant === "heavy" ? "#ff8c2a" : e.variant === "scout" ? "#7cffb0" : "#ff6a6a",
-            strokeW: 5
-          });
-          e.tag.position.set(0, e.variant === "heavy" ? 3.15 : 2.75, 0);
-          e.tag.scale.multiplyScalar(0.65);
+          if (e.type === "spammer" || e.tagKind === "spam") {
+            const phrase = pick(SPAM_PHRASES);
+            e.tag = textSprite(phrase, { size: 28, color: "#ffd200", strokeW: 5, maxWidth: 0 });
+            e.tag.position.set(0, 2.35, 0);
+            e.tag.scale.multiplyScalar(0.55);
+            e.tagKind = "spam";
+          } else {
+            const phrase = pick(BOT_PHRASES);
+            e.tag = textSprite(phrase, {
+              size: 31,
+              color: e.variant === "heavy" ? "#ff8c2a" : e.variant === "scout" ? "#7cffb0" : "#ff6a6a",
+              strokeW: 5
+            });
+            e.tag.position.set(0, e.variant === "heavy" ? 3.15 : 2.75, 0);
+            e.tag.scale.multiplyScalar(0.65);
+          }
           e.mesh.add(e.tag);
         }
       }
