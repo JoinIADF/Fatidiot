@@ -2886,16 +2886,17 @@ function hitGrok(point) {
 function enrageBoss() {
   const first = !bossHitbox.enraged;
   bossHitbox.enraged = true;
-  /* always bark this when the office is hit */
-  showMsg("You'll pay for that");
-  floatText(
-    new THREE.Vector3(bossHitbox.x, 4.4, bossHitbox.z + 4.2),
-    "You'll pay for that",
-    { size: 44, color: "#ffd94a", strokeW: 8, life: 1.6, worldScale: 1.0, vy: 0.9 },
-    1.0
-  );
-  if (first) SFX.bossRage();
-  else SFX.hit();
+  /* big front-and-center notice ONLY on first shot */
+  if (first) {
+    showMsg("You'll pay for that");
+    floatText(
+      new THREE.Vector3(bossHitbox.x, 4.4, bossHitbox.z + 4.2),
+      "You'll pay for that",
+      { size: 44, color: "#ffd94a", strokeW: 8, life: 1.6, worldScale: 1.0, vy: 0.9 },
+      1.0
+    );
+    SFX.bossRage();
+  }
   bossHitbox.stormT = Math.max(bossHitbox.stormT, 14);
   elon.userData.rage = Math.max(elon.userData.rage, 3);
   shake = Math.max(shake, 0.35);
