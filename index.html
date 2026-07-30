@@ -640,8 +640,28 @@ const OUTAGE_COMPLAINTS = [
   "SRE is on a sleeping bag", "uptime? never heard of her", "error: weekend required"
 ];
 let bossPhraseIdx = 0;
+const STARBASE_BOSS_PHRASES = [
+  "Hurry up and clean up the bots before the launch!",
+  "Soon I won't have to listen to these stupid spammers on Mars!",
+  "Are you ready to be the first piggy in space?",
+  "T-minus bots — purge the lot, Fa'tidiot!",
+  "Launch window is closing and so is your PTO!",
+  "If a spammer blocks the pad, YOU clear it!",
+  "Mars has no weekends. Practice now.",
+  "Dragon is fueled. Your timeline is not.",
+  "Stop oinking and demonetize those bots!",
+  "First piggy on Mars gets the sleeping bag!",
+  "I can see the bots from my Cybertruck. Handle it!",
+  "Spam on the pad is a scrub. Scrub it.",
+  "We're not scrubbing the launch for spam accounts!",
+  "Grok is watching. The rockets are watching. Move!",
+  "Clean the lot or you're cargo, bacon!",
+];
 function nextBossPhrase() {
-  const t = BOSS_KILL_PHRASES[bossPhraseIdx % BOSS_KILL_PHRASES.length];
+  const list = (typeof starbaseActive !== "undefined" && starbaseActive)
+    ? STARBASE_BOSS_PHRASES
+    : BOSS_KILL_PHRASES;
+  const t = list[bossPhraseIdx % list.length];
   bossPhraseIdx++;
   return t;
 }
@@ -887,6 +907,7 @@ let levelUpT = 0;
   }
 }
 /* walls + ceiling */
+const officeShell = { southWall: null, ceiling: null, northWall: null, westWall: null, eastWall: null };
 {
   const wallMat = mat(0xe9e6df);
   const wallH = 7;
@@ -895,10 +916,10 @@ let levelUpT = 0;
     m.position.set(x, wallH / 2, z); m.rotation.y = ry; m.receiveShadow = true;
     scene.add(m); return m;
   };
-  mk(FLOOR_W, 0, -FLOOR_D / 2, 0);
-  mk(FLOOR_W, 0, FLOOR_D / 2, Math.PI);
-  mk(FLOOR_D, -FLOOR_W / 2, 0, Math.PI / 2);
-  mk(FLOOR_D, FLOOR_W / 2, 0, -Math.PI / 2);
+  officeShell.northWall = mk(FLOOR_W, 0, -FLOOR_D / 2, 0);
+  officeShell.southWall = mk(FLOOR_W, 0, FLOOR_D / 2, Math.PI); /* OPEN on Starbase */
+  officeShell.westWall = mk(FLOOR_D, -FLOOR_W / 2, 0, Math.PI / 2);
+  officeShell.eastWall = mk(FLOOR_D, FLOOR_W / 2, 0, -Math.PI / 2);
   /* jumpable exterior windows = skyline panes + "Only way out" posters with arrows */
   {
     const exitSkyTex = canvasTex(512, 256, (g, w, h) => {
@@ -1585,134 +1606,108 @@ const elon = new THREE.Group();
 
 
 /* ============================== STARBASE (LEVEL 2+) ============================== */
-/* Procedural outdoor ground-floor lot inspired by Starbase / X HQ photos (no photo planes). */
+/* Interior desks stay. South wall opens → outdoor parking lot (no ceiling, real sky).
+   Procedural Cybertrucks (see-through windshields) + two rocket ships (Starship-inspired).
+   Boss rides a 2× Cybertruck at the pad, laptop open, barking launch orders. */
 const starbaseGroup = new THREE.Group();
 starbaseGroup.visible = false;
 let starbaseActive = false;
 let bossTruck = null;
-let officeWallBreach = null; /* half-wall gap props */
 
-function buildCybertruck(x, y, z, rotY = 0, isBoss = false) {
+function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
   const g = new THREE.Group();
-  const steel = 0xb0b5ba;
-  const dark = 0x141618;
-  /* angular stainless body */
-  g.add(box(2.35, 0.82, 5.1, steel, 0, 0.95, 0));
-  const cabin = box(2.15, 0.72, 2.3, steel, 0, 1.52, -0.4);
-  cabin.rotation.x = -0.14;
-  g.add(cabin);
-  /* black glass canopy */
-  g.add(box(1.95, 0.5, 0.06, 0x0a0c10, 0, 1.68, -1.42));
-  g.add(box(2.1, 0.32, 1.7, steel, 0, 1.12, 1.55));
-  for (const [wx, wz] of [[-1.0, -1.55], [1.0, -1.55], [-1.0, 1.55], [1.0, 1.55]]) {
-    g.add(cyl(0.4, 0.4, 0.32, dark, wx, 0.4, wz, 10));
+  const steel = 0xb4b8bc;
+  const dark = 0x121416;
+  const s = scale;
+  /* body */
+  g.add(box(2.35 * s, 0.78 * s, 5.0 * s, steel, 0, 0.95 * s, 0));
+  /* cabin shell */
+  g.add(box(2.15 * s, 0.55 * s, 2.2 * s, steel, 0, 1.45 * s, -0.45 * s));
+  /* TRANSPARENT windshield — look inside */
+  const glassMat = new THREE.MeshLambertMaterial({
+    color: 0x88c8e8, transparent: true, opacity: 0.28, depthWrite: false, side: THREE.DoubleSide,
+  });
+  const wind = new THREE.Mesh(new THREE.PlaneGeometry(1.9 * s, 0.7 * s), glassMat);
+  wind.position.set(0, 1.55 * s, -1.45 * s);
+  wind.rotation.x = -0.35;
+  g.add(wind);
+  /* side windows */
+  for (const sx of [-1.08 * s, 1.08 * s]) {
+    const sw = new THREE.Mesh(new THREE.PlaneGeometry(1.6 * s, 0.55 * s), glassMat);
+    sw.position.set(sx, 1.5 * s, -0.35 * s);
+    sw.rotation.y = Math.PI / 2 * Math.sign(sx);
+    g.add(sw);
   }
-  g.add(box(0.32, 0.07, 0.05, 0xe8f0ff, -0.72, 1.02, -2.5));
-  g.add(box(0.32, 0.07, 0.05, 0xe8f0ff, 0.72, 1.02, -2.5));
+  /* INTERIOR (visible through glass) */
+  g.add(box(1.7 * s, 0.08 * s, 1.4 * s, 0x1a1e24, 0, 1.15 * s, -0.5 * s)); /* floor */
+  g.add(box(0.55 * s, 0.45 * s, 0.5 * s, 0x2a2e34, -0.4 * s, 1.35 * s, -0.2 * s)); /* seat L */
+  g.add(box(0.55 * s, 0.45 * s, 0.5 * s, 0x2a2e34, 0.4 * s, 1.35 * s, -0.2 * s)); /* seat R */
+  g.add(box(1.5 * s, 0.12 * s, 0.25 * s, 0x0e1014, 0, 1.45 * s, -1.15 * s)); /* dash */
+  g.add(cyl(0.12 * s, 0.12 * s, 0.06 * s, 0x22262c, -0.35 * s, 1.55 * s, -1.0 * s, 10)); /* wheel */
+  /* bed */
+  g.add(box(2.05 * s, 0.28 * s, 1.7 * s, steel, 0, 1.1 * s, 1.5 * s));
+  /* wheels */
+  for (const [wx, wz] of [[-1.0, -1.5], [1.0, -1.5], [-1.0, 1.5], [1.0, 1.5]]) {
+    g.add(cyl(0.4 * s, 0.4 * s, 0.3 * s, dark, wx * s, 0.4 * s, wz * s, 10));
+  }
+  /* headlights */
+  g.add(box(0.3 * s, 0.06 * s, 0.05 * s, 0xe8f0ff, -0.7 * s, 1.0 * s, -2.45 * s));
+  g.add(box(0.3 * s, 0.06 * s, 0.05 * s, 0xe8f0ff, 0.7 * s, 1.0 * s, -2.45 * s));
+
   if (isBoss) {
+    /* laptop glow on dash — boss grinding */
     const glow = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.5, 0.32),
-      new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0.9 })
+      new THREE.PlaneGeometry(0.55 * s, 0.35 * s),
+      new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0.95 })
     );
-    glow.position.set(0.22, 1.52, -0.85);
+    glow.position.set(0.35 * s, 1.55 * s, -0.95 * s);
     glow.rotation.x = -0.55;
     g.add(glow);
-    g.add(box(0.48, 0.04, 0.32, 0x1a1e24, 0.22, 1.4, -0.8));
-    const tag = textSprite("BOSS' CYBERTRUCK", { size: 40, color: "#ffd94a", strokeW: 8, maxWidth: 0 });
-    tag.scale.multiplyScalar(0.65);
-    tag.position.set(0, 2.75, 0);
+    g.add(box(0.5 * s, 0.04 * s, 0.32 * s, 0x1a1e24, 0.35 * s, 1.42 * s, -0.9 * s));
+    const tag = textSprite("BOSS' CYBERTRUCK", { size: 48, color: "#ffd94a", strokeW: 9, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.85 * s);
+    tag.position.set(0, 2.9 * s, 0);
     g.add(tag);
+    const tag2 = textSprite("LAUNCH OPS", { size: 32, color: "#ff6a4a", strokeW: 6, maxWidth: 0 });
+    tag2.scale.multiplyScalar(0.7 * s);
+    tag2.position.set(0, 2.45 * s, 0);
+    g.add(tag2);
   }
   g.position.set(x, y, z);
   g.rotation.y = rotY;
+  g.userData.isBossTruck = isBoss;
+  g.userData.scale = scale;
   return g;
 }
 
-function buildStarship(x, z, h = 30) {
+/** Stainless rocket stack inspired by Starbase Starships (procedural, not photo) */
+function buildRocketShip(x, z, h = 32) {
   const g = new THREE.Group();
-  const steel = 0xc8d0d6;
-  g.add(cyl(2.35, 2.55, h * 0.7, steel, 0, h * 0.35, 0, 18));
-  g.add(cyl(0.12, 2.35, h * 0.22, steel, 0, h * 0.7 + h * 0.11, 0, 14));
-  for (const a of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) {
-    g.add(box(0.12, h * 0.16, 1.7, steel, Math.cos(a) * 2.15, h * 0.1, Math.sin(a) * 2.15));
+  const steel = 0xc9d0d6;
+  const dark = 0x2a2e32;
+  /* main stack */
+  g.add(cyl(2.5, 2.7, h * 0.68, steel, 0, h * 0.34, 0, 20));
+  /* nose / capsule */
+  g.add(cyl(0.2, 2.5, h * 0.2, steel, 0, h * 0.68 + h * 0.1, 0, 16));
+  /* black heat-shield nose tip */
+  g.add(cyl(0.05, 0.45, h * 0.04, dark, 0, h * 0.88 + h * 0.02, 0, 12));
+  /* flap fins */
+  for (const a of [0.3, Math.PI + 0.3]) {
+    const fin = box(0.15, h * 0.14, 2.0, steel, Math.cos(a) * 2.3, h * 0.12, Math.sin(a) * 2.3);
+    g.add(fin);
   }
-  g.add(cyl(2.58, 2.58, 1.1, 0x33363a, 0, 2.0, 0, 16));
-  /* landing legs */
-  for (const a of [0.4, 2.5, 4.6]) {
-    g.add(box(0.18, 2.2, 0.18, 0x888c90, Math.cos(a) * 2.0, 1.1, Math.sin(a) * 2.0));
+  for (const a of [Math.PI / 2, Math.PI * 1.5]) {
+    g.add(box(0.15, h * 0.1, 1.4, steel, Math.cos(a) * 2.2, h * 0.55, Math.sin(a) * 2.2));
   }
+  /* tile ring */
+  g.add(cyl(2.72, 2.72, 1.3, 0x3a3e42, 0, 2.2, 0, 18));
+  /* legs */
+  for (const a of [0.5, 2.6, 4.7]) {
+    g.add(box(0.2, 2.4, 0.2, 0x8a9098, Math.cos(a) * 2.1, 1.2, Math.sin(a) * 2.1));
+  }
+  /* pad markings */
+  g.add(cyl(4.5, 4.5, 0.08, 0x4a4e54, 0, 0.04, 0, 24));
   g.position.set(x, 0, z);
-  return g;
-}
-
-/** Glass X HQ — dark curtain wall + white X, inspired by the real building */
-function buildXHeadquarters(x, z) {
-  const g = new THREE.Group();
-  const W = 38, H = 18, D = 10;
-  /* dark glass mass */
-  const glass = new THREE.Mesh(
-    new THREE.BoxGeometry(W, H, D),
-    new THREE.MeshLambertMaterial({ color: 0x1a1e24, transparent: true, opacity: 0.92 })
-  );
-  glass.position.set(0, H / 2, 0);
-  g.add(glass);
-  /* grid mullions */
-  for (let i = -4; i <= 4; i++) {
-    g.add(box(0.12, H, 0.08, 0x0c0e12, i * (W / 9), H / 2, D / 2 + 0.05));
-  }
-  for (let j = 0; j < 6; j++) {
-    g.add(box(W, 0.1, 0.08, 0x0c0e12, 0, 1.5 + j * 2.8, D / 2 + 0.05));
-  }
-  /* white X logo on facade */
-  const logo = new THREE.Group();
-  const arm = (ry) => {
-    const a = box(8.5, 1.1, 0.25, 0xf2f2f2, 0, 0, 0);
-    a.rotation.z = ry;
-    logo.add(a);
-  };
-  arm(0.7); arm(-0.7);
-  logo.position.set(0, H * 0.62, D / 2 + 0.2);
-  g.add(logo);
-  /* white side warehouse wing */
-  g.add(box(22, 10, 14, 0xe8e8e8, W / 2 + 10, 5, -2));
-  g.add(box(22, 0.3, 14, 0xd0d0d0, W / 2 + 10, 10.2, -2));
-  /* entry canopy */
-  g.add(box(10, 0.25, 4, 0x22262c, 0, 3.2, D / 2 + 2));
-  g.add(box(0.3, 3.2, 0.3, 0x22262c, -4.5, 1.6, D / 2 + 3.5));
-  g.add(box(0.3, 3.2, 0.3, 0x22262c, 4.5, 1.6, D / 2 + 3.5));
-  /* palms in front of HQ */
-  for (const [px, pz] of [[-12, D / 2 + 6], [-6, D / 2 + 7], [6, D / 2 + 7], [12, D / 2 + 6]]) {
-    g.add(cyl(0.22, 0.3, 5.2, 0x8a6a40, px, 2.6, pz, 8));
-    for (let i = 0; i < 5; i++) {
-      const fr = box(0.12, 0.06, 2.4, 0x2d8a3e, px, 5.3, pz);
-      fr.rotation.y = (i / 5) * Math.PI * 2;
-      fr.rotation.x = 0.5;
-      g.add(fr);
-    }
-  }
-  g.position.set(x, 0, z);
-  blockArea(x, z, W / 2 + 1, D / 2 + 1, H);
-  blockArea(x + W / 2 + 10, z - 2, 11, 7, 10);
-  return g;
-}
-
-/** SpaceX gate / lettermark inspired by the entrance canopy */
-function buildSpaceXGate(x, z, rotY = 0) {
-  const g = new THREE.Group();
-  g.add(box(18, 1.4, 2.2, 0x1a1c20, 0, 3.5, 0));
-  g.add(box(0.5, 3.5, 0.5, 0x1a1c20, -8.5, 1.75, 0));
-  g.add(box(0.5, 3.5, 0.5, 0x1a1c20, 8.5, 1.75, 0));
-  /* slatted fence */
-  for (let i = -8; i <= 8; i++) {
-    g.add(box(0.35, 2.0, 0.12, 0x2a2e32, i, 1.0, 1.1));
-  }
-  const sign = textSprite("SPACEX", { size: 64, color: "#f0f0f0", strokeW: 10, maxWidth: 0 });
-  sign.scale.multiplyScalar(1.35);
-  sign.position.set(0, 4.6, 0.3);
-  g.add(sign);
-  g.position.set(x, 0, z);
-  g.rotation.y = rotY;
-  blockArea(x, z, 9, 2, 4);
   return g;
 }
 
@@ -1720,102 +1715,105 @@ function buildStarbase() {
   const g = starbaseGroup;
   while (g.children.length) g.remove(g.children[0]);
 
-  /* OUTDOOR asphalt beyond the breach (south / +Z half becomes open lot) */
-  const asphalt = canvasTex(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = "#3c4046"; ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#35383e";
-    for (let i = 0; i < 80; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-    ctx.strokeStyle = "#b8b898"; ctx.lineWidth = 2;
-    for (let x = 20; x < w; x += 40) {
-      ctx.beginPath(); ctx.moveTo(x, 8); ctx.lineTo(x, h - 8); ctx.stroke();
+  /* ===== OUTDOOR LOT south of the office (through open wall) ===== */
+  const lotZ0 = FLOOR_D / 2; /* wall line */
+  const lotDepth = 70;
+  const lotCenterZ = lotZ0 + lotDepth / 2;
+
+  /* asphalt parking lot — no ceiling above */
+  const asphalt = canvasTex(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = "#3a3e44"; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = "#33363c";
+    for (let i = 0; i < 120; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 3, 2);
+    /* parking stall lines */
+    ctx.strokeStyle = "#c8c8a0"; ctx.lineWidth = 3;
+    for (let col = 0; col < 10; col++) {
+      const x = 30 + col * 48;
+      for (let row = 0; row < 6; row++) {
+        const y = 40 + row * 70;
+        ctx.strokeRect(x, y, 36, 58);
+      }
     }
   });
   asphalt.wrapS = asphalt.wrapT = THREE.RepeatWrapping;
-  asphalt.repeat.set(10, 8);
+  asphalt.repeat.set(6, 5);
   const lot = new THREE.Mesh(
-    new THREE.PlaneGeometry(FLOOR_W + 20, FLOOR_D * 0.75),
+    new THREE.PlaneGeometry(FLOOR_W + 10, lotDepth),
     new THREE.MeshLambertMaterial({ map: asphalt })
   );
   lot.rotation.x = -Math.PI / 2;
-  lot.position.set(0, 0.05, FLOOR_D * 0.12);
+  lot.position.set(0, 0.03, lotCenterZ);
   g.add(lot);
 
-  /* concrete apron near rockets */
-  g.add(box(50, 0.08, 28, 0x6a6e74, 0, 0.06, -22));
+  /* concrete launch pad at far end */
+  g.add(box(48, 0.1, 24, 0x6a7078, 0, 0.06, lotZ0 + lotDepth - 14));
 
-  /* ground-floor BREACH — south office wall half gone, jagged opening */
-  const breachZ = FLOOR_D / 2 - 6;
-  /* left remaining wall stub */
-  g.add(box(22, 4.8, 0.6, 0x4a5058, -28, 2.4, breachZ));
-  /* right remaining wall stub */
-  g.add(box(22, 4.8, 0.6, 0x4a5058, 28, 2.4, breachZ));
-  /* broken top lintel over the gap */
-  g.add(box(18, 0.5, 0.7, 0x3a4048, 0, 4.6, breachZ));
-  /* rubble / debris at threshold */
-  for (const [rx, rz] of [[-6, 2], [4, 1.5], [-2, 3], [8, 2.5], [-10, 1]]) {
-    g.add(box(1.2 + Math.random(), 0.35, 0.9, 0x5a5e64, rx, 0.25, breachZ + rz));
+  /* jagged open wall remains (left / right stubs) — middle is OPEN to sky */
+  g.add(box(28, 5.5, 0.8, 0x4a5058, -46, 2.75, lotZ0));
+  g.add(box(28, 5.5, 0.8, 0x4a5058, 46, 2.75, lotZ0));
+  /* broken header beam over the big opening */
+  g.add(box(36, 0.55, 0.9, 0x3a4048, 0, 5.6, lotZ0));
+  /* rubble at threshold */
+  for (const [rx, rz, rw] of [[-8, 1.5, 1.4], [5, 2, 1.1], [-3, 2.5, 1.6], [12, 1.2, 1.0], [-14, 1.8, 1.3]]) {
+    g.add(box(rw, 0.4, 0.9, 0x5a6068, rx, 0.25, lotZ0 + rz));
   }
-  /* yellow caution tape posts */
-  g.add(box(0.15, 1.4, 0.15, 0xf0c020, -10, 0.7, breachZ + 0.5));
-  g.add(box(0.15, 1.4, 0.15, 0xf0c020, 10, 0.7, breachZ + 0.5));
-  const exitTag = textSprite("TO STARBASE LOT →", { size: 48, color: "#ffd94a", strokeW: 8, maxWidth: 0 });
-  exitTag.scale.multiplyScalar(0.9);
-  exitTag.position.set(0, 5.4, breachZ + 0.5);
+  g.add(box(0.18, 1.5, 0.18, 0xf0c020, -18, 0.75, lotZ0 + 1));
+  g.add(box(0.18, 1.5, 0.18, 0xf0c020, 18, 0.75, lotZ0 + 1));
+  const exitTag = textSprite("★ OUTSIDE — STARBASE LOT ★", { size: 44, color: "#ffd94a", strokeW: 8, maxWidth: 0 });
+  exitTag.scale.multiplyScalar(1.1);
+  exitTag.position.set(0, 6.4, lotZ0 + 0.6);
   g.add(exitTag);
 
-  /* sky outdoor — simple gradient dome via large ceiling-less fog (set on activate) */
-
-  /* X HQ building across the lot (outside, visible through the breach) */
-  g.add(buildXHeadquarters(0, -FLOOR_D / 2 + 8));
-
-  /* SpaceX gate off to the west of the lot */
-  g.add(buildSpaceXGate(-42, 8, Math.PI / 2));
-
-  /* two Starships on the concrete pad in front of HQ */
-  g.add(buildStarship(-12, -24, 34));
-  g.add(buildStarship(10, -26, 31));
-  blockArea(-12, -24, 3.4, 3.4, 32);
-  blockArea(10, -26, 3.4, 3.4, 30);
-
-  /* tower / crane */
-  g.add(box(1.4, 28, 1.4, 0x9aa0a8, 26, 14, -20));
-  g.add(box(16, 0.35, 0.35, 0xc45a20, 26, 26, -20));
-  g.add(box(0.3, 8, 0.3, 0xc45a20, 18, 22, -20));
-  blockArea(26, -20, 1.6, 1.6, 28);
-
-  /* cybertruck fleet on the outdoor lot (between breach and rockets) */
-  const truckSpots = [
-    [-30, 18, 0.5], [-30, 26, 0.5], [-30, 34, 0.5],
-    [-24, 18, 0.5], [-24, 26, 0.5], [-24, 34, 0.5],
-    [26, 16, -0.6], [26, 24, -0.6], [26, 32, -0.6],
-    [20, 20, -0.6], [20, 28, -0.6],
-    [-16, 30, 1.1], [-8, 32, 0.9], [6, 30, -1.0], [14, 28, -0.8],
-  ];
-  for (const [tx, tz, ry] of truckSpots) {
-    g.add(buildCybertruck(tx, 0, tz, ry, false));
-    blockArea(tx, tz, 1.4, 2.6, 2.2);
-  }
-
-  /* BOSS cybertruck parked right in front of the rocket ships */
-  bossTruck = buildCybertruck(-1, 0, -14, 0.15, true);
-  g.add(bossTruck);
-  blockArea(-1, -14, 1.5, 2.8, 2.4);
-
-  /* more palms lining the lot */
-  for (const [px, pz] of [[-38, 20], [-36, 32], [36, 18], [34, 30], [0, 36], [-18, 38]]) {
-    g.add(cyl(0.22, 0.3, 5.0, 0x8a6a40, px, 2.5, pz, 8));
-    for (let i = 0; i < 5; i++) {
-      const fr = box(0.12, 0.06, 2.2, 0x2d8a3e, px, 5.1, pz);
-      fr.rotation.y = (i / 5) * Math.PI * 2;
-      fr.rotation.x = 0.55;
-      g.add(fr);
+  /* parking grid: many trucks, some EMPTY spots */
+  const stallCols = [-40, -32, -24, -16, -8, 8, 16, 24, 32, 40];
+  const stallRows = [12, 22, 32, 42];
+  let ti = 0;
+  for (const tz of stallRows) {
+    for (const tx of stallCols) {
+      ti++;
+      /* leave ~30% of spots empty */
+      if (ti % 3 === 0 || ti % 7 === 0) {
+        /* empty stall — just paint a number plate on ground */
+        const empty = textSprite("P", { size: 28, color: "#888870", strokeW: 4, maxWidth: 0 });
+        empty.scale.multiplyScalar(0.5);
+        empty.position.set(tx, 0.12, lotZ0 + tz);
+        empty.rotation.x = -Math.PI / 2;
+        g.add(empty);
+        continue;
+      }
+      const ry = tx < 0 ? 0.5 : -0.5;
+      const tr = buildCybertruck(tx, 0, lotZ0 + tz, ry + (Math.random() - 0.5) * 0.08, 1, false);
+      g.add(tr);
+      blockArea(tx, lotZ0 + tz, 1.4, 2.5, 2.2);
     }
   }
 
-  const lotSign = textSprite("STARBASE — GROUND LEVEL", { size: 56, color: "#ffffff", strokeW: 9, maxWidth: 0 });
-  lotSign.scale.multiplyScalar(1.5);
-  lotSign.position.set(0, 7.5, 20);
-  g.add(lotSign);
+  /* TWO rocket ships at the END of the parking lot */
+  const padZ = lotZ0 + lotDepth - 16;
+  g.add(buildRocketShip(-11, padZ, 34));
+  g.add(buildRocketShip(11, padZ + 2, 31));
+  blockArea(-11, padZ, 3.5, 3.5, 32);
+  blockArea(11, padZ + 2, 3.5, 3.5, 30);
+  const rocketLabel = textSprite("STARSHIP PAD", { size: 40, color: "#e8eef8", strokeW: 7, maxWidth: 0 });
+  rocketLabel.scale.multiplyScalar(1.2);
+  rocketLabel.position.set(0, 4, padZ + 8);
+  g.add(rocketLabel);
+
+  /* BOSS cybertruck — TWICE as big — parked right in front of the rockets */
+  bossTruck = buildCybertruck(0, 0, padZ + 10, 0, 2.0, true);
+  g.add(bossTruck);
+  blockArea(0, padZ + 10, 2.8, 5.2, 4.5);
+
+  /* simple tower/crane near pad */
+  g.add(box(1.3, 26, 1.3, 0x9aa0a8, 28, 13, padZ));
+  g.add(box(14, 0.35, 0.35, 0xc45a20, 28, 24, padZ));
+  blockArea(28, padZ, 1.5, 1.5, 26);
+
+  /* light poles */
+  for (const [lx, lz] of [[-45, lotZ0 + 20], [45, lotZ0 + 20], [-45, lotZ0 + 45], [45, lotZ0 + 45]]) {
+    g.add(cyl(0.15, 0.15, 8, 0x555a60, lx, 4, lz, 8));
+    g.add(box(1.2, 0.15, 0.4, 0x33363a, lx, 8.1, lz));
+  }
 
   scene.add(g);
 }
@@ -1826,35 +1824,40 @@ function activateStarbase() {
   if (starbaseActive) return;
   starbaseActive = true;
   starbaseGroup.visible = true;
-  /* outdoor sky / ground-floor daylight */
-  scene.background = new THREE.Color(0x8eb4d0);
-  scene.fog = new THREE.Fog(0xa8c4d8, 40, 140);
-  /* boss still grinding — now in Cybertruck out front of the ships */
+  /* OPEN the south wall — walk straight from desks to the lot */
+  if (officeShell.southWall) officeShell.southWall.visible = false;
+  /* outdoor sky (no ceiling outside — open air) */
+  scene.background = new THREE.Color(0x7eb0d8);
+  scene.fog = new THREE.Fog(0x9ec4e0, 45, 150);
+  /* boss inside the giant Cybertruck on laptop */
   if (bossTruck && typeof elon !== "undefined") {
     const p = bossTruck.position;
-    elon.userData.homeX = p.x + 0.15;
-    elon.userData.homeZ = p.z - 0.3;
-    elon.position.set(elon.userData.homeX, 0.85, elon.userData.homeZ);
-    elon.scale.setScalar(0.9);
+    const sc = bossTruck.userData.scale || 2;
+    elon.userData.homeX = p.x + 0.3 * sc;
+    elon.userData.homeZ = p.z - 0.5 * sc;
+    elon.position.set(elon.userData.homeX, 1.1 * sc * 0.55, elon.userData.homeZ);
+    elon.scale.setScalar(0.95 * sc * 0.55);
     elon.rotation.y = Math.PI;
     bossHitbox.x = p.x;
     bossHitbox.z = p.z;
-    bossHitbox.hw = 1.8;
-    bossHitbox.hd = 3.0;
+    bossHitbox.hw = 2.6 * sc * 0.5;
+    bossHitbox.hd = 5.0 * sc * 0.5;
   }
   if (typeof grok !== "undefined" && grok.userData) {
-    grok.userData.home = new THREE.Vector3(-10, 0, 8);
+    grok.userData.home = new THREE.Vector3(-8, 0, FLOOR_D / 2 + 6);
     grok.position.copy(grok.userData.home);
   }
-  /* spawn at the BREACH — looking out onto the lot */
-  pig.position.set(0, 0, FLOOR_D / 2 - 10);
+  /* spawn just inside the breach looking out at the lot */
+  pig.position.set(0, 0, FLOOR_D / 2 - 4);
   pigY = 0; pigVy = 0;
-  showMsg("GROUND FLOOR OPEN — STARBASE LOT");
+  bossPhraseIdx = 0;
+  showMsg("SOUTH WALL DOWN — STARBASE LOT OPEN");
 }
 
 function deactivateStarbase() {
   starbaseActive = false;
   starbaseGroup.visible = false;
+  if (officeShell.southWall) officeShell.southWall.visible = true;
   scene.background = new THREE.Color(0xdfe4ea);
   scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
   if (typeof elon !== "undefined" && elon.userData) {
