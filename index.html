@@ -361,7 +361,9 @@ scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
 
 /* collision obstacles — must exist before floor/props call blockArea */
 const obstacles = []; // {x,z,hw,hd}
-function blockArea(x, z, hw, hd, h = 10) { obstacles.push({ x, z, hw, hd, h }); }
+function blockArea(x, z, hw, hd, h = 10, tag = null) {
+  obstacles.push({ x, z, hw, hd, h, tag, _hw: hw, _hd: hd });
+}
 
 
 const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 280);
@@ -907,7 +909,7 @@ let levelUpT = 0;
   }
 }
 /* walls + ceiling */
-const officeShell = { southWall: null, ceiling: null, northWall: null, westWall: null, eastWall: null };
+const officeShell = { southWall: null, ceiling: null, northWall: null, westWall: null, eastWall: null, southWindows: [] };
 {
   const wallMat = mat(0xe9e6df);
   const wallH = 7;
@@ -1046,8 +1048,27 @@ const officeShell = { southWall: null, ceiling: null, northWall: null, westWall:
         windowZones.push({ x, z, hx: 2.0, hz: 2.0, side: signZ > 0 ? "N" : "S" });
       }
     };
-    placeNS(1);
-    placeNS(-1);
+    placeNS(-1); /* north wall windows only */
+    /* south wall windows — hidden on Starbase when the wall opens to the lot */
+    {
+      const southWins = [];
+      for (let x = -FLOOR_W / 2 + 12; x <= FLOOR_W / 2 - 12; x += 14) {
+        const z = FLOOR_D / 2 - 0.04;
+        const grp = new THREE.Group();
+        const win = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 2.6), skyMat());
+        win.position.set(0, 3.0, 0);
+        win.rotation.y = Math.PI;
+        grp.add(win);
+        const poster = mkExitPoster(-1);
+        poster.position.set(-2.4, 2.4, 0.2);
+        grp.add(poster);
+        grp.position.set(x, 0, z);
+        scene.add(grp);
+        southWins.push(grp);
+        windowZones.push({ x, z, hx: 2.0, hz: 2.0, side: "S", south: true });
+      }
+      officeShell.southWindows = southWins;
+    }
   }
 
   /* ===== KILL COUNTER — right of boss office (black / red) ===== */
@@ -1488,6 +1509,7 @@ for (let x = -48; x <= -20; x += 3.2) {
 const bossOffice = { x: 0, z: -FLOOR_D / 2 + 4 };
 bossHitbox.x = bossOffice.x;
 bossHitbox.z = bossOffice.z;
+const bossOfficeGroup = new THREE.Group();
 {
   const ox = bossOffice.x, oz = bossOffice.z;
   const W = 12, D = 8, H = 4.6;
@@ -1559,18 +1581,19 @@ bossHitbox.z = bossOffice.z;
     }
   }
   front.position.set(ox, 0, oz + D / 2);
-  scene.add(front);
+  bossOfficeGroup.add(front);
   /* side walls */
-  scene.add(box(0.25, H, D, 0x4a3626, ox - W / 2, H / 2, oz));
-  scene.add(box(0.25, H, D, 0x4a3626, ox + W / 2, H / 2, oz));
-  scene.add(box(W, 0.25, D, 0x3c2c1e, ox, H, oz)); // roof
-  blockArea(ox, oz + D / 2, W / 2, 0.4);
-  blockArea(ox - W / 2, oz, 0.4, D / 2);
-  blockArea(ox + W / 2, oz, 0.4, D / 2);
+  bossOfficeGroup.add(box(0.25, H, D, 0x4a3626, ox - W / 2, H / 2, oz));
+  bossOfficeGroup.add(box(0.25, H, D, 0x4a3626, ox + W / 2, H / 2, oz));
+  bossOfficeGroup.add(box(W, 0.25, D, 0x3c2c1e, ox, H, oz)); // roof
+  blockArea(ox, oz + D / 2, W / 2, 0.4, 10, "bossOffice");
+  blockArea(ox - W / 2, oz, 0.4, D / 2, 10, "bossOffice");
+  blockArea(ox + W / 2, oz, 0.4, D / 2, 10, "bossOffice");
   /* warm interior light */
   const lamp = new THREE.PointLight(0xffc878, 14, 14);
   lamp.position.set(ox, 3, oz);
-  scene.add(lamp);
+  bossOfficeGroup.add(lamp);
+  scene.add(bossOfficeGroup);
 }
 /* Elon inside */
 const elon = new THREE.Group();
@@ -1824,12 +1847,19 @@ function activateStarbase() {
   if (starbaseActive) return;
   starbaseActive = true;
   starbaseGroup.visible = true;
-  /* OPEN the south wall — walk straight from desks to the lot */
+  /* OPEN south wall — free walk into the parking lot */
   if (officeShell.southWall) officeShell.southWall.visible = false;
-  /* outdoor sky (no ceiling outside — open air) */
+  if (officeShell.southWindows) {
+    for (const w of officeShell.southWindows) w.visible = false;
+  }
+  /* main floor: no indoor boss office (boss is in the Cybertruck outside) */
+  if (typeof bossOfficeGroup !== "undefined" && bossOfficeGroup) bossOfficeGroup.visible = false;
+  for (const o of obstacles) {
+    if (o.tag === "bossOffice") { o.hw = 0; o.hd = 0; }
+  }
+  /* outdoor sky — open air */
   scene.background = new THREE.Color(0x7eb0d8);
   scene.fog = new THREE.Fog(0x9ec4e0, 45, 150);
-  /* boss inside the giant Cybertruck on laptop */
   if (bossTruck && typeof elon !== "undefined") {
     const p = bossTruck.position;
     const sc = bossTruck.userData.scale || 2;
@@ -1847,17 +1877,23 @@ function activateStarbase() {
     grok.userData.home = new THREE.Vector3(-8, 0, FLOOR_D / 2 + 6);
     grok.position.copy(grok.userData.home);
   }
-  /* spawn just inside the breach looking out at the lot */
-  pig.position.set(0, 0, FLOOR_D / 2 - 4);
+  pig.position.set(0, 0, FLOOR_D / 2 - 2);
   pigY = 0; pigVy = 0;
   bossPhraseIdx = 0;
-  showMsg("SOUTH WALL DOWN — STARBASE LOT OPEN");
+  showMsg("WALK OUT — STARBASE PARKING LOT");
 }
 
 function deactivateStarbase() {
   starbaseActive = false;
   starbaseGroup.visible = false;
   if (officeShell.southWall) officeShell.southWall.visible = true;
+  if (officeShell.southWindows) {
+    for (const w of officeShell.southWindows) w.visible = true;
+  }
+  if (typeof bossOfficeGroup !== "undefined" && bossOfficeGroup) bossOfficeGroup.visible = true;
+  for (const o of obstacles) {
+    if (o.tag === "bossOffice") { o.hw = o._hw; o.hd = o._hd; }
+  }
   scene.background = new THREE.Color(0xdfe4ea);
   scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
   if (typeof elon !== "undefined" && elon.userData) {
@@ -3778,7 +3814,11 @@ function collideObstacles(pos, r, feetY = 0) {
     }
   }
   pos.x = Math.max(-FLOOR_W / 2 + 1, Math.min(FLOOR_W / 2 - 1, pos.x));
-  pos.z = Math.max(-FLOOR_D / 2 + 1, Math.min(FLOOR_D / 2 - 1, pos.z));
+  /* Starbase opens the south wall into a deep outdoor parking lot */
+  const zMax = (typeof starbaseActive !== "undefined" && starbaseActive)
+    ? FLOOR_D / 2 + 68
+    : FLOOR_D / 2 - 1;
+  pos.z = Math.max(-FLOOR_D / 2 + 1, Math.min(zMax, pos.z));
 }
 
 function update(dt) {
@@ -3927,6 +3967,7 @@ function update(dt) {
   collideObstacles(pig.position, 0.8, pigY);
   if (!onGround && pigY > 0.45 && mode === "play") {
     for (const w of windowZones) {
+      if (starbaseActive && w.south) continue;
       if (Math.abs(pig.position.x - w.x) < w.hx + 0.9 && Math.abs(pig.position.z - w.z) < w.hz + 0.7) {
         triggerEscape();
         break;
@@ -4409,7 +4450,8 @@ function updateCamera(dt) {
   camera.position.lerp(target, 1 - Math.pow(0.0001, dt));
   /* keep camera inside room */
   camera.position.x = Math.max(-FLOOR_W / 2 + 0.5, Math.min(FLOOR_W / 2 - 0.5, camera.position.x));
-  camera.position.z = Math.max(-FLOOR_D / 2 + 0.5, Math.min(FLOOR_D / 2 - 0.5, camera.position.z));
+  const camZMax = (typeof starbaseActive !== "undefined" && starbaseActive) ? FLOOR_D / 2 + 66 : FLOOR_D / 2 - 0.5;
+  camera.position.z = Math.max(-FLOOR_D / 2 + 0.5, Math.min(camZMax, camera.position.z));
   camera.position.y = Math.min(6.7, camera.position.y);
   const look = pig.position.clone().add(new THREE.Vector3(0, 1.4, 0));
   if (shake > 0) {
