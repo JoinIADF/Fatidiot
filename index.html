@@ -2404,7 +2404,7 @@ function activateStarbase() {
   if (bossFight.mesh) { scene.remove(bossFight.mesh); }
   bossFight.mesh = null; bossFight.lamp = null;
   bossFight.active = false; bossFight.dead = false; bossFight.warned = false;
-  bossFight.incoming = 25;
+  bossFight.kills = 0;
   bossFight.hp = bossFight.max; bossFight.phase = 1; bossFight.state = "idle"; bossFight.t = 1.5;
   $("bossBarWrap") && $("bossBarWrap").classList.add("hidden");
   starbaseGroup.visible = true;
@@ -5798,10 +5798,13 @@ const bossFight = {
 function buildBossBot() {
   const g = buildBot("heavy");
   g.scale.setScalar(4.6);
-  /* orange warning visor + rogue markings */
+  /* orange warning visor + rogue markings — NEVER touch the outline shells
+     (they share MeshBasicMaterial; recoloring them swallows the model) */
+  const rogue = new THREE.MeshBasicMaterial({ color: 0xff8c20 });
   g.traverse(o => {
-    if (o.isMesh && o.material && o.material.color && o.material.type === "MeshBasicMaterial") {
-      o.material = new THREE.MeshBasicMaterial({ color: 0xff8c20 });
+    if (!o.isMesh || o.material === OUTLINE_MAT) return;
+    if (o.material && o.material.isMeshBasicMaterial && o.material.side !== THREE.BackSide) {
+      o.material = rogue;
     }
   });
   const tag = textSprite("BOTZILLA", { size: 52, color: "#ff8c20", strokeW: 9, maxWidth: 0 });
@@ -5899,15 +5902,15 @@ function killBoss() {
 }
 function updateBossFight(dt) {
   if (!starbaseActive || bossFight.dead || mode !== "play") return;
-  /* countdown to invasion */
+  /* invasion earned by body count: 100 confirmed kills on the counter */
   if (!bossFight.active) {
-    bossFight.incoming -= dt;
-    if (bossFight.incoming <= 8 && !bossFight.warned) {
+    const k = bossFight.kills || 0;
+    if (k >= 90 && !bossFight.warned) {
       bossFight.warned = true;
-      showMsg("⚠ UNIDENTIFIED BOT SIGNATURE INBOUND");
-      say("Something big is on the scanner. Get ready.", { rate: 1.0 });
+      showMsg("⚠ SOMETHING BIG NOTICED THE PURGE — 10 KILLS TO CONTACT");
+      say("Something big is on the scanner. Keep shooting.", { rate: 1.0 });
     }
-    if (bossFight.incoming <= 0) startBossFight();
+    if (k >= 100) startBossFight();
     return;
   }
   const B = bossFight.mesh;
@@ -6177,6 +6180,10 @@ function killEnemy(e, silent = false) {
   if (i < 0) return;
   enemies.splice(i, 1);
   scene.remove(e.mesh);
+  /* BOTZILLA only shows up after 100 confirmed kills at Starbase */
+  if (starbaseActive && !bossFight.active && !bossFight.dead && (e.type === "bot" || e.type === "spammer")) {
+    bossFight.kills = (bossFight.kills || 0) + 1;
+  }
   const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1, 0));
   if (!silent) {
     SFX.boom();
