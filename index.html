@@ -23,6 +23,10 @@
   #msg { top: 34%; left: 50%; transform: translate(-50%,-50%); width: 100%; text-align: center;
     font-size: 44px; color: #ffd94a; -webkit-text-stroke: 2px #000; }
   #crosshair { top: 50%; left: 50%; transform: translate(-50%,-50%); color: #4ff; font-size: 22px; }
+  #bossBarWrap { bottom: 52px; left: 50%; transform: translateX(-50%); width: 340px; text-align: center; }
+  #bossBarName { font-size: 15px; font-weight: bold; color: #ff5040; letter-spacing: 0.12em; margin-bottom: 4px; }
+  #bossBarOuter { width: 100%; height: 14px; border: 2px solid #fff; background: rgba(0,0,0,0.55); }
+  #bossBarFill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff5040, #ffd94a); transition: width 0.15s; }
   #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
     justify-content: center; background: rgba(6,8,14,0.82); color: #fff; text-align: center; cursor: pointer;
     overflow: hidden; isolation: isolate; }
@@ -397,6 +401,10 @@
     <div id="chargeBar"><div id="chargeFill"></div></div>
   </div>
   <div id="msg" class="hudBox"></div>
+  <div id="bossBarWrap" class="hudBox hidden">
+    <div id="bossBarName">⚠ MECHA-CEO</div>
+    <div id="bossBarOuter"><div id="bossBarFill"></div></div>
+  </div>
   <div id="crosshair" class="hudBox">+</div>
 </div>
 <div id="vignette"></div>
@@ -2134,7 +2142,7 @@ function buildStarbase() {
   /* BOSS cybertruck — TWICE as big — parked right in front of the rockets */
   bossTruck = buildCybertruck(0, 0, padZ + 10, 0, 2.8, true);
   g.add(bossTruck);
-  blockArea(0, padZ + 10, 3.6, 7.4, 4.0); /* boss roof standable */
+  blockArea(0, padZ + 10, 3.6, 7.4, 4.0, "bossTruck"); /* boss roof standable; removed when the truck starts moving */
 
   /* simple tower/crane near pad */
   g.add(box(1.3, 26, 1.3, 0x9aa0a8, 28, 13, padZ));
@@ -2392,6 +2400,16 @@ function setOfficePodsVisible(vis) {
 function activateStarbase() {
   if (starbaseActive) return;
   starbaseActive = true;
+  /* fresh boss each Starbase visit */
+  bossFight.active = false; bossFight.dead = false; bossFight.pokes = 0;
+  bossFight.hp = bossFight.max; bossFight.phase = 1; bossFight.state = "idle"; bossFight.t = 1.5;
+  if (bossTruck) {
+    if (!bossTruck.userData.homePos) bossTruck.userData.homePos = bossTruck.position.clone();
+    bossTruck.position.copy(bossTruck.userData.homePos);
+    bossTruck.rotation.set(0, 0, 0);
+    if (bossFight.lamp) { bossTruck.remove(bossFight.lamp); bossFight.lamp = null; }
+  }
+  $("bossBarWrap") && $("bossBarWrap").classList.add("hidden");
   starbaseGroup.visible = true;
   /* OPEN south wall — free walk into the parking lot */
   if (officeShell.southWall) officeShell.southWall.visible = false;
@@ -5747,6 +5765,19 @@ function tryEmitBossPhrase(origin, force = false) {
 }
 function hitBossOffice(point) {
   if (socialActive) { showMsg("Boss is on mute in the lounge"); return false; }
+  /* at Starbase, shooting the boss truck escalates into the MECHA-CEO fight */
+  if (starbaseActive && bossTruck && !bossFight.dead) {
+    if (!bossFight.active) {
+      bossFight.pokes++;
+      SFX.hit();
+      burst(point || bossTruck.position.clone().add(new THREE.Vector3(0, 3, 0)), 0xffd94a, 8, 5);
+      if (bossFight.pokes >= 3) startBossFight();
+      else showMsg(bossFight.pokes === 1 ? "The CEO looked up from his laptop." : "⚠ The engine just started.");
+      return true;
+    }
+    damageBoss(5, point);
+    return true;
+  }
   enrageBoss();
   SFX.hit();
   burst(point || new THREE.Vector3(bossHitbox.x, 2, bossHitbox.z + 3), 0xffd94a, 10, 5);
@@ -5757,6 +5788,155 @@ function hitBossOffice(point) {
     bossHitbox.phraseT = Math.min(bossHitbox.phraseT, 0.35);
   }
   return true;
+}
+
+/* ============================== MECHA-CEO BOSS FIGHT ==============================
+ * Poke the boss truck 3x → it comes alive. Telegraphed charge runs, vulnerable
+ * recovery windows (2x damage), minion drops in phase 2, enraged double charges
+ * in phase 3. Kill it for a payout. */
+const bossFight = {
+  active: false, dead: false, pokes: 0, hp: 90, max: 90, phase: 1,
+  state: "idle", t: 1.5, dir: new THREE.Vector3(), lamp: null, taunt: 0,
+};
+function bossBarSet() {
+  const f = $("bossBarFill");
+  if (f) f.style.width = `${Math.max(0, (bossFight.hp / bossFight.max) * 100)}%`;
+}
+function startBossFight() {
+  bossFight.active = true;
+  bossFight.hp = bossFight.max;
+  bossFight.phase = 1;
+  bossFight.state = "idle";
+  bossFight.t = 2;
+  clearObstaclesByTag("bossTruck"); /* it's mobile now */
+  $("bossBarWrap").classList.remove("hidden");
+  bossBarSet();
+  showMsg("⚠ MECHA-CEO SHOWDOWN ⚠");
+  say("You are interrupting production!", { rate: 0.95 });
+  SFX.purge();
+  shake = 0.6;
+  /* battle beacon on the truck */
+  bossFight.lamp = new THREE.PointLight(0xff4020, 8, 30);
+  bossFight.lamp.position.set(0, 5, 0);
+  bossTruck.add(bossFight.lamp);
+}
+function damageBoss(n, point) {
+  if (!bossFight.active || bossFight.dead) return;
+  const mult = bossFight.state === "recover" ? 2 : 1;
+  bossFight.hp -= n * mult;
+  bossBarSet();
+  SFX.hit();
+  burst(point || bossTruck.position.clone().add(new THREE.Vector3(0, 3.5, 0)), mult > 1 ? 0xffd94a : 0xc0c8d0, 10, 6);
+  if (mult > 1) floatText(bossTruck.position.clone().add(new THREE.Vector3(0, 5.5, 0)), "CRIT!", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.1);
+  const frac = bossFight.hp / bossFight.max;
+  if (bossFight.phase === 1 && frac <= 0.67) {
+    bossFight.phase = 2;
+    showMsg("PHASE 2 — HE'S CALLING IN THE BOTS");
+    say("Deploy the bots. All of them.", { rate: 1.0 });
+  }
+  if (bossFight.phase === 2 && frac <= 0.33) {
+    bossFight.phase = 3;
+    showMsg("PHASE 3 — FULL SELF-DESTRUCTION MODE");
+    say("Fine. I will drive it myself!", { rate: 1.1, pitch: 0.5 });
+    if (bossFight.lamp) bossFight.lamp.color.setHex(0xff0000);
+  }
+  if (bossFight.hp <= 0) killBoss();
+}
+function killBoss() {
+  bossFight.dead = true;
+  bossFight.active = false;
+  $("bossBarWrap").classList.add("hidden");
+  const p = bossTruck.position;
+  /* staggered fireworks */
+  for (let i = 0; i < 7; i++) {
+    setTimeout(() => {
+      burst(p.clone().add(new THREE.Vector3(rand(-3, 3), rand(1, 5), rand(-4, 4))), pick([0xff8040, 0xffd94a, 0xc0c8d0]), 20, 8);
+      SFX.boom();
+      shake = Math.max(shake, 0.5);
+    }, i * 220);
+  }
+  shockRing(p, 0xff8040);
+  /* the truck slumps, nose down, smoking */
+  bossTruck.rotation.z = 0.16;
+  bossTruck.rotation.x = -0.08;
+  bossTruck.position.y = -0.35;
+  if (bossFight.lamp) bossFight.lamp.intensity = 0;
+  score += 2500;
+  updateHud();
+  floatText(p.clone().add(new THREE.Vector3(0, 8, 0)), "CEO DETHRONED +2500", { size: 80, color: "#ffd94a", strokeW: 11 }, 3.2);
+  say("This is... suboptimal.", { rate: 0.8, pitch: 0.4 });
+  showMsg("🏆 THE LOT IS YOURS");
+  /* victory loot: ammo + fuel scatter */
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      const g2 = new THREE.Group();
+      g2.add(box(0.22, 0.34, 0.14, 0x2c3038, 0, 0, 0));
+      g2.add(box(0.24, 0.1, 0.16, 0xcfa93c, 0, 0.14, 0));
+      g2.position.set(p.x + rand(-4, 4), 0.4, p.z + rand(3, 7));
+      pickups.push({ mesh: g2, t: rand(0, 6), kind: "ammo", amount: 6 });
+      scene.add(g2);
+    }, 500 + i * 300);
+  }
+}
+function updateBossFight(dt) {
+  if (!starbaseActive || !bossFight.active || bossFight.dead || mode !== "play" || !bossTruck) return;
+  /* keep the live hitbox glued to the moving truck */
+  bossHitbox.x = bossTruck.position.x;
+  bossHitbox.z = bossTruck.position.z;
+  const lotZ0 = FLOOR_D / 2;
+  bossFight.t -= dt;
+  const speed = bossFight.phase === 3 ? 26 : 19;
+  if (bossFight.state === "idle" && bossFight.t <= 0) {
+    /* telegraph: rev + aim at the pig */
+    bossFight.state = "telegraph";
+    bossFight.t = 0.85;
+    bossFight.dir.copy(pig.position).sub(bossTruck.position).setY(0).normalize();
+    bossTruck.rotation.y = Math.atan2(bossFight.dir.x, bossFight.dir.z) + Math.PI;
+    beep(90, 0.3, "sawtooth", 0.12, 60);
+    setTimeout(() => beep(120, 0.3, "sawtooth", 0.12, 80), 300);
+    if (bossFight.lamp) bossFight.lamp.intensity = 20;
+  } else if (bossFight.state === "telegraph" && bossFight.t <= 0) {
+    bossFight.state = "charge";
+    bossFight.t = 2.0;
+    noiseBurst(0.4, 0.18);
+    if (bossFight.lamp) bossFight.lamp.intensity = 8;
+  } else if (bossFight.state === "charge") {
+    bossTruck.position.addScaledVector(bossFight.dir, speed * dt);
+    /* dust wake */
+    if (Math.random() < 0.5) burst(bossTruck.position.clone().add(new THREE.Vector3(rand(-2, 2), 0.2, rand(-3, 3))), 0x8a7f6a, 2, 2, 5);
+    /* run the pig over */
+    const d = Math.hypot(pig.position.x - bossTruck.position.x, pig.position.z - bossTruck.position.z);
+    if (d < 4.4) {
+      hurtPlayer();
+      pigVel.add(bossFight.dir.clone().multiplyScalar(26));
+    }
+    /* arena bounds → hard clamp every frame, skid to a stop on contact */
+    const bx = bossTruck.position;
+    const hitWall = Math.abs(bx.x) > FLOOR_W / 2 + 2 || bx.z < lotZ0 + 6 || bx.z > lotZ0 + 66;
+    bx.x = Math.max(-FLOOR_W / 2 - 2, Math.min(FLOOR_W / 2 + 2, bx.x));
+    bx.z = Math.max(lotZ0 + 6, Math.min(lotZ0 + 66, bx.z));
+    if (bossFight.t <= 0 || hitWall) {
+      bossFight.state = "recover";
+      bossFight.t = bossFight.phase === 3 ? 1.6 : 2.6;
+      noiseBurst(0.25, 0.12);
+      burst(bx.clone().add(new THREE.Vector3(0, 0.3, 0)), 0x8a7f6a, 14, 4, 6);
+      floatText(bx.clone().add(new THREE.Vector3(0, 6, 0)), "OVERHEATED — HIT IT NOW", { size: 40, color: "#ffd94a", strokeW: 7 }, 1.4);
+      /* phase 2+: bots pour out of the vault */
+      if (bossFight.phase >= 2) {
+        for (let i = 0; i < 2; i++) {
+          spawnEnemy("bot");
+          const nb = enemies[enemies.length - 1];
+          if (nb && nb.type === "bot") nb.mesh.position.set(bx.x + rand(-4, 4), 0, bx.z + rand(-4, 4));
+        }
+      }
+    }
+  } else if (bossFight.state === "recover" && bossFight.t <= 0) {
+    bossFight.state = "idle";
+    bossFight.t = bossFight.phase === 3 ? rand(0.4, 0.9) : rand(1.2, 2.2);
+    /* taunt between runs */
+    bossFight.taunt++;
+    if (bossFight.taunt % 2 === 0) tryEmitBossPhrase(bossTruck.position.clone().add(new THREE.Vector3(0, 6, 0)), true);
+  }
 }
 function hitscanWorld(origin, dir, maxDist = 55) {
   let best = null;
@@ -6944,6 +7124,7 @@ renderer.setAnimationLoop(() => {
     updateDartGame(dt);
     updateStrikerGame(dt);
     updateArcadeGame(dt);
+    updateBossFight(dt);
   } catch (err) {
     console.error("frame error", err);
   }
@@ -7208,6 +7389,8 @@ window.__game = {
   startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
   previewLevel2, activateStarbase, levelUp,
   arcadeGame, dartGame, strikerGame, startArcadeGame,
+  bossFight, startBossFight, damageBoss, hitBossOffice,
+  get bossTruck() { return bossTruck; },
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
   get lounge() { return loungeDecor && loungeDecor.userData; },
   get reading() { return socialReading; },
