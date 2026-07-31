@@ -807,7 +807,7 @@
 <div id="hud">
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox"><span id="waveLabel">LEVEL</span><br><span id="waveV">1</span></div>
-  <div id="quota" class="hudBox"><span id="quotaLabel">WALL TIMER</span><br><span id="quotaV">100</span></div>
+  <div id="quota" class="hudBox"><span id="quotaLabel">KILLS NEEDED</span><br><span id="quotaV">100</span></div>
   <div id="weapon" class="hudBox">WEAPON <span class="wpnKeys" style="opacity:.8">[Q / 1·2·3]</span><br><span id="weaponV">X BOOMERANG</span><br>AMMO <span id="ammoV">20</span><br><span id="weaponTip" style="font-size:11px;opacity:.85">1 Boom · 2 Rifle · Q swap</span></div>
   <div id="lives" class="hudBox">🐷🐷🐷🐷🐷🐷🐷🐷🐷</div>
   <div id="chargeWrap" class="hudBox">
@@ -1883,6 +1883,13 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
     tag.userData.maxDist = 55;
     g.add(tag);
   }
+  if (zone === "starbase" && /sushi/i.test(label || "")) {
+    const tag = textSprite("SUSHI · HEAL", { size: 32, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.55);
+    tag.position.set(0, 3.35, 0);
+    tag.userData.maxDist = 55;
+    g.add(tag);
+  }
   vendingMachines.push(vm);
   g.userData.vending = vm;
   return g;
@@ -1915,8 +1922,12 @@ mkVending(12, FLOOR_D / 2 - 6, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
 mkVending(-42, -28, Math.PI / 2, 0xb06a28, "#ffe4cf", "RX", "starbase");
 /* extras along N/S free space (not on E/W photo gallery walls) */
 mkVending(16, -16, -0.4, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
+/* second sushi inside lobby (east plaza) */
+mkVending(-20, 8, 0.5, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
 mkVending(-16, 18, 0.3, 0x28a0b0, "#d8f8ff", "COFFEE", "starbase");
 mkVending(0, -24, 0, 0xb02828, "#ffdddd", "SODA", "starbase");
+/* parking lot sushi next to boss Cybertruck (south of HQ wall) */
+mkVending(6, FLOOR_D / 2 + 52, Math.PI, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -7368,7 +7379,7 @@ function paintWallTimer() {
   /* footer */
   g.fillStyle = "#ff4444";
   g.font = "bold 34px Arial";
-  g.fillText("BOTS + SPAMMERS COUNT DOWN", w / 2, h - 60);
+  g.fillText("KILLS NEEDED — PURGE THE LOT", w / 2, h - 60);
   if (wallTimerTex) wallTimerTex.needsUpdate = true;
   wallTimerDirty = false;
 }
@@ -7383,6 +7394,8 @@ function updateHud() {
     if (wl) wl.textContent = "LEVEL";
     if (wv) wv.textContent = wave;
   }
+  const ql = $("quotaLabel");
+  if (ql) ql.textContent = socialActive ? "" : "KILLS NEEDED";
   const qv = $("quotaV");
   if (qv) qv.textContent = socialActive ? "—" : String(Math.max(0, wallQuota | 0));
   const lv = $("lives"); if (lv) lv.textContent = "🐷".repeat(Math.max(0, Math.min(12, lives)));
@@ -7396,14 +7409,33 @@ function setWallQuota(n) {
   updateHud();
 }
 function tickWallTimer(amount = 1) {
-  if (socialActive || mode !== "play" || levelUpT > 0 || portalReady) return;
+  if (socialActive || mode !== "play" || portalReady) return;
+  /* allow countdown during brief levelUp flash; only hard-block portalReady */
+  if (levelUpT > 0 && !starbaseActive) return;
   if (rocketLift && rocketLift.phase === "lift") return;
+  if (wallQuota <= 0 && !(starbaseActive && typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead)) return;
+  const before = wallQuota;
   wallQuota = Math.max(0, wallQuota - amount);
   wallTimerDirty = true;
   updateHud();
-  if (wallQuota <= 0) {
-    if (starbaseActive) startRocketIgnition();
-    else openLevelPortal();
+  if (before > 0 && wallQuota <= 0) {
+    onKillGoalReached();
+  }
+}
+function onKillGoalReached() {
+  if (mode !== "play" || socialActive) return;
+  if (starbaseActive) {
+    /* climax: BOTZILLA invades + rocket ignition (if not already) */
+    try {
+      if (typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead) {
+        bossFight.kills = Math.max(bossFight.kills || 0, 100);
+        startBossFight();
+      }
+    } catch (err) { console.warn("boss start", err); }
+    try { startRocketIgnition(); } catch (err) { console.warn("rocket", err); }
+    showMsg("100 KILLS — BOTZILLA INBOUND · STARSHIP IGNITION");
+  } else {
+    openLevelPortal();
   }
 }
 function startRocketIgnition() {
@@ -7412,16 +7444,21 @@ function startRocketIgnition() {
   wallTimerDirty = true;
   updateHud();
   const rockets = (starbaseGroup && starbaseGroup.userData.rockets) || [];
-  const mesh = rockets[0] || rockets[1];
+  let mesh = rockets[0] || rockets[1] || null;
+  if (!mesh && starbaseGroup) {
+    /* fallback: first tall child named rocket-ish */
+    starbaseGroup.traverse(o => {
+      if (!mesh && o.userData && o.userData.homeY != null) mesh = o;
+    });
+  }
   if (!mesh) {
+    showMsg("IGNITION FAILED — OPENING PORTAL");
     openLevelPortal();
     return;
   }
   rocketLift = { mesh, t: 0, phase: "ignite", smokeT: 0 };
   showMsg("IGNITION — STARSHIP IS LIFTING OFF");
-  SFX.wave();
-  SFX.purge();
-  SFX.bossRage();
+  try { SFX.wave(); SFX.purge(); SFX.bossRage(); } catch (_) {}
   shake = Math.max(shake, 0.7);
   /* engine plume */
   const plume = new THREE.Group();
@@ -8268,12 +8305,18 @@ function updateBossFight(dt) {
   if (!starbaseActive || bossFight.dead || mode !== "play") return;
   if (!bossFight.active) {
     const k = bossFight.kills || 0;
+    /* also treat wallQuota depletion as the kill goal (same counter) */
+    const goalHit = k >= 100 || (typeof wallQuota !== "undefined" && wallQuota <= 0 && (k >= 1 || wallQuotaMax > 0));
     if (k >= 90 && !bossFight.warned) {
       bossFight.warned = true;
       showMsg("SOMETHING BIG NOTICED THE PURGE — 10 KILLS TO CONTACT");
       try { say("Something big is on the scanner. Keep shooting.", { rate: 1.0 }); } catch (_) {}
     }
-    if (k >= 100) startBossFight();
+    if (goalHit && !bossFight.dead) {
+      if (k < 100) bossFight.kills = 100;
+      startBossFight();
+      try { if (!rocketLift) startRocketIgnition(); } catch (_) {}
+    }
     return;
   }
   const B = bossFight.mesh;
@@ -8585,7 +8628,7 @@ function fireFlamethrower(dt) {
     if (e.hp <= 0) {
       if (e.type === "xuser") dismissXUser(e);
       else if (e.type === "spammer") demonetize(e);
-      else { killEnemy(e); score += e.type === "reporter" ? 40 : 25; tickWallTimer(1); }
+      else { killEnemy(e); score += e.type === "reporter" ? 40 : 25; }
       updateHud();
     }
   }
@@ -9816,6 +9859,7 @@ renderer.setAnimationLoop(() => {
     updateDartGame(dt);
     updateStrikerGame(dt);
     updateArcadeGame(dt);
+    if (typeof updateRocketLift === "function") updateRocketLift(dt);
   } catch (err) {
     console.error("frame error", err);
   }
