@@ -3358,6 +3358,7 @@ function openRocketPlaque(p) {
   if (!p || !starbaseActive) return;
   rocketReading = true;
   rocketNear = p;
+  try { showMsg("PAUSED — viewing exhibit (Esc / close to resume)"); } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try {
@@ -3397,6 +3398,7 @@ function openRocketPlaque(p) {
 }
 function closeRocketPlaque(silent = false) {
   rocketReading = false;
+  if (!silent) { try { showMsg("RESUMED"); } catch (_) {} }
   const verd = $("rpVerdict");
   if (verd) { verd.textContent = ""; verd.classList.remove("show"); }
   const root = $("rocketPlaque");
@@ -5444,6 +5446,7 @@ function openTweetReader(e) {
   const root = $("tweetReader");
   if (!root) return;
   socialReading = true;
+  try { showMsg("PAUSED — reading posts (Esc closes)"); } catch (_) {}
   socialNear = e;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
@@ -6143,6 +6146,14 @@ function miniGameActive() {
     (typeof arcadeGame !== "undefined" && arcadeGame.active)
   );
 }
+/* true while reading art, tweets, or playing mini-games — combat must pause */
+function gameplayFrozen() {
+  return !!(
+    (typeof socialReading !== "undefined" && socialReading) ||
+    (typeof rocketReading !== "undefined" && rocketReading) ||
+    miniGameActive()
+  );
+}
 function setHeroForMiniGame(on) {
   /* hide pig + guns so camera can sit on the cabinet screen */
   try {
@@ -6164,8 +6175,9 @@ function startDartGame() {
   dartGame.throwsLeft = 3;
   dartGame.total = 0;
   dartGame.aimY = 0; dartGame.aimZ = 0;
-  socialReading = true; /* freezes the world; reader stays closed */
+  socialReading = true; /* freezes combat via gameplayFrozen() */
   setHeroForMiniGame(true);
+  try { showMsg("PAUSED — mini-game (Esc quits)"); } catch (_) {}
   try { setMiniTouch(true, isMobile() ? "DRAG TO AIM · TAP TO THROW" : "CLICK TO THROW · ESC QUITS"); } catch (_) {}
   for (const d of dartGame.darts) scene.remove(d);
   dartGame.darts = [];
@@ -6234,7 +6246,7 @@ function startStrikerGame() {
   strikerGame.camBlend = 0;
   socialReading = true;
   setHeroForMiniGame(true);
-  showMsg("TEST YOUR CLOUT — click to slam!");
+  showMsg("PAUSED — TEST YOUR CLOUT · click to slam · Esc quits");
   try { setMiniTouch(true, isMobile() ? "TAP WHEN THE PUCK IS HIGH!" : "CLICK TO SLAM · ESC QUITS"); } catch (_) {}
   SFX.pickup();
 }
@@ -6309,7 +6321,7 @@ function startArcadeGame(which) {
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   /* park pig behind the camera pad so re-entry is clean */
   if (A.pos) pig.position.set(A.pos.x, 0, A.pos.z);
-  showMsg((A.name) + " — " + (which === 0 ? "steer & shoot" : "whack spam") + " · Esc quits");
+  showMsg("PAUSED — " + (A.name) + " · " + (which === 0 ? "steer & shoot" : "whack spam") + " · Esc quits");
   try {
     setMiniTouch(true, which === 0
       ? (isMobile() ? "DRAG / STICK TO STEER · TAP SHOOT" : "MOUSE or A/D to move · CLICK shoot · ESC")
@@ -8834,6 +8846,7 @@ function doPurge() {
   }, 60 * i));
 }
 function hurtPlayer() {
+  if (typeof gameplayFrozen === "function" && gameplayFrozen()) return;
   if (socialActive || invuln > 0 || mode !== "play") return;
   lives--;
   invuln = 2.4;
@@ -9020,15 +9033,14 @@ function collideObstacles(pos, r, feetY = 0) {
 
 function update(dt) {
   t += dt;
-  if (socialActive) updateSocialLounge(dt);
+  /* plaque proximity UI still works while reading so close/hint stay correct */
   if (starbaseActive) updateRocketPlaques(dt);
-  if (starbaseActive) updateBossFight(dt);
-  /* rocket lift must keep animating even if a mini-game froze combat */
-  if (rocketLift && typeof updateRocketLift === "function") {
-    /* primary call is still the animation loop; no double-step here */
+  /* PAUSE combat: artwork plaques, tweet reader, arcade/darts/clout */
+  if (typeof gameplayFrozen === "function" ? gameplayFrozen() : (socialReading || rocketReading)) {
+    return;
   }
-  /* freeze combat/world during thread reader OR mini-games (socialReading flag) */
-  if (socialReading) return;
+  if (socialActive) updateSocialLounge(dt);
+  if (starbaseActive) updateBossFight(dt);
   /* --- ambient actors always animate --- */
   /* Elon — storms office when enraged, spews killer phrases */
   const eu = elon.userData;
@@ -9923,6 +9935,8 @@ window.__debug = () => ({
   yaw,
   social: !!socialActive,
   socialReading: !!socialReading,
+  frozen: typeof gameplayFrozen === "function" ? gameplayFrozen() : !!socialReading,
+  rocketReading: !!rocketReading,
   starbase: !!starbaseActive,
   wallQuota, wallQuotaMax,
   rocket: rocketLift ? { phase: rocketLift.phase, t: +rocketLift.t.toFixed(2), y: rocketLift.mesh ? +rocketLift.mesh.position.y.toFixed(2) : null } : null,
@@ -9946,6 +9960,13 @@ window.__forceClimax = () => {
   wallQuota = 1;
   tickWallTimer(1);
   runFrameSystems(1 / 30);
+  return window.__debug();
+};
+/* QA: pause modes — "art" | "mini" | "off" */
+window.__pauseForTest = (kind = "art") => {
+  if (kind === "art") { rocketReading = true; socialReading = false; }
+  else if (kind === "mini") { socialReading = true; rocketReading = false; }
+  else { rocketReading = false; socialReading = false; }
   return window.__debug();
 };
 window.__socialGotoNearest = () => {
