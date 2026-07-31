@@ -2868,7 +2868,7 @@ const purgeBtn = new THREE.Group();
   t1.position.y = 1.7; t1.scale.multiplyScalar(1.2);
   purgeBtn.add(t1);
   purgeBtn.position.set(-10, 0, 10);
-  scene.add(purgeBtn);
+  purgeBtn.visible = false; /* BOT PURGE button removed from the game */
 }
 let purgeCooldown = 0;
 
@@ -3302,10 +3302,15 @@ function buildXUser(u) {
   g.add(face);
   /* hair blob */
   g.add(sph(0.3, 0x2a1c14, 0, 1.95, -0.02));
-  /* handle plate */
-  const handleTag = textSprite("@" + u.handle, { size: 34, color: "#e8eef8", strokeW: 6, maxWidth: 0 });
-  handleTag.position.set(0, 2.55, 0);
-  handleTag.scale.multiplyScalar(0.55);
+  /* NAME above @handle, like a real X profile */
+  const nameTag = textSprite(u.name || u.handle, { size: 38, color: "#ffffff", strokeW: 7, maxWidth: 0 });
+  nameTag.position.set(0, 2.86, 0);
+  nameTag.scale.multiplyScalar(0.6);
+  g.add(nameTag);
+  g.userData.nameTag = nameTag;
+  const handleTag = textSprite("@" + u.handle, { size: 30, color: "#8b98a8", strokeW: 6, maxWidth: 0 });
+  handleTag.position.set(0, 2.5, 0);
+  handleTag.scale.multiplyScalar(0.5);
   g.add(handleTag);
   g.userData.handleTag = handleTag;
   addOutline(g, 1.04);
@@ -3328,7 +3333,7 @@ function setXUserBubble(e, chunk) {
     strokeW: 7,
     maxWidth: 0,
   });
-  tag.position.set(0, 3.05, 0);
+  tag.position.set(0, 3.4, 0);
   tag.scale.multiplyScalar(0.72);
   e.mesh.add(tag);
   e.tag = tag;
@@ -3414,6 +3419,89 @@ function placeSocialGuests(users) {
   });
 }
 
+/* —— cozy lounge set dressing, shown only while the Timeline Lounge is active —— */
+let loungeDecor = null;
+function buildLoungeDecor() {
+  if (loungeDecor) return loungeDecor;
+  const g = new THREE.Group();
+  /* big round rugs under each conversation pocket */
+  const rugCols = [0x7c3aed, 0x1d9bf0, 0xe0447a];
+  [[0, 6, 7], [-16, 10, 5.5], [16, 10, 5.5]].forEach(([rx, rz, rr], i) => {
+    const rug = new THREE.Mesh(new THREE.CircleGeometry(rr, 28),
+      new THREE.MeshLambertMaterial({ color: rugCols[i % 3] }));
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(rx, 0.045, rz);
+    rug.receiveShadow = true;
+    g.add(rug);
+    const trim = new THREE.Mesh(new THREE.RingGeometry(rr - 0.35, rr, 28),
+      new THREE.MeshLambertMaterial({ color: 0xf2ead8 }));
+    trim.rotation.x = -Math.PI / 2;
+    trim.position.set(rx, 0.05, rz);
+    g.add(trim);
+    /* couch ring around each rug */
+    const couch = (a) => {
+      const cg = new THREE.Group();
+      cg.add(box(2.6, 0.5, 1.0, 0x3d4c66, 0, 0.35, 0));
+      cg.add(box(2.6, 0.7, 0.22, 0x33415a, 0, 0.85, -0.4));
+      cg.add(box(0.24, 0.62, 1.0, 0x33415a, -1.2, 0.55, 0));
+      cg.add(box(0.24, 0.62, 1.0, 0x33415a, 1.2, 0.55, 0));
+      /* throw pillows */
+      cg.add(box(0.45, 0.3, 0.16, pick([0xffd94a, 0x7CFFB0, 0xff90e0]), -0.7, 0.72, -0.25));
+      cg.add(box(0.45, 0.3, 0.16, pick([0x5ad1ff, 0xff8c40]), 0.7, 0.72, -0.25));
+      cg.position.set(rx + Math.sin(a) * (rr + 0.8), 0, rz + Math.cos(a) * (rr + 0.8));
+      cg.rotation.y = a + Math.PI;
+      g.add(cg);
+      blockArea(cg.position.x, cg.position.z, 1.3, 0.6, 1.2);
+    };
+    couch(0.4 + i); couch(2.5 + i); couch(4.4 + i);
+    /* low table + mugs */
+    g.add(cyl(0.9, 0.9, 0.1, 0x8a6a4a, rx, 0.42, rz, 14), cyl(0.12, 0.16, 0.4, 0x6a4f34, rx, 0.2, rz));
+    g.add(cyl(0.07, 0.06, 0.14, 0xf2f2ee, rx + 0.4, 0.54, rz + 0.2));
+    g.add(cyl(0.07, 0.06, 0.14, 0x1d9bf0, rx - 0.35, 0.54, rz - 0.25));
+    blockArea(rx, rz, 1.0, 1.0, 0.6);
+    /* floor lamp with warm glow */
+    const lampX = rx + rr + 1.6, lampZ = rz - 1;
+    g.add(cyl(0.05, 0.09, 2.4, 0x2c2f36, lampX, 1.2, lampZ, 8));
+    g.add(cyl(0.35, 0.5, 0.5, 0xffe8c0, lampX, 2.6, lampZ, 10));
+    if (i < 2) {
+      const pl = new THREE.PointLight(0xffd9a0, 6, 14);
+      pl.position.set(lampX, 2.4, lampZ);
+      g.add(pl);
+    }
+  });
+  /* espresso bar along the west side */
+  {
+    const bx = -24, bz = -4;
+    g.add(box(6, 1.15, 1.3, 0x3a2c20, bx, 0.58, bz));
+    g.add(box(6.2, 0.1, 1.5, 0xd8d4ca, bx, 1.18, bz));
+    g.add(box(0.7, 0.6, 0.5, 0x22262c, bx - 1.5, 1.5, bz));   /* espresso machine */
+    g.add(cyl(0.07, 0.06, 0.14, 0xf2f2ee, bx - 0.4, 1.3, bz));
+    for (let i = 0; i < 4; i++) {
+      g.add(cyl(0.32, 0.32, 0.08, 0xc8a020, bx - 2.2 + i * 1.4, 0.85, bz + 1.5, 10));
+      g.add(cyl(0.06, 0.09, 0.8, 0x2c2f36, bx - 2.2 + i * 1.4, 0.4, bz + 1.5, 8));
+    }
+    blockArea(bx, bz, 3.2, 0.9, 1.3);
+    const barTag = textSprite("☕ RATIO ROAST", { size: 34, color: "#ffd94a", strokeW: 6, maxWidth: 0 });
+    barTag.scale.multiplyScalar(0.8);
+    barTag.position.set(bx, 2.6, bz);
+    g.add(barTag);
+  }
+  /* neon TIMELINE LOUNGE sign floating over the center */
+  const neon = textSprite("TIMELINE LOUNGE", { size: 64, color: "#7CFFB0", strokeW: 9, maxWidth: 0 });
+  neon.scale.multiplyScalar(1.5);
+  neon.position.set(0, 5.6, -2);
+  neon.userData.maxDist = 80;
+  g.add(neon);
+  /* plants between pockets */
+  for (const [px, pz] of [[-8, 2], [8, 2], [-22, 14], [22, 14], [0, 16]]) {
+    g.add(cyl(0.26, 0.34, 0.5, 0xb06a3a, px, 0.25, pz), sph(0.55, 0x3f7a3f, px, 1.0, pz, 8, 6));
+  }
+  g.visible = false;
+  scene.add(g);
+  loungeDecor = g;
+  return g;
+}
+
 function activateSocialLounge() {
   socialActive = true;
   if (typeof deactivateStarbase === "function") deactivateStarbase();
@@ -3426,8 +3514,10 @@ function activateSocialLounge() {
   if (typeof bossOfficeGroup !== "undefined" && bossOfficeGroup) {
     /* keep office geometry; just quiet the storm systems via socialActive checks */
   }
-  scene.background = new THREE.Color(0xd4e4f4);
-  scene.fog = new THREE.Fog(0xd4e4f4, 55, 140);
+  /* warm dusk lounge mood */
+  scene.background = new THREE.Color(0xe8d8c4);
+  scene.fog = new THREE.Fog(0xe8d8c4, 50, 130);
+  buildLoungeDecor().visible = true;
   pig.position.set(0, 0, 10);
   pigY = 0; pigVy = 0;
   const wv = $("waveV"); if (wv) wv.textContent = "LOUNGE";
@@ -3444,6 +3534,7 @@ function activateSocialLounge() {
 
 function deactivateSocialLounge() {
   socialActive = false;
+  if (loungeDecor) loungeDecor.visible = false;
   socialReading = false;
   closeTweetReader(true);
   clearSocialGuests();
@@ -5665,7 +5756,7 @@ function update(dt) {
       score += hits * 50; updateHud();
     }
     /* purge button hit */
-    if (b.mesh.position.distanceTo(purgeBtn.position.clone().setY(b.mesh.position.y)) < 1.4) doPurge();
+    if (purgeBtn.visible && b.mesh.position.distanceTo(purgeBtn.position.clone().setY(b.mesh.position.y)) < 1.4) doPurge();
   }
   /* rifle can hit purge button via lock-less shot — check tracers handled at fire; simple proximity check for tracer */
 
