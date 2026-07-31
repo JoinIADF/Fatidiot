@@ -530,6 +530,16 @@
     font: 800 26px/1.15 system-ui, sans-serif; color: #fff; margin: 0 0 4px;
   }
   #rocketPlaque .rp-years {
+    letter-spacing: 0.02em;
+  }
+  #rocketPlaque .rp-launches {
+    color: #8fd1ff;
+    font-weight: 800;
+    font-size: 15px;
+    margin: 4px 0 8px;
+    letter-spacing: 0.04em;
+  }
+  #rocketPlaque .rp-years {
     font: 700 13px/1.2 system-ui, sans-serif; color: #ffd94a; letter-spacing: 0.06em;
     text-transform: uppercase; margin-bottom: 12px;
   }
@@ -943,6 +953,7 @@
       <div class="rp-brand" id="rpBrand">SPACEXAI · FLIGHT HERITAGE</div>
       <h2 class="rp-name" id="rpName">Rocket</h2>
       <div class="rp-years" id="rpYears">—</div>
+      <div class="rp-launches" id="rpLaunches"></div>
       <div class="rp-verdict" id="rpVerdict"></div>
       <p class="rp-text" id="rpText"></p>
     </div>
@@ -3086,26 +3097,37 @@ function buildLobbyDecor() {
   /* —— ROCKET HISTORY GALLERY —— framed illustrations + plaques —— */
   /* Chronological: earliest → most recent (debut year, then lineage).
      Wall layout places index 0 at the SOUTH (entry) so walking in reads early→late. */
+  /* launches: approx cumulative through mid-2026 (heritage display; not live telemetry) */
   const ROCKET_HISTORY = [
     { id: "falcon1", name: "Falcon 1", years: "2006 – 2009", debut: 2006, order: 1,
-      blurb: "The first SpaceXAI orbital attempt vehicle. Four flights taught hard lessons; flight 4 finally reached orbit and proved private launch was possible." },
+      launches: 5, launchLabel: "5 launches",
+      blurb: "The first SpaceXAI orbital attempt vehicle. Five flights taught hard lessons; flight 4 finally reached orbit and proved private launch was possible." },
     { id: "falcon9", name: "Falcon 9", years: "2010 – present", debut: 2010, order: 2,
+      launches: 520, launchLabel: "~520 launches",
       blurb: "Workhorse two-stage launcher. First stage returns to droneships and landing zones — the backbone of cadence, rideshares, and Starlink deployment. Most prolific flight vehicle." },
     { id: "dragon", name: "Dragon", years: "2010 – present", debut: 2010, order: 3,
+      launches: 55, launchLabel: "~55 flights",
       blurb: "Cargo and crew capsule. Delivered to the ISS under NASA CRS/CCtCap, then human-rated as Crew Dragon — the first commercial craft to fly astronauts." },
     { id: "grasshopper", name: "Grasshopper", years: "2012 – 2013", debut: 2012, order: 4,
+      launches: 8, launchLabel: "8 hop tests",
       blurb: "Vertical-takeoff, vertical-landing testbed. Short hops at McGregor proved propulsive landing was more than a slide deck." },
     { id: "raptor", name: "Raptor Engine", years: "2016 – present", debut: 2016, order: 5,
+      launches: 0, launchLabel: "1,000+ engines built",
       blurb: "Full-flow staged combustion methane/LOX engine. The high-thrust heart of Starship and Super Heavy — refined across Raptor 1, 2, and 3." },
     { id: "its", name: "ITS / BFR Concept", years: "2016 – 2018", debut: 2016, order: 6,
+      launches: 0, launchLabel: "0 (concept only)",
       blurb: "Interplanetary Transport System and Big Falcon Rocket concept art that evolved into today's Starship architecture." },
     { id: "falconheavy", name: "Falcon Heavy", years: "2018 – present", debut: 2018, order: 7,
+      launches: 12, launchLabel: "12 launches",
       blurb: "Three Falcon 9 cores strapped together. Debut lofted a roadster toward Mars — still the most powerful operational orbital booster flying regularly." },
     { id: "starlink", name: "Starlink Stack", years: "2019 – present", debut: 2019, order: 8,
+      launches: 180, launchLabel: "~180 deployments",
       blurb: "Not a launcher — a mission profile. Dense Falcon 9 deployments of broadband sats that fund the next generation of vehicles." },
     { id: "starship", name: "Starship", years: "2019 – present", debut: 2019, order: 9,
+      launches: 12, launchLabel: "~12 flight tests",
       blurb: "Fully reusable stainless upper stage for Earth orbit, the Moon, and Mars. Paired with Super Heavy for orbital attempts from Starbase." },
     { id: "superheavy", name: "Super Heavy", years: "2023 – present", debut: 2023, order: 10,
+      launches: 12, launchLabel: "~12 boosters flown",
       blurb: "The booster beneath Starship. Dozens of Raptors, catch attempts at the tower, and the path to rapid full reuse — the current frontier." },
   ];
 
@@ -3248,25 +3270,29 @@ function buildLobbyDecor() {
     /* dark mat behind photo */
     frame.add(box(bw + 0.08, bh + 0.08, 0.02, dark, 0, cy, zOff - 0.02));
 
-    /* FIXED brass title plaque under the photo (name + years always visible) */
-    const plaqueW = photoW * 0.95, plaqueH = 0.62;
-    const plaqueY = cy - photoH / 2 - 0.45;
-    const plaqueTex = canvasTex(512, 180, (ctx, w, h) => {
+    /* FIXED brass title plaque (name + years + launch count) */
+    const plaqueW = photoW * 0.95, plaqueH = 0.78;
+    const plaqueY = cy - photoH / 2 - 0.52;
+    const launchLine = rk.launchLabel || (rk.launches != null ? (rk.launches + " launches") : "");
+    const plaqueTex = canvasTex(512, 220, (ctx, w, h) => {
       const g = ctx.createLinearGradient(0, 0, 0, h);
       g.addColorStop(0, "#e8c878"); g.addColorStop(0.5, "#c8a24a"); g.addColorStop(1, "#8a6a28");
       ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
       ctx.strokeStyle = "#5a4010"; ctx.lineWidth = 8; ctx.strokeRect(6, 6, w - 12, h - 12);
       ctx.strokeStyle = "#fff0c0"; ctx.lineWidth = 2; ctx.strokeRect(14, 14, w - 28, h - 28);
       ctx.fillStyle = "#1a1208";
-      ctx.font = "bold 42px Arial Black, Arial";
+      ctx.font = "bold 36px Arial Black, Arial";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(rk.name.toUpperCase(), w / 2, h * 0.38);
-      ctx.font = "bold 26px Arial";
+      ctx.fillText(rk.name.toUpperCase(), w / 2, h * 0.28);
+      ctx.font = "bold 22px Arial";
       ctx.fillStyle = "#2a1a08";
-      ctx.fillText(rk.years, w / 2, h * 0.62);
-      ctx.font = "bold 18px Arial";
+      ctx.fillText(rk.years, w / 2, h * 0.48);
+      ctx.font = "bold 24px Arial Black, Arial";
+      ctx.fillStyle = "#0a2840";
+      ctx.fillText(launchLine, w / 2, h * 0.66);
+      ctx.font = "bold 16px Arial";
       ctx.fillStyle = "#3a2810";
-      ctx.fillText("E / TAP TO READ", w / 2, h * 0.82);
+      ctx.fillText("E / TAP TO READ", w / 2, h * 0.84);
     });
     const plaque = new THREE.Mesh(
       new THREE.PlaneGeometry(plaqueW, plaqueH),
@@ -3287,6 +3313,7 @@ function buildLobbyDecor() {
     const worldPos = new THREE.Vector3(mountX + face * 1.5, 0, z);
     rocketPlaques.push({
       id: rk.id, name: rk.name, years: rk.years, blurb: rk.blurb,
+      launches: rk.launches, launchLabel: launchLine,
       pos: worldPos, mesh: frame, kind: rk.id,
       photoUrl: "./rockets/" + rk.id + ".jpg",
     });
@@ -3469,7 +3496,12 @@ function openRocketPlaque(p) {
   const root = $("rocketPlaque");
   if (root) { root.classList.remove("hidden"); root.setAttribute("aria-hidden", "false"); }
   if ($("rpName")) $("rpName").textContent = p.name;
-  if ($("rpYears")) $("rpYears").textContent = p.years;
+  if ($("rpYears")) $("rpYears").textContent = p.years || "—";
+  if ($("rpLaunches")) {
+    const L = p.launchLabel || (p.launches != null ? p.launches + " launches" : "");
+    $("rpLaunches").textContent = L || "";
+    $("rpLaunches").style.display = L ? "block" : "none";
+  }
   if ($("rpText")) $("rpText").textContent = p.blurb;
   const verd = $("rpVerdict");
   if (verd) {
