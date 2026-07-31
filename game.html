@@ -5016,33 +5016,57 @@ function buildLoungeDecor() {
       cTag.position.set(cab.position.x, 2.7, az);
       g.add(cTag);
     }
-    /* TEST YOUR CLOUT high-striker beside the cabinets */
+    /* TEST YOUR CLOUT high-striker — open floor near lounge entrance (clear camera lane) */
     {
-      const sx2 = 27.8, sz2 = -5.5;
-      g.add(box(1.2, 0.25, 1.0, 0x7a1f2e, sx2, 0.12, sz2));
-      g.add(box(0.5, 0.35, 0.5, 0x9a2f3e, sx2, 0.4, sz2));
-      g.add(box(0.16, 3.6, 0.16, 0x2a1c14, sx2, 2.1, sz2));
+      /* south of center seating, facing +Z so players walk up from the entrance */
+      const sx2 = 0.0, sz2 = 15.5;
+      const base = new THREE.Group();
+      base.add(box(1.6, 0.18, 1.4, 0x5a1820, 0, 0.1, 0));
+      base.add(box(1.4, 0.12, 1.2, 0x8a2430, 0, 0.22, 0));
+      base.add(box(0.55, 0.4, 0.55, 0x9a2f3e, 0, 0.45, 0.15));
+      /* tower post */
+      base.add(box(0.18, 3.8, 0.18, 0x2a1c14, 0, 2.2, 0));
+      /* backboard so meter reads clearly */
+      base.add(box(0.55, 3.5, 0.08, 0x1a1014, 0, 2.15, -0.14));
       const segCols = [0x40c8a0, 0x7CFFB0, 0xffd94a, 0xff8c40, 0xff4030];
       for (let sI = 0; sI < 5; sI++) {
-        const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.55),
-          new THREE.MeshBasicMaterial({ color: segCols[sI] }));
-        seg.position.set(sx2 - 0.18, 0.95 + sI * 0.62, sz2);
-        seg.rotation.y = -Math.PI / 2;
-        g.add(seg);
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.58),
+          new THREE.MeshBasicMaterial({ color: segCols[sI], side: THREE.DoubleSide }));
+        /* face +Z (toward entrance / camera) */
+        seg.position.set(0, 0.95 + sI * 0.62, 0.12);
+        base.add(seg);
       }
-      const bell = sph(0.24, 0xc8a24a, sx2, 4.05, sz2, 10, 8);
-      g.add(bell);
+      /* gold target bands */
+      for (let sI = 0; sI < 5; sI++) {
+        base.add(box(0.48, 0.04, 0.06, 0xc8a24a, 0, 0.66 + sI * 0.62, 0.1));
+      }
+      const bell = sph(0.28, 0xc8a24a, 0, 4.2, 0, 12, 10);
+      base.add(bell);
       g.userData.strikerBell = bell;
-      const marker = box(0.4, 0.12, 0.4, 0xf2f2ee, sx2, 0.7, sz2);
-      marker.material = new THREE.MeshBasicMaterial({ color: 0xf2f2ee });
-      g.add(marker);
+      /* glowing puck that rides the post */
+      const marker = new THREE.Mesh(
+        new THREE.BoxGeometry(0.48, 0.14, 0.48),
+        new THREE.MeshBasicMaterial({ color: 0xfff0a0 })
+      );
+      marker.position.set(0, 0.7, 0.05);
+      base.add(marker);
       g.userData.strikerMarker = marker;
+      /* soft pad in front for the player */
+      base.add(box(1.8, 0.05, 1.4, 0x2a3a5a, 0, 0.03, 1.1));
+      base.position.set(sx2, 0, sz2);
+      g.add(base);
+      g.userData.strikerRoot = base;
       g.userData.strikerPos = new THREE.Vector3(sx2, 0, sz2);
-      lb(sx2, sz2, 0.7, 0.6, 4);
-      const sTag = textSprite("TEST YOUR CLOUT — WALK UP", { size: 26, color: "#ff8c40", strokeW: 5, maxWidth: 0 });
-      sTag.scale.multiplyScalar(0.6);
-      sTag.position.set(sx2, 4.8, sz2);
+      /* camera sits south of tower looking north at full meter */
+      g.userData.strikerCam = new THREE.Vector3(sx2, 2.35, sz2 + 4.6);
+      g.userData.strikerLook = new THREE.Vector3(sx2, 2.4, sz2);
+      lb(sx2, sz2 + 1.0, 1.0, 1.2, 4.2);
+      const sTag = textSprite("TEST YOUR CLOUT — WALK UP", { size: 28, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
+      sTag.scale.multiplyScalar(0.55);
+      sTag.position.set(sx2, 4.9, sz2);
+      sTag.userData.maxDist = 40;
       g.add(sTag);
+      g.userData.strikerTag = sTag;
     }
     /* dartboard on the east wall */
     const bz2 = 2;
@@ -5236,7 +5260,7 @@ function buildLoungeDecor() {
   /* expand lounge footprint 30% — geometry + interactive anchors */
   g.scale.set(LOUNGE_SCALE, 1, LOUNGE_SCALE);
   const _S = LOUNGE_SCALE;
-  for (const k of ["espPos", "jukePos", "dartBoardPos", "dartTablePos", "strikerPos"]) {
+  for (const k of ["espPos", "jukePos", "dartBoardPos", "dartTablePos", "strikerPos", "strikerCam", "strikerLook"]) {
     if (g.userData[k] && g.userData[k].isVector3) {
       g.userData[k].x *= _S;
       g.userData[k].z *= _S;
@@ -5741,9 +5765,13 @@ function updateSocialLounge(dt) {
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
     /* clout striker */
     strikerGame.cool = Math.max(0, strikerGame.cool - dt);
-    if (!strikerGame.active && !dartGame.active && !arcadeGame.active && strikerGame.cool <= 0 && L.strikerPos &&
-        pig.position.distanceTo(L.strikerPos) < 2.6) {
-      startStrikerGame();
+    if (!strikerGame.active && !dartGame.active && !arcadeGame.active && strikerGame.cool <= 0 && L.strikerPos) {
+      /* pad is in front of tower (+Z) */
+      const pad = L.strikerPos.clone();
+      pad.z += 1.2 * (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1);
+      if (pig.position.distanceTo(pad) < 2.4 || pig.position.distanceTo(L.strikerPos) < 2.2) {
+        startStrikerGame();
+      }
     }
     /* arcade cabinets — generous radius; face-ish so you don't auto-start from behind */
     arcadeGame.cool = Math.max(0, arcadeGame.cool - dt);
@@ -6171,6 +6199,7 @@ const strikerGame = { active: false, tT: 0, cool: 0 };
 function startStrikerGame() {
   strikerGame.active = true;
   strikerGame.tT = 0;
+  strikerGame.camBlend = 0;
   socialReading = true;
   setHeroForMiniGame(true);
   showMsg("TEST YOUR CLOUT — click to slam!");
@@ -6183,16 +6212,30 @@ function updateStrikerGame(dt) {
   if (!L || !L.strikerMarker) return;
   strikerGame.tT += dt;
   const p = Math.abs(Math.sin(strikerGame.tT * (2.2 + strikerGame.tT * 0.25)));
-  L.strikerMarker.position.y = 0.65 + p * 3.15;
-  const sp = L.strikerPos;
-  camera.position.lerp(new THREE.Vector3(sp.x - 6, 2.6, sp.z), Math.min(1, dt * 6));
+  /* marker rides local Y on the tower root */
+  L.strikerMarker.position.y = 0.7 + p * 3.2;
+  /* pulse puck so the rising target is obvious */
+  const pulse = 0.9 + 0.15 * Math.sin(strikerGame.tT * 14);
+  L.strikerMarker.scale.set(pulse, 1, pulse);
+  if (L.strikerMarker.material && L.strikerMarker.material.color) {
+    L.strikerMarker.material.color.setHex(p > 0.92 ? 0xffd94a : p > 0.7 ? 0xfff0a0 : 0xe8eef8);
+  }
   setHeroForMiniGame(true);
-  camera.lookAt(sp.x, 2.3, sp.z);
+  /* park pig behind camera so they never fill the frame */
+  if (L.strikerPos) {
+    pig.position.set(L.strikerPos.x, 0, L.strikerPos.z + 5.5 * (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1));
+  }
+  const camP = L.strikerCam || new THREE.Vector3(L.strikerPos.x, 2.35, L.strikerPos.z + 4.6);
+  const look = L.strikerLook || new THREE.Vector3(L.strikerPos.x, 2.4, L.strikerPos.z);
+  strikerGame.camBlend = (strikerGame.camBlend || 0) + dt;
+  if (strikerGame.camBlend < 0.15) camera.position.lerp(camP, Math.min(1, dt * 14));
+  else camera.position.copy(camP);
+  camera.lookAt(look.x, look.y, look.z);
 }
 function resolveStriker() {
   const L = loungeDecor.userData;
   if (!L || !L.strikerMarker) { strikerGame.active = false; socialReading = false; return; }
-  const h = (L.strikerMarker.position.y - 0.65) / 3.15;
+  const h = Math.max(0, Math.min(1, (L.strikerMarker.position.y - 0.7) / 3.2));
   const pts = h > 0.97 ? 150 : Math.round(h * 100);
   const label = h > 0.97 ? "CLOUT MAXED +" + pts : h > 0.75 ? "BIG ACCOUNT +" + pts : h > 0.4 ? "MIDSIZE POSTER +" + pts : "REPLY GUY +" + pts;
   score += pts; updateHud();
