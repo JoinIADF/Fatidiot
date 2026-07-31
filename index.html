@@ -7322,7 +7322,10 @@ addEventListener("keydown", e => {
     else showMsg("PICK UP FLAMETHROWER BY THE CYBERTRUCKS");
   }
   if (mode === "portal" && e.code === "Enter") { resumeFromPortal(); return; }
-  if (mode === "over" && e.code === "Enter") startGame();
+  if (mode === "over" && e.code === "Enter") {
+    if (deathKind === "mars") { enterLoungeAfterMars(); return; }
+    startGame();
+  }
   if ((mode === "title" || mode === "over") && (e.code === "Digit2" || e.code === "Numpad2")) {
     previewLevel2();
   }
@@ -7458,6 +7461,10 @@ overlay.addEventListener("click", () => {
   }
   if (mode === "over" && deathKind === "sleep") {
     resumeFromSleep();
+    return;
+  }
+  if (mode === "over" && deathKind === "mars") {
+    enterLoungeAfterMars();
     return;
   }
   if (mode === "title" || mode === "over") startGame();
@@ -7958,7 +7965,7 @@ function marsVictory() {
       `<div class="mars-line">🚀 We'll be landing on Mars shortly...</div>` +
       `<br>SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
       `RANK: <b style="color:#ffd94a">${rank}</b>`;
-    if (go) go.textContent = "CLICK OR PRESS ENTER TO RE-ENLIST";
+    if (go) go.textContent = "CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE";
     ov.classList.remove("hidden");
   } catch (err) {
     console.error("marsVictory UI", err);
@@ -7967,6 +7974,64 @@ function marsVictory() {
   try { say("Congratulations. You finally escaped X. Enjoy the night off. We will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
   try { SFX.escape(); } catch (_) {}
   try { SFX.purge(); } catch (_) {}
+}
+
+/* Starbase win → drop player into Timeline Lounge (keep score) */
+function enterLoungeAfterMars() {
+  if (mode !== "over" || deathKind !== "mars") return false;
+  /* clean victory overlay */
+  try {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("death-mars", "death-escape", "death-weekend", "death-sleep", "death-portal");
+    overlay.querySelectorAll(".escape-stage, .escape-bg, .escape-flash, .escape-veil").forEach(n => n.remove());
+  } catch (_) {}
+  deathKind = null;
+  mode = "play";
+  resumeStarbase = false;
+  invuln = 2.5;
+  pig.visible = true;
+  window.__camLock = false;
+  /* wipe combat leftovers but keep score/lives */
+  try {
+    if (typeof deactivateStarbase === "function") deactivateStarbase();
+  } catch (_) {}
+  rocketLift = null;
+  marsState = null;
+  portalReady = false;
+  try { clearLevelPortal(); } catch (_) {}
+  try {
+    for (const e of enemies.slice()) {
+      try { scene.remove(e.mesh); } catch (_) {}
+    }
+    enemies.length = 0;
+    for (const arr of [boomerangs, bolts, spamTexts, tracers]) {
+      for (const o of arr) { try { scene.remove(o.mesh || o.sprite); } catch (_) {} }
+      arr.length = 0;
+    }
+  } catch (_) {}
+  spawnQueue = 0;
+  bossFight.active = false;
+  bossFight.dead = false;
+  bossFight.kills = 0;
+  bossFight.warned = false;
+  /* weapons: lounge wants rifle, unlimited ammo */
+  flameFiring = false;
+  weaponIdx = 1;
+  try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
+  try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
+  try { applyWeaponHud(); } catch (_) {}
+  try { activateSocialLounge(); } catch (err) {
+    console.error("lounge after mars", err);
+    try { startGame({ social: true }); } catch (_) {}
+  }
+  try {
+    if (!isMobile()) renderer.domElement.requestPointerLock();
+    else if (typeof showMobileUI === "function") showMobileUI(true);
+  } catch (_) {}
+  showMsg("TIMELINE LOUNGE — night off after Starbase. Mingle.");
+  try { updateHud(); } catch (_) {}
+  try { SFX.wave(); } catch (_) {}
+  return true;
 }
 
 function openLevelPortal() {
