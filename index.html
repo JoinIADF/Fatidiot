@@ -187,6 +187,89 @@
     18% { opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
   }
+  /* —— MARS LIFTOFF: full-screen cinematic victory (same layout as window escape) —— */
+  #overlay.death-mars {
+    background: #000 !important;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 4vw 5vh;
+    overflow: hidden;
+  }
+  #overlay.death-mars .escape-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    background: #02040c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #overlay.death-mars .escape-stage img {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center center;
+    animation: escapeKen 7s ease-out forwards;
+    filter: contrast(1.06) saturate(1.12) brightness(1.02);
+  }
+  #overlay.death-mars .escape-veil {
+    position: absolute; inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.9) 0%,
+      rgba(8,12,28,0.45) 34%,
+      rgba(0,0,0,0.08) 58%,
+      rgba(20,8,0,0.25) 100%
+    );
+    pointer-events: none;
+  }
+  #overlay.death-mars .escape-flash {
+    position: absolute; inset: 0;
+    background: #fff6e0;
+    animation: escapeFlash 0.9s ease-out forwards;
+    pointer-events: none;
+    z-index: 2;
+  }
+  #overlay.death-mars h1,
+  #overlay.death-mars p,
+  #overlay.death-mars .go {
+    position: relative;
+    z-index: 3;
+  }
+  #overlay.death-mars h1 {
+    color: #7cffb0;
+    font-size: clamp(34px, 7vw, 56px);
+    text-shadow: 0 0 24px rgba(0,0,0,1), 0 4px 0 #000, 0 0 40px rgba(124,255,176,0.4);
+    margin-bottom: 6px;
+    letter-spacing: 0.04em;
+    animation: escapeTextIn 0.7s ease-out 0.35s both;
+    max-width: 96vw;
+  }
+  #overlay.death-mars p {
+    max-width: min(640px, 94vw);
+    padding: 0 12px;
+    color: #e8eef8;
+    text-shadow: 0 2px 10px #000;
+    animation: escapeTextIn 0.7s ease-out 0.5s both;
+  }
+  #overlay.death-mars .go {
+    animation: escapeTextIn 0.7s ease-out 0.7s both;
+  }
+  #overlay.death-mars .death-sub {
+    color: #ffe08a;
+  }
+  #overlay.death-mars .mars-line {
+    color: #8fd1ff;
+    font-size: clamp(18px, 3.2vw, 24px);
+    font-weight: 700;
+    margin-top: 6px;
+  }
+
   @keyframes escapeTextIn {
     from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0); }
@@ -907,6 +990,7 @@ window.__THREE = THREE;
 
 /* embedded freefall death art (path-independent) */
 const ESCAPE_ART_URL = "./pig-escape.jpg";
+const MARS_ART_URL = "./pig-mars.jpg";
 
 /* ============================== RENDERER ============================== */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -7825,24 +7909,64 @@ function startEscapeCutscene() {
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
 }
 function marsVictory() {
+  if (!marsState) marsState = { phase: "done", t: 0 };
   marsState.phase = "done";
   window.__camLock = false;
   mode = "over";
+  deathKind = "mars";
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
-  if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
+  try {
+    if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
+  } catch (_) {}
+  const rank = score >= 6000 ? "X COMMANDO ELITE" : score >= 3000 ? "CHIEF BAN OFFICER" :
+               score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
   const ov = overlay;
-  ov.querySelector("h1").textContent = "YOU ESCAPED X";
-  ov.querySelector("p").innerHTML =
-    `<span style="font-size:44px;letter-spacing:0.2em">✦ 🐷🚀 ✦</span><br><br>` +
-    `<b style="color:#7CFFB0">CONGRATULATIONS — you finally escaped X.</b><br>` +
-    `Enjoy the night off.<br>` +
-    `<span style="color:#8fd1ff">We'll be landing on Mars shortly...</span><br><br>` +
-    `SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}`;
-  const go = $("overlayGo");
-  if (go) go.textContent = "ENTER — NEW RUN (BACK TO THE GRIND)";
-  ov.classList.remove("hidden");
+  try {
+    ov.classList.remove("death-weekend", "death-escape", "death-sleep", "death-portal", "death-mars");
+    ov.classList.add("hidden-tagline", "death-mars");
+    ov.querySelectorAll(".escape-stage, .escape-bg, .escape-flash, .escape-veil").forEach(n => n.remove());
+    const stage = document.createElement("div");
+    stage.className = "escape-stage";
+    const img = document.createElement("img");
+    img.alt = "Space pig hero celebrating as the rocket climbs toward Mars";
+    img.src = (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./pig-mars.jpg");
+    img.decoding = "async";
+    img.onerror = () => {
+      img.style.display = "none";
+      stage.style.background = "radial-gradient(ellipse at 40% 30%, #1a3060 0%, #05060c 70%)";
+    };
+    const veil = document.createElement("div");
+    veil.className = "escape-veil";
+    const flash = document.createElement("div");
+    flash.className = "escape-flash";
+    stage.appendChild(img);
+    stage.appendChild(veil);
+    if (ov.firstChild) {
+      ov.insertBefore(stage, ov.firstChild);
+      ov.insertBefore(flash, ov.firstChild);
+    } else {
+      ov.appendChild(flash);
+      ov.appendChild(stage);
+    }
+    const h1 = ov.querySelector("h1");
+    const p = ov.querySelector("p");
+    const go = $("overlayGo");
+    if (h1) h1.textContent = "YOU ESCAPED X";
+    if (p) p.innerHTML =
+      `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the night off.</div>` +
+      `<div class="mars-line">🚀 We'll be landing on Mars shortly...</div>` +
+      `<br>SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
+      `RANK: <b style="color:#ffd94a">${rank}</b>`;
+    if (go) go.textContent = "CLICK OR PRESS ENTER TO RE-ENLIST";
+    ov.classList.remove("hidden");
+  } catch (err) {
+    console.error("marsVictory UI", err);
+    try { ov.classList.remove("hidden"); } catch (_) {}
+  }
   try { say("Congratulations. You finally escaped X. Enjoy the night off. We will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
+  try { SFX.escape(); } catch (_) {}
+  try { SFX.purge(); } catch (_) {}
 }
 
 function openLevelPortal() {
@@ -7959,7 +8083,7 @@ function clearLevelPortal() {
 function resumeFromPortal() {
   deathKind = null;
   overlay.classList.add("hidden");
-  overlay.classList.remove("death-portal", "death-sleep", "death-weekend", "death-escape");
+  overlay.classList.remove("death-portal", "death-sleep", "death-weekend", "death-escape", "death-mars");
   overlay.querySelectorAll(".portal-stage").forEach(n => n.remove());
   mode = "play";
   if (!isMobile()) renderer.domElement.requestPointerLock();
@@ -9178,7 +9302,7 @@ function resumeFromSleep() {
   clearLevelPortal();
   deathKind = null;
   overlay.classList.add("hidden");
-  overlay.classList.remove("death-sleep", "death-weekend", "death-escape");
+  overlay.classList.remove("death-sleep", "death-weekend", "death-escape", "death-mars");
   mode = "play";
   /* clear field for the new trick */
   for (const e of enemies) scene.remove(e.mesh);
@@ -9209,7 +9333,7 @@ function gameOver(kind = "normal") {
   const rank = score >= 6000 ? "X COMMANDO ELITE" : score >= 3000 ? "CHIEF BAN OFFICER" :
                score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
   try {
-    overlay.classList.remove("death-weekend", "death-escape", "death-sleep");
+    overlay.classList.remove("death-weekend", "death-escape", "death-sleep", "death-mars");
     overlay.classList.add("hidden-tagline");
     overlay.querySelectorAll(".escape-stage, .escape-bg, .escape-flash, .escape-veil").forEach(n => n.remove());
     const h1 = overlay.querySelector("h1");
