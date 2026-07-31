@@ -3682,22 +3682,47 @@ function buildLoungeDecor() {
   /* ARCADE + DARTS corner (NE): cabinets + dartboard + dart table */
   {
     const ax = 24, az = -5.5;
+    const CAB_NAMES = ["BOT INVADERS", "WHACK-A-SPAM"];
+    g.userData.arcades = [];
     for (let i = 0; i < 2; i++) {
       const cab = new THREE.Group();
       cab.add(box(1.1, 2.1, 0.9, i ? 0x2a3a6a : 0x5a2a5a, 0, 1.05, 0));
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ color: i ? 0x7CFFB0 : 0x5ad1ff }));
+      /* live canvas screen — the mini-game renders here */
+      const cnv = document.createElement("canvas");
+      cnv.width = 192; cnv.height = 144;
+      const cctx = cnv.getContext("2d");
+      cctx.fillStyle = "#050a10"; cctx.fillRect(0, 0, 192, 144);
+      cctx.fillStyle = i ? "#7CFFB0" : "#5ad1ff";
+      cctx.font = "bold 18px monospace"; cctx.textAlign = "center";
+      cctx.fillText(CAB_NAMES[i], 96, 60);
+      cctx.font = "bold 11px monospace";
+      cctx.fillText("WALK UP TO PLAY", 96, 90);
+      const ctex = new THREE.CanvasTexture(cnv);
+      ctex.colorSpace = THREE.SRGBColorSpace;
+      ctex.magFilter = THREE.NearestFilter;
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ map: ctex }));
       scr.position.set(0, 1.5, 0.46);
       scr.rotation.x = -0.15;
       cab.add(scr);
       cab.add(box(1.1, 0.16, 0.5, 0x14161a, 0, 0.95, 0.55));
+      /* joystick + buttons on the deck */
+      cab.add(cyl(0.03, 0.03, 0.18, 0x22262c, -0.2, 1.1, 0.55, 6), sph(0.05, 0xd02020, -0.2, 1.2, 0.55, 8, 6));
+      cab.add(cyl(0.04, 0.04, 0.03, 0xffd200, 0.12, 1.04, 0.55, 8), cyl(0.04, 0.04, 0.03, 0x40c8a0, 0.26, 1.04, 0.55, 8));
       cab.position.set(ax - 2 + i * 2.2, 0, az);
       g.add(cab);
       lb(cab.position.x, cab.position.z, 0.7, 0.6, 2.2);
+      g.userData.arcades.push({
+        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex,
+        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.1),
+        /* camera hovers above the pig's helmet, angled down at the screen */
+        camPos: new THREE.Vector3(cab.position.x, 2.35, cab.position.z + 1.95),
+        lookAt: new THREE.Vector3(cab.position.x, 1.42, cab.position.z + 0.42),
+      });
+      const cTag = textSprite(`🕹 ${CAB_NAMES[i]}`, { size: 24, color: i ? "#7CFFB0" : "#5ad1ff", strokeW: 5, maxWidth: 0 });
+      cTag.scale.multiplyScalar(0.55);
+      cTag.position.set(cab.position.x, 2.7, az);
+      g.add(cTag);
     }
-    const arcTag = textSprite("🕹 ARCADE", { size: 28, color: "#5ad1ff", strokeW: 5, maxWidth: 0 });
-    arcTag.scale.multiplyScalar(0.65);
-    arcTag.position.set(ax - 1, 3.0, az);
-    g.add(arcTag);
     /* TEST YOUR CLOUT high-striker beside the cabinets */
     {
       const sx2 = 27.8, sz2 = -5.5;
@@ -4124,6 +4149,13 @@ function updateSocialLounge(dt) {
         pig.position.distanceTo(L.strikerPos) < 1.9) {
       startStrikerGame();
     }
+    /* arcade cabinets: walk up to play */
+    arcadeGame.cool = Math.max(0, arcadeGame.cool - dt);
+    if (!arcadeGame.active && !dartGame.active && !strikerGame.active && arcadeGame.cool <= 0 && L.arcades) {
+      for (let ai = 0; ai < L.arcades.length; ai++) {
+        if (pig.position.distanceTo(L.arcades[ai].pos) < 1.6) { startArcadeGame(ai); break; }
+      }
+    }
     /* fountain: toss a coin, receive algorithmic fortune */
     L.fountCool = Math.max(0, (L.fountCool || 0) - dt);
     if (L.fountCool <= 0 && L.fountainWater && pig.position.distanceTo(new THREE.Vector3(-20, 0, 21)) < 2.6) {
@@ -4357,6 +4389,168 @@ function resolveStriker() {
   strikerGame.active = false;
   strikerGame.cool = 6;
   socialReading = false;
+}
+
+/* —— ARCADE CABINETS: two playable screen games (canvas-rendered) —— */
+const arcadeGame = { active: false, which: -1, cool: 0, timeLeft: 0, pts: 0, mx: 0.5, my: 0.5,
+  ship: 0.5, bullets: [], invaders: [], invDir: 1, invOff: 0, invDrop: 0, shootCd: 0,
+  cells: [], combo: 0, popCd: 0 };
+function startArcadeGame(which) {
+  const A = loungeDecor.userData.arcades[which];
+  if (!A) return;
+  Object.assign(arcadeGame, { active: true, which, timeLeft: 30, pts: 0, mx: 0.5, my: 0.5,
+    ship: 0.5, bullets: [], invDir: 1, invOff: 0, invDrop: 0, shootCd: 0, combo: 0, popCd: 0 });
+  if (which === 0) {
+    arcadeGame.invaders = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++)
+      arcadeGame.invaders.push({ r, c, alive: true });
+  } else {
+    arcadeGame.cells = Array.from({ length: 9 }, () => ({ up: 0 }));
+  }
+  socialReading = true;
+  showMsg(`🕹 ${A.name} — mouse to move · click to ${which === 0 ? "shoot" : "whack"} · Esc quits`);
+  SFX.pickup();
+}
+function endArcadeGame() {
+  const A = loungeDecor.userData.arcades[arcadeGame.which];
+  arcadeGame.active = false;
+  arcadeGame.cool = 5;
+  socialReading = false;
+  score += arcadeGame.pts;
+  updateHud();
+  showMsg(`🕹 ${A ? A.name : "ARCADE"}: +${arcadeGame.pts}`);
+  if (A) { /* leave a game-over screen */
+    const g2 = A.ctx;
+    g2.fillStyle = "#050a10"; g2.fillRect(0, 0, 192, 144);
+    g2.fillStyle = "#ffd94a"; g2.font = "bold 16px monospace"; g2.textAlign = "center";
+    g2.fillText("GAME OVER", 96, 60);
+    g2.fillText(`+${arcadeGame.pts}`, 96, 84);
+    A.tex.needsUpdate = true;
+  }
+}
+function arcadeClick() {
+  if (!arcadeGame.active) return;
+  if (arcadeGame.which === 0) {
+    /* shoot */
+    if (arcadeGame.shootCd > 0) return;
+    arcadeGame.shootCd = 0.25;
+    arcadeGame.bullets.push({ x: arcadeGame.ship, y: 0.9 });
+    beep(880, 0.05, "square", 0.05, -200);
+  } else {
+    /* whack the cell under the cursor */
+    const col = Math.min(2, Math.floor(arcadeGame.mx * 3));
+    const row = Math.min(2, Math.floor(arcadeGame.my * 3));
+    const cell = arcadeGame.cells[row * 3 + col];
+    if (cell && cell.up > 0) {
+      cell.up = 0;
+      arcadeGame.combo++;
+      const gain = 10 + Math.min(20, arcadeGame.combo * 2);
+      arcadeGame.pts += gain;
+      SFX.hit();
+      if (arcadeGame.combo > 2) beep(660 + arcadeGame.combo * 60, 0.06, "square", 0.05);
+    } else {
+      arcadeGame.combo = 0;
+      beep(160, 0.08, "sawtooth", 0.04);
+    }
+  }
+}
+function updateArcadeGame(dt) {
+  if (!arcadeGame.active) return;
+  const A = loungeDecor.userData.arcades[arcadeGame.which];
+  if (!A) { arcadeGame.active = false; socialReading = false; return; }
+  camera.position.lerp(A.camPos, Math.min(1, dt * 6));
+  camera.lookAt(A.lookAt);
+  arcadeGame.timeLeft -= dt;
+  if (arcadeGame.timeLeft <= 0) { endArcadeGame(); return; }
+  const g2 = A.ctx, W2 = 192, H2 = 144;
+  g2.fillStyle = "#050a10"; g2.fillRect(0, 0, W2, H2);
+  g2.fillStyle = "#1a2430"; g2.fillRect(0, H2 - 4, W2, 4);
+  if (arcadeGame.which === 0) {
+    /* ——— BOT INVADERS ——— */
+    arcadeGame.shootCd = Math.max(0, arcadeGame.shootCd - dt);
+    arcadeGame.ship += (arcadeGame.mx - arcadeGame.ship) * Math.min(1, dt * 10);
+    /* invader march */
+    const speed = 0.05 + (30 - arcadeGame.timeLeft) * 0.004;
+    arcadeGame.invOff += arcadeGame.invDir * speed * dt;
+    if (arcadeGame.invOff > 0.16 || arcadeGame.invOff < -0.16) {
+      arcadeGame.invDir *= -1;
+      arcadeGame.invDrop += 0.06;
+    }
+    let anyAlive = false;
+    for (const inv of arcadeGame.invaders) {
+      if (!inv.alive) continue;
+      anyAlive = true;
+      inv.px = 30 + inv.c * 24 + arcadeGame.invOff * W2;
+      inv.py = 18 + inv.r * 18 + arcadeGame.invDrop * H2;
+      /* bot sprite: gray box, red eyes */
+      g2.fillStyle = "#8a929c"; g2.fillRect(inv.px - 6, inv.py - 5, 12, 10);
+      g2.fillStyle = "#ff3030"; g2.fillRect(inv.px - 4, inv.py - 3, 3, 3); g2.fillRect(inv.px + 1, inv.py - 3, 3, 3);
+      if (inv.py > H2 - 26) { endArcadeGame(); return; } /* they reached you */
+    }
+    if (!anyAlive) { arcadeGame.pts += 100; floatText(A.pos.clone().add(new THREE.Vector3(0, 2.6, 0)), "WAVE CLEARED +100", { size: 36, color: "#7CFFB0", strokeW: 6 }, 1.3);
+      for (const inv of arcadeGame.invaders) inv.alive = true;
+      arcadeGame.invDrop = 0; }
+    /* bullets */
+    for (let i = arcadeGame.bullets.length - 1; i >= 0; i--) {
+      const b = arcadeGame.bullets[i];
+      b.y -= dt * 1.4;
+      if (b.y < 0) { arcadeGame.bullets.splice(i, 1); continue; }
+      const bx = b.x * W2, by = b.y * H2;
+      g2.fillStyle = "#ffe27a"; g2.fillRect(bx - 1, by - 4, 2, 6);
+      for (const inv of arcadeGame.invaders) {
+        if (!inv.alive || inv.px == null) continue;
+        if (Math.abs(bx - inv.px) < 8 && Math.abs(by - inv.py) < 7) {
+          inv.alive = false;
+          arcadeGame.bullets.splice(i, 1);
+          arcadeGame.pts += 15;
+          beep(220, 0.06, "square", 0.05, -80);
+          break;
+        }
+      }
+    }
+    /* ship */
+    const sx = arcadeGame.ship * W2;
+    g2.fillStyle = "#ffb6c6";
+    g2.beginPath(); g2.moveTo(sx, H2 - 20); g2.lineTo(sx - 8, H2 - 8); g2.lineTo(sx + 8, H2 - 8); g2.closePath(); g2.fill();
+  } else {
+    /* ——— WHACK-A-SPAM ——— */
+    arcadeGame.popCd -= dt;
+    if (arcadeGame.popCd <= 0) {
+      arcadeGame.popCd = Math.max(0.35, 0.9 - (30 - arcadeGame.timeLeft) * 0.015);
+      const free = arcadeGame.cells.map((c, i) => c.up <= 0 ? i : -1).filter(i => i >= 0);
+      if (free.length) arcadeGame.cells[pick(free)].up = rand(0.8, 1.4);
+    }
+    for (let i = 0; i < 9; i++) {
+      const cell = arcadeGame.cells[i];
+      cell.up = Math.max(0, cell.up - dt);
+      const cx2 = 40 + (i % 3) * 56, cy2 = 32 + Math.floor(i / 3) * 42;
+      /* hole */
+      g2.fillStyle = "#101820";
+      g2.beginPath(); g2.ellipse(cx2, cy2 + 10, 20, 7, 0, 0, Math.PI * 2); g2.fill();
+      if (cell.up > 0) {
+        /* SPAM can pops up */
+        g2.fillStyle = "#04246b"; g2.fillRect(cx2 - 12, cy2 - 12, 24, 20);
+        g2.fillStyle = "#ffd200"; g2.font = "bold 9px monospace"; g2.textAlign = "center";
+        g2.fillText("SPAM", cx2, cy2 + 1);
+        g2.fillStyle = "#c9ced4"; g2.fillRect(cx2 - 13, cy2 - 15, 26, 4);
+      }
+    }
+    /* cursor mallet */
+    const mx2 = arcadeGame.mx * W2, my2 = arcadeGame.my * H2;
+    g2.strokeStyle = "#ffd94a"; g2.lineWidth = 2;
+    g2.beginPath(); g2.arc(mx2, my2, 8, 0, Math.PI * 2); g2.stroke();
+    g2.fillStyle = "#ffd94a"; g2.fillRect(mx2 - 1, my2 - 12, 2, 8);
+    if (arcadeGame.combo > 1) {
+      g2.font = "bold 10px monospace"; g2.textAlign = "left";
+      g2.fillText(`combo x${arcadeGame.combo}`, 6, 140);
+    }
+  }
+  /* HUD strip */
+  g2.fillStyle = "#7CFFB0"; g2.font = "bold 10px monospace"; g2.textAlign = "left";
+  g2.fillText(`PTS ${arcadeGame.pts}`, 6, 12);
+  g2.textAlign = "right";
+  g2.fillText(`${Math.ceil(arcadeGame.timeLeft)}s`, W2 - 6, 12);
+  A.tex.needsUpdate = true;
 }
 
 
@@ -4683,6 +4877,7 @@ addEventListener("keydown", e => {
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; return; }
+  if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
   keys[e.code] = true;
   if (e.key && e.key.length === 1) keys["Key" + e.key.toUpperCase()] = true;
   if (e.code === "Space") e.preventDefault();
@@ -4737,6 +4932,11 @@ document.addEventListener("mousemove", e => {
     dartGame.aimY -= e.movementY * 0.0016;
     return;
   }
+  if (arcadeGame.active) {
+    arcadeGame.mx = Math.max(0.05, Math.min(0.95, arcadeGame.mx + e.movementX * 0.002));
+    arcadeGame.my = Math.max(0.05, Math.min(0.95, arcadeGame.my + e.movementY * 0.002));
+    return;
+  }
   yaw -= e.movementX * 0.0026;
   pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
 });
@@ -4745,6 +4945,7 @@ renderer.domElement.addEventListener("mousedown", e => {
   /* mini-games swallow clicks */
   if (dartGame.active) { if (e.button === 0) throwDart(); return; }
   if (strikerGame.active) { if (e.button === 0) resolveStriker(); return; }
+  if (arcadeGame.active) { if (e.button === 0) arcadeClick(); return; }
   if (socialReading) return;
   if (!isMobile() && document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock(); return; }
   if (socialActive) {
@@ -6710,6 +6911,8 @@ scene.add(lockBracket);
 /* ============================== CAMERA + LOOP ============================== */
 function updateCamera(dt) {
   if (window.__camLock) return;
+  /* mini-games own the camera while active */
+  if (dartGame.active || strikerGame.active || arcadeGame.active) return;
   const dist = 7.5, h = 2.2 + pitch * 4.5;
   const target = new THREE.Vector3(
     pig.position.x + Math.sin(yaw) * dist * Math.cos(pitch * 0.6),
@@ -6740,6 +6943,7 @@ renderer.setAnimationLoop(() => {
     updateCamera(dt);
     updateDartGame(dt);
     updateStrikerGame(dt);
+    updateArcadeGame(dt);
   } catch (err) {
     console.error("frame error", err);
   }
@@ -7003,7 +7207,10 @@ function previewLevel2() {
 window.__game = {
   startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
   previewLevel2, activateStarbase, levelUp,
+  arcadeGame, dartGame, strikerGame, startArcadeGame,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
+  get lounge() { return loungeDecor && loungeDecor.userData; },
+  get reading() { return socialReading; },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
