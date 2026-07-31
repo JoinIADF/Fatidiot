@@ -340,6 +340,21 @@
     display: block; margin-top: 8px;
     font: 600 12px system-ui, sans-serif; color: #6b7a8c;
   }
+  #tweetReader .tr-replybox { margin-top: 12px; border-top: 1px solid #2a3542; padding-top: 12px; }
+  #tweetReader .tr-replybox textarea {
+    width: 100%; background: #0c1218; color: #e8eef8; border: 1px solid #2a3542; border-radius: 12px;
+    padding: 10px 12px; font: 500 14px/1.4 system-ui, sans-serif; resize: none; outline: none;
+  }
+  #tweetReader .tr-replybox textarea:focus { border-color: #1d9bf0; }
+  #tweetReader .tr-replyrow { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 8px; }
+  #tweetReader .tr-replyrow #trCount { font: 600 12px/1 system-ui, sans-serif; color: #6b7a8c; }
+  #tweetReader .tr-replyrow #trSend {
+    background: #1d9bf0; color: #fff; border: 0; border-radius: 999px; padding: 8px 20px;
+    font: 800 14px/1 system-ui, sans-serif; cursor: pointer;
+  }
+  #tweetReader .tr-replyrow #trSend:hover { background: #1a8cd8; }
+  #tweetReader .tr-sent { margin-top: 8px; color: #7CFFB0; font: 700 13px/1.3 system-ui, sans-serif; }
+  #tweetReader .tr-sent span { color: #6b7a8c; font-weight: 500; }
   #tweetReader .tr-hint {
     margin-top: 8px; text-align: center;
     font: 600 12px system-ui, sans-serif; color: #6b7a8c;
@@ -3052,7 +3067,7 @@ let socialReading = false;
 let socialNear = null;
 let socialQueue = [];
 let socialPool = [];
-const SOCIAL_VISIBLE = 10;
+const SOCIAL_VISIBLE = 15; /* bigger room, more mingling guests */
 const SOCIAL_PROX = 5.2;
 
 /* Seeded "most recently interacted" accounts + 3 recent posts each.
@@ -3330,14 +3345,16 @@ function setXUserBubble(e, chunk) {
   const label = chunk.parts > 1
     ? `${chunk.text}  (${chunk.part}/${chunk.parts})`
     : chunk.text;
+  /* narrow, stacked 3-4 lines, in the user's own color so groups stay readable */
   const tag = textSprite(label, {
     size: 40,
-    color: "#7CFFB0",
+    color: (e.user && e.user.color) || "#7CFFB0",
     strokeW: 7,
-    maxWidth: 0,
+    maxWidth: 16,
   });
-  tag.position.set(0, 3.4, 0);
-  tag.scale.multiplyScalar(0.72);
+  tag.position.set(0, 3.55, 0);
+  tag.scale.multiplyScalar(0.66);
+  tag.visible = false; /* gated: only shown when faced + close */
   e.mesh.add(tag);
   e.tag = tag;
   e.tagPhrase = chunk.text;
@@ -3345,7 +3362,7 @@ function setXUserBubble(e, chunk) {
 }
 
 function loungeSlots() {
-  /* tight conversation spots ringing each pocket, plus two bar-stool spots */
+  /* spots across every zone: pockets, bar, dance floor, library, patio, arcade */
   const slots = [];
   for (const [px, pz, rr] of LOUNGE_POCKETS) {
     for (let i = 0; i < 4; i++) {
@@ -3353,7 +3370,11 @@ function loungeSlots() {
       slots.push({ x: px + Math.sin(a) * (rr - 0.4), z: pz + Math.cos(a) * (rr - 0.4) });
     }
   }
-  slots.push({ x: -9, z: 1.3 }, { x: -3, z: 1.3 });   /* leaning at the bar */
+  slots.push({ x: -16, z: -4.7 }, { x: -10, z: -4.7 }, { x: -6, z: -4.7 });  /* at the bar */
+  slots.push({ x: 16.5, z: 19 }, { x: 19.5, z: 21 }, { x: 18, z: 18.5 }, { x: 17, z: 21.5 }); /* dancing */
+  slots.push({ x: -26, z: 12.5 }, { x: -26, z: 15.5 });                       /* by the fire */
+  slots.push({ x: -17.5, z: 19 }, { x: -22, z: 19.5 });                       /* touching grass */
+  slots.push({ x: 23, z: -3.5 }, { x: 25.5, z: -3.5 });                       /* arcade kids */
   return slots;
 }
 
@@ -3394,7 +3415,7 @@ function takeNextSocialGuest() {
 
 function clearSocialGuests() {
   for (let i = enemies.length - 1; i >= 0; i--) {
-    if (enemies[i].type === "xuser") {
+    if (enemies[i].type === "xuser" || enemies[i].type === "vc") {
       scene.remove(enemies[i].mesh);
       enemies.splice(i, 1);
     }
@@ -3403,8 +3424,22 @@ function clearSocialGuests() {
   socialQueue = [];
 }
 
+/* VCs are barred at the door — they only get in by sneaking (see intruders) */
+const VC_BLOCKLIST = new Set(["paulg", "chamath", "garrytan", "jason", "bhorowitz",
+  "reidhoffman", "peterthiel", "jtlonsdale", "sheel", "harrystebbings", "semil"]);
+const VC_LIST = [
+  ["Paul Graham", "paulg"], ["Chamath Palihapitiya", "chamath"], ["Garry Tan", "garrytan"],
+  ["Jason Calacanis", "Jason"], ["Ben Horowitz", "bhorowitz"], ["Reid Hoffman", "reidhoffman"],
+  ["Peter Thiel", "peterthiel"], ["Joe Lonsdale", "JTLonsdale"], ["Sheel Mohnot", "sheel"],
+  ["Harry Stebbings", "HarryStebbings"], ["Semil Shah", "semil"],
+];
+const VC_PITCHES = ["Quick coffee sometime?", "What's your CAC?", "We lead, you follow.",
+  "I can intro you to everyone.", "Standard 2 and 20.", "Let's talk dilution.",
+  "This is a lifestyle business unless we're in.", "Sign the SAFE. It's safe."];
+
 function placeSocialGuests(users) {
   clearSocialGuests();
+  users = users.filter(u => !VC_BLOCKLIST.has(String(u.handle || "").toLowerCase()));
   socialPool = users.slice();
   socialQueue = users.slice(SOCIAL_VISIBLE);
   const slots = loungeSlots();
@@ -3416,10 +3451,13 @@ function placeSocialGuests(users) {
   });
 }
 
-/* —— SWANKY LOUNGE: intimate walled room, dark wood + velvet + brass —— */
+/* —— SWANKY LOUNGE: intimate walled room grown 4x into distinct zones ——
+   60x36 room: bar (N), conversation pockets (C), fireplace library (W),
+   dance floor (SE), arcade + darts (NE), garden patio (SW) */
 let loungeDecor = null;
 const LOUNGE_BLOCKS = []; /* obstacle specs, added only while lounge is active */
-const LOUNGE_POCKETS = [[0, 4.5, 2.4], [-8.5, 10.5, 2.2], [8.5, 10.5, 2.2]];
+const LOUNGE_POCKETS = [[-12, 6, 2.6], [12, 6, 2.6], [0, 15, 2.6]];
+const DANCE_CENTER = new THREE.Vector3(18, 0, 20);
 function lb(x, z, hw, hd, h) { LOUNGE_BLOCKS.push([x, z, hw, hd, h]); }
 function addLoungeObstacles() {
   clearObstaclesByTag("lounge");
@@ -3439,37 +3477,41 @@ function buildLoungeDecor() {
     }
   });
   parquet.wrapS = parquet.wrapT = THREE.RepeatWrapping;
-  parquet.repeat.set(5, 3.5);
-  const floor2 = new THREE.Mesh(new THREE.PlaneGeometry(30.4, 19),
+  parquet.repeat.set(10, 6.5);
+  const floor2 = new THREE.Mesh(new THREE.PlaneGeometry(60.4, 36),
     new THREE.MeshLambertMaterial({ map: parquet }));
   floor2.rotation.x = -Math.PI / 2;
-  floor2.position.set(0, 0.04, 7);
+  floor2.position.set(0, 0.04, 10);
   floor2.receiveShadow = true;
   g.add(floor2);
   /* enclosing walls: aubergine over walnut wainscot, brass rail line */
   const mkWall = (w2, x, z, ry) => {
     const wallG = new THREE.Group();
-    wallG.add(box(w2, 4.4, 0.3, PLUM, 0, 2.2, 0));
+    wallG.add(box(w2, 4.6, 0.3, PLUM, 0, 2.3, 0));
     wallG.add(box(w2, 1.35, 0.34, WALNUT, 0, 0.68, 0));
     wallG.add(box(w2, 0.08, 0.36, BRASS, 0, 1.4, 0));
     wallG.position.set(x, 0, z); wallG.rotation.y = ry;
     g.add(wallG);
   };
-  mkWall(30.4, 0, -2, 0);
+  mkWall(60.4, 0, -8, 0);
+  mkWall(36.4, -30.2, 10, Math.PI / 2); mkWall(36.4, 30.2, 10, Math.PI / 2);
   /* south side is a LOW brass railing so the follow-camera sees over it */
-  g.add(box(30.4, 0.9, 0.24, WALNUT, 0, 0.45, 16));
-  g.add(box(30.4, 0.07, 0.3, BRASS, 0, 0.95, 16));
-  mkWall(18.4, -15.2, 7, Math.PI / 2); mkWall(18.4, 15.2, 7, Math.PI / 2);
-  lb(0, -2, 15.2, 0.3, 10); lb(0, 16, 15.2, 0.3, 10);
-  lb(-15.2, 7, 0.3, 9.2, 10); lb(15.2, 7, 0.3, 9.2, 10);
+  g.add(box(60.4, 0.9, 0.24, WALNUT, 0, 0.45, 28));
+  g.add(box(60.4, 0.07, 0.3, BRASS, 0, 0.95, 28));
+  lb(0, -8, 30.2, 0.3, 10); lb(0, 28, 30.2, 0.3, 10);
+  lb(-30.2, 10, 0.3, 18.2, 10); lb(30.2, 10, 0.3, 18.2, 10);
   /* wall sconces (warm glow strips) */
-  for (const [sx, sz, sry] of [[-15, 3.5, Math.PI / 2], [-15, 11, Math.PI / 2], [15, 3.5, -Math.PI / 2], [15, 11, -Math.PI / 2], [-7, -1.8, 0], [7, -1.8, 0]]) {
+  for (const [sx, sz, sry] of [[-30, 0, Math.PI / 2], [-30, 8, Math.PI / 2], [-30, 20, Math.PI / 2],
+      [30, 8, -Math.PI / 2], [30, 16, -Math.PI / 2], [-14, -7.8, 0], [0, -7.8, 0], [14, -7.8, 0]]) {
     const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 1.1), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
     sc.position.set(sx, 2.6, sz); sc.rotation.y = sry;
     g.add(sc);
   }
-  const warm1 = new THREE.PointLight(0xffc890, 9, 20); warm1.position.set(-7, 3.4, 6); g.add(warm1);
-  const warm2 = new THREE.PointLight(0xffc890, 9, 20); warm2.position.set(7, 3.4, 9); g.add(warm2);
+  for (const [wx, wz] of [[-14, 4], [14, 4], [0, 16], [18, 22], [-20, 22]]) {
+    const warm = new THREE.PointLight(0xffc890, 8, 18);
+    warm.position.set(wx, 3.4, wz);
+    g.add(warm);
+  }
   /* conversation pockets: plum rug, velvet couches facing IN, candle table */
   LOUNGE_POCKETS.forEach(([rx, rz, rr], i) => {
     const rug = new THREE.Mesh(new THREE.CircleGeometry(rr + 0.7, 26),
@@ -3488,8 +3530,8 @@ function buildLoungeDecor() {
       cg.add(box(2.2, 0.72, 0.2, colr, 0, 0.84, -0.38));
       cg.add(box(0.22, 0.6, 0.95, colr, -1.05, 0.52, 0));
       cg.add(box(0.22, 0.6, 0.95, colr, 1.05, 0.52, 0));
-      cg.add(box(2.2, 0.1, 0.95, WALNUT_D, 0, 0.08, 0));        /* wood base */
-      cg.add(box(0.42, 0.28, 0.15, BRASS, -0.6, 0.7, -0.22));    /* gold pillows */
+      cg.add(box(2.2, 0.1, 0.95, WALNUT_D, 0, 0.08, 0));
+      cg.add(box(0.42, 0.28, 0.15, BRASS, -0.6, 0.7, -0.22));
       cg.add(box(0.42, 0.28, 0.15, CREAM, 0.6, 0.7, -0.22));
       cg.position.set(rx + Math.sin(a) * (rr + 1.15), 0, rz + Math.cos(a) * (rr + 1.15));
       cg.rotation.y = a + Math.PI;
@@ -3497,7 +3539,6 @@ function buildLoungeDecor() {
       lb(cg.position.x, cg.position.z, 1.15, 0.55, 1.1);
     };
     couch(0.5 + i * 0.7, VELVET); couch(2.6 + i * 0.7, VELVET2); couch(4.5 + i * 0.7, VELVET);
-    /* walnut drink table + candle */
     g.add(cyl(0.65, 0.65, 0.09, WALNUT, rx, 0.46, rz, 14), cyl(0.1, 0.14, 0.44, WALNUT_D, rx, 0.22, rz));
     g.add(cyl(0.045, 0.05, 0.16, CREAM, rx + 0.2, 0.58, rz));
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
@@ -3507,89 +3548,42 @@ function buildLoungeDecor() {
   });
   /* THE ALGORITHM bar along the north wall */
   {
-    const bx = -6, bz = -0.7;
-    g.add(box(9, 1.15, 1.2, WALNUT, bx, 0.58, bz));
-    g.add(box(9.2, 0.1, 1.4, 0x1c1410, bx, 1.18, bz));                 /* dark stone top */
-    const rail = cyl(0.035, 0.035, 9, BRASS, bx, 0.35, bz + 0.75, 8); /* brass foot rail */
+    const bx = -12, bz = -6.6;
+    g.add(box(13, 1.15, 1.2, WALNUT, bx, 0.58, bz));
+    g.add(box(13.2, 0.1, 1.4, 0x1c1410, bx, 1.18, bz));
+    const rail = cyl(0.035, 0.035, 13, BRASS, bx, 0.35, bz + 0.75, 8);
     rail.rotation.z = Math.PI / 2;
     g.add(rail);
-    /* backbar shelf with glowing bottles */
-    g.add(box(8.4, 0.08, 0.4, WALNUT_D, bx, 2.3, bz - 0.95));
-    for (let i = 0; i < 9; i++) {
-      const bot = box(0.16, rand(0.32, 0.5), 0.16, pick([0x40c8a0, 0xd44a90, 0x5a8ad4, 0xe8b040, 0x9a5ad4]), bx - 3.8 + i * 0.95, 2.55, bz - 0.95);
-      bot.material = new THREE.MeshBasicMaterial({ color: bot.material.color });
+    g.add(box(12.4, 0.08, 0.4, WALNUT_D, bx, 2.3, bz - 0.95));
+    for (let i = 0; i < 13; i++) {
+      const bot = box(0.16, rand(0.32, 0.5), 0.16, 0xffffff, bx - 5.7 + i * 0.95, 2.55, bz - 0.95);
+      bot.material = new THREE.MeshBasicMaterial({ color: pick([0x40c8a0, 0xd44a90, 0x5a8ad4, 0xe8b040, 0x9a5ad4]) });
       g.add(bot);
     }
-    for (let i = 0; i < 4; i++) {
-      g.add(cyl(0.3, 0.3, 0.07, VELVET, bx - 3 + i * 2, 0.88, bz + 1.4, 10));
-      g.add(cyl(0.05, 0.08, 0.82, BRASS, bx - 3 + i * 2, 0.42, bz + 1.4, 8));
+    for (let i = 0; i < 6; i++) {
+      g.add(cyl(0.3, 0.3, 0.07, VELVET, bx - 5 + i * 2, 0.88, bz + 1.4, 10));
+      g.add(cyl(0.05, 0.08, 0.82, BRASS, bx - 5 + i * 2, 0.42, bz + 1.4, 8));
     }
-    lb(bx, bz, 4.6, 0.85, 1.3);
+    lb(bx, bz, 6.6, 0.85, 1.3);
     const barTag = textSprite("🥃 THE ALGORITHM", { size: 36, color: "#c8a24a", strokeW: 6, maxWidth: 0 });
     barTag.scale.multiplyScalar(0.8);
     barTag.position.set(bx, 3.3, bz);
     g.add(barTag);
     /* FREE ESPRESSO machine at the bar's end — walk up for a speed boost */
-    g.add(box(0.7, 0.6, 0.5, 0x1c1e24, bx + 4, 1.5, bz));
-    g.add(box(0.72, 0.08, 0.52, BRASS, bx + 4, 1.82, bz));
+    g.add(box(0.7, 0.6, 0.5, 0x1c1e24, bx + 5.8, 1.5, bz));
+    g.add(box(0.72, 0.08, 0.52, BRASS, bx + 5.8, 1.82, bz));
     const espTag = textSprite("FREE ESPRESSO — WALK UP", { size: 26, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
     espTag.scale.multiplyScalar(0.62);
-    espTag.position.set(bx + 4, 2.5, bz + 0.4);
+    espTag.position.set(bx + 5.8, 2.5, bz + 0.4);
     g.add(espTag);
-    g.userData.espPos = new THREE.Vector3(bx + 4, 0, bz + 1);
+    g.userData.espPos = new THREE.Vector3(bx + 5.8, 0, bz + 1);
   }
-  /* JUKEBOX in the corner — hit it with the boomerang */
+  /* FIREPLACE LIBRARY nook on the west wall: shelves + armchairs + reading rug */
   {
-    const jx = -13.2, jz = 13.8;
-    const jg = new THREE.Group();
-    jg.add(box(1.5, 1.9, 0.9, 0x7a1f2e, 0, 0.95, 0));
-    const arch = cyl(0.75, 0.75, 0.9, 0x9a2f3e, 0, 1.9, 0, 14);
-    arch.rotation.x = Math.PI / 2; arch.scale.y = 1;
-    jg.add(arch);
-    const jglow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.2), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
-    jglow.position.set(0, 1.15, 0.47);
-    jg.add(jglow);
-    jg.add(box(1.54, 0.08, 0.94, BRASS, 0, 0.06, 0));
-    jg.position.set(jx, 0, jz);
-    jg.rotation.y = 0.7;
-    g.add(jg);
-    g.userData.jukeGlow = jglow;
-    g.userData.jukePos = new THREE.Vector3(jx, 1.2, jz);
-    lb(jx, jz, 1.0, 0.8, 2.4);
-    const jTag = textSprite("JUKEBOX — HIT IT 🎵", { size: 28, color: "#ff90e0", strokeW: 5, maxWidth: 0 });
-    jTag.scale.multiplyScalar(0.65);
-    jTag.position.set(jx, 3.0, jz);
-    g.add(jTag);
-  }
-  /* DARTBOARD on the east wall — boomerang bullseye = points */
-  {
-    const dx = 14.9, dz = 5.5;
-    const board = new THREE.Group();
-    board.add(cyl(0.62, 0.62, 0.1, 0x2a1c14, 0, 0, 0, 18));
-    board.add(cyl(0.5, 0.5, 0.11, 0xd8d0b8, 0, 0, 0, 18));
-    board.add(cyl(0.34, 0.34, 0.12, 0x9a2f3e, 0, 0, 0, 18));
-    board.add(cyl(0.18, 0.18, 0.13, 0xd8d0b8, 0, 0, 0, 18));
-    board.add(cyl(0.06, 0.06, 0.14, 0x9a2f3e, 0, 0, 0, 18));
-    board.rotation.z = Math.PI / 2;
-    board.position.set(dx, 2.3, dz);
-    board.rotation.y = 0;
-    board.rotation.x = 0;
-    board.rotation.z = Math.PI / 2;
-    board.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), 0);
-    g.add(board);
-    g.userData.dartPos = new THREE.Vector3(dx - 0.3, 2.3, dz);
-    const dTag = textSprite("DARTS — 50 PTS", { size: 26, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    dTag.scale.multiplyScalar(0.6);
-    dTag.position.set(dx - 0.6, 3.4, dz);
-    g.add(dTag);
-  }
-  /* FIREPLACE on the west wall with flickering light */
-  {
-    const fx = -14.9, fz = 8.5;
+    const fx = -29.9, fz = 14;
     g.add(box(0.6, 2.2, 3.0, 0x2a2226, fx, 1.1, fz));
     g.add(box(0.65, 0.15, 3.2, BRASS, fx, 2.25, fz));
-    const opening = box(0.3, 1.0, 1.6, 0x0c0806, fx + 0.2, 0.75, fz);
-    g.add(opening);
+    g.add(box(0.3, 1.0, 1.6, 0x0c0806, fx + 0.2, 0.75, fz));
     const fireP = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8),
       new THREE.MeshBasicMaterial({ color: 0xff7a20, transparent: true, opacity: 0.9 }));
     fireP.position.set(fx + 0.38, 0.7, fz);
@@ -3601,23 +3595,181 @@ function buildLoungeDecor() {
     g.userData.fire = fire;
     g.userData.firePlane = fireP;
     lb(fx, fz, 0.5, 1.6, 3);
+    /* bookshelves flanking the fireplace, spines in warm colors */
+    for (const sz of [fz - 4.2, fz + 4.2]) {
+      g.add(box(0.7, 3.2, 2.6, WALNUT_D, fx + 0.2, 1.6, sz));
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
+        g.add(box(0.12, rand(0.3, 0.45), 0.26, pick([0x8a3a2a, 0x2a5a4a, 0xb08a30, 0x4a3a6a, 0x7a2a3a]),
+          fx + 0.5, 0.55 + r * 0.72, sz - 1.05 + c * 0.34));
+      }
+      lb(fx + 0.2, sz, 0.6, 1.4, 3.4);
+    }
+    /* leather armchairs facing the fire */
+    for (const az of [fz - 1.9, fz + 1.9]) {
+      const ch = new THREE.Group();
+      ch.add(box(1.1, 0.5, 1.0, 0x5a3a22, 0, 0.36, 0));
+      ch.add(box(1.1, 0.85, 0.24, 0x5a3a22, 0, 0.85, -0.4));
+      ch.add(box(0.24, 0.62, 1.0, 0x5a3a22, -0.55, 0.55, 0));
+      ch.add(box(0.24, 0.62, 1.0, 0x5a3a22, 0.55, 0.55, 0));
+      ch.position.set(fx + 2.6, 0, az);
+      ch.rotation.y = -Math.PI / 2 + (az < fz ? 0.4 : -0.4);
+      g.add(ch);
+      lb(ch.position.x, ch.position.z, 0.7, 0.6, 1.2);
+    }
+    const rug2 = new THREE.Mesh(new THREE.CircleGeometry(2.4, 20),
+      new THREE.MeshLambertMaterial({ color: 0x5a2a1a }));
+    rug2.rotation.x = -Math.PI / 2;
+    rug2.position.set(fx + 2.4, 0.06, fz);
+    g.add(rug2);
+    const libTag = textSprite("📚 QUIET REPLIES", { size: 28, color: "#e8b040", strokeW: 5, maxWidth: 0 });
+    libTag.scale.multiplyScalar(0.65);
+    libTag.position.set(fx + 2, 3.6, fz);
+    g.add(libTag);
   }
-  /* slow-spinning disco ball over the center pocket */
+  /* DANCE FLOOR (SE): glowing checker tiles, disco ball, jukebox at its edge */
   {
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 8),
+    const dx = DANCE_CENTER.x, dz = DANCE_CENTER.z;
+    const danceTex = canvasTex(128, 128, (c2, w, h) => {
+      for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+        c2.fillStyle = pick(["#d44a90", "#5a8ad4", "#40c8a0", "#e8b040", "#9a5ad4", "#ff6a5a"]);
+        c2.fillRect(x * 32, y * 32, 32, 32);
+      }
+      c2.strokeStyle = "#1a1018"; c2.lineWidth = 4;
+      for (let i = 0; i <= 4; i++) { c2.beginPath(); c2.moveTo(i * 32, 0); c2.lineTo(i * 32, h); c2.stroke();
+        c2.beginPath(); c2.moveTo(0, i * 32); c2.lineTo(w, i * 32); c2.stroke(); }
+    });
+    const danceFloor = new THREE.Mesh(new THREE.PlaneGeometry(9, 9),
+      new THREE.MeshBasicMaterial({ map: danceTex }));
+    danceFloor.rotation.x = -Math.PI / 2;
+    danceFloor.position.set(dx, 0.055, dz);
+    g.add(danceFloor);
+    g.userData.danceTex = danceTex;
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8),
       new THREE.MeshPhongMaterial({ color: 0xb8c4d0, specular: 0xffffff, shininess: 200, flatShading: true }));
-    ball.position.set(0, 4.6, 4.5);
-    g.add(ball, cyl(0.02, 0.02, 1.6, 0x22262c, 0, 5.6, 4.5, 6));
+    ball.position.set(dx, 4.7, dz);
+    g.add(ball, cyl(0.02, 0.02, 1.7, 0x22262c, dx, 5.8, dz, 6));
     g.userData.disco = ball;
+    const discoL = new THREE.PointLight(0xd44aff, 7, 14);
+    discoL.position.set(dx, 3.6, dz);
+    g.add(discoL);
+    g.userData.discoL = discoL;
+    /* jukebox at the dance floor's edge */
+    const jx = dx + 6.4, jz = dz + 4.4;
+    const jg = new THREE.Group();
+    jg.add(box(1.5, 1.9, 0.9, 0x7a1f2e, 0, 0.95, 0));
+    const arch = cyl(0.75, 0.75, 0.9, 0x9a2f3e, 0, 1.9, 0, 14);
+    arch.rotation.x = Math.PI / 2;
+    jg.add(arch);
+    const jglow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.2), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
+    jglow.position.set(0, 1.15, 0.47);
+    jg.add(jglow);
+    jg.add(box(1.54, 0.08, 0.94, BRASS, 0, 0.06, 0));
+    jg.position.set(jx, 0, jz);
+    jg.rotation.y = -0.8;
+    g.add(jg);
+    g.userData.jukeGlow = jglow;
+    g.userData.jukePos = new THREE.Vector3(jx, 1.2, jz);
+    lb(jx, jz, 1.0, 0.8, 2.4);
+    const jTag = textSprite("JUKEBOX — HIT IT 🎵", { size: 28, color: "#ff90e0", strokeW: 5, maxWidth: 0 });
+    jTag.scale.multiplyScalar(0.65);
+    jTag.position.set(jx, 3.0, jz);
+    g.add(jTag);
+    const dTag2 = textSprite("💃 DANCE FLOOR", { size: 30, color: "#d44aff", strokeW: 6, maxWidth: 0 });
+    dTag2.scale.multiplyScalar(0.7);
+    dTag2.position.set(dx, 4.0, dz - 4);
+    g.add(dTag2);
+  }
+  /* ARCADE + DARTS corner (NE): cabinets + dartboard + dart table */
+  {
+    const ax = 24, az = -5.5;
+    for (let i = 0; i < 2; i++) {
+      const cab = new THREE.Group();
+      cab.add(box(1.1, 2.1, 0.9, i ? 0x2a3a6a : 0x5a2a5a, 0, 1.05, 0));
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ color: i ? 0x7CFFB0 : 0x5ad1ff }));
+      scr.position.set(0, 1.5, 0.46);
+      scr.rotation.x = -0.15;
+      cab.add(scr);
+      cab.add(box(1.1, 0.16, 0.5, 0x14161a, 0, 0.95, 0.55));
+      cab.position.set(ax - 2 + i * 2.2, 0, az);
+      g.add(cab);
+      lb(cab.position.x, cab.position.z, 0.7, 0.6, 2.2);
+    }
+    const arcTag = textSprite("🕹 ARCADE", { size: 28, color: "#5ad1ff", strokeW: 5, maxWidth: 0 });
+    arcTag.scale.multiplyScalar(0.65);
+    arcTag.position.set(ax - 1, 3.0, az);
+    g.add(arcTag);
+    /* dartboard on the east wall */
+    const bz2 = 2;
+    const board = new THREE.Group();
+    board.add(cyl(0.62, 0.62, 0.1, 0x2a1c14, 0, 0, 0, 18));
+    board.add(cyl(0.5, 0.5, 0.11, 0xd8d0b8, 0, 0, 0, 18));
+    board.add(cyl(0.34, 0.34, 0.12, 0x9a2f3e, 0, 0, 0, 18));
+    board.add(cyl(0.18, 0.18, 0.13, 0xd8d0b8, 0, 0, 0, 18));
+    board.add(cyl(0.06, 0.06, 0.14, 0x9a2f3e, 0, 0, 0, 18));
+    board.rotation.z = Math.PI / 2;
+    board.position.set(29.85, 2.3, bz2);
+    g.add(board);
+    g.userData.dartBoardPos = new THREE.Vector3(29.85, 2.3, bz2);
+    /* dart table with three darts — walk up to PLAY */
+    const tx = 26.5, tz = 2;
+    g.add(box(0.9, 0.95, 0.6, WALNUT, tx, 0.48, tz));
+    g.add(box(1.0, 0.06, 0.7, BRASS, tx, 0.98, tz));
+    for (let i = 0; i < 3; i++) {
+      const dart = new THREE.Group();
+      const shaft = cyl(0.02, 0.02, 0.3, 0xd8d0b8, 0, 0, 0, 6);
+      shaft.rotation.z = 0.5;
+      dart.add(shaft);
+      dart.add(sph(0.035, pick([0xd44a90, 0x40c8a0, 0x5a8ad4]), 0.1, 0.12, 0));
+      dart.position.set(tx - 0.25 + i * 0.25, 1.05, tz);
+      g.add(dart);
+    }
+    g.userData.dartTablePos = new THREE.Vector3(tx, 0, tz);
+    lb(tx, tz, 0.55, 0.45, 1.1);
+    const dTag = textSprite("🎯 DARTS — WALK UP TO PLAY", { size: 26, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    dTag.scale.multiplyScalar(0.62);
+    dTag.position.set(27.5, 3.4, tz);
+    g.add(dTag);
+  }
+  /* GARDEN PATIO (SW): stone circle, fountain, planters */
+  {
+    const px2 = -20, pz2 = 21;
+    const stone = new THREE.Mesh(new THREE.CircleGeometry(5, 22),
+      new THREE.MeshLambertMaterial({ color: 0x6a6258 }));
+    stone.rotation.x = -Math.PI / 2;
+    stone.position.set(px2, 0.05, pz2);
+    g.add(stone);
+    /* fountain */
+    g.add(cyl(1.5, 1.7, 0.5, 0x8a8278, px2, 0.25, pz2, 16));
+    const water = new THREE.Mesh(new THREE.CircleGeometry(1.35, 16),
+      new THREE.MeshBasicMaterial({ color: 0x5ad1ff, transparent: true, opacity: 0.75 }));
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(px2, 0.48, pz2);
+    g.add(water);
+    g.userData.fountainWater = water;
+    g.add(cyl(0.12, 0.16, 1.0, 0x8a8278, px2, 0.9, pz2, 10));
+    g.add(sph(0.2, 0x9ae0ff, px2, 1.5, pz2, 8, 6));
+    lb(px2, pz2, 1.8, 1.8, 1.2);
+    /* planters ringing the patio */
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + 0.4;
+      const gx = px2 + Math.cos(a) * 4.2, gz = pz2 + Math.sin(a) * 4.2;
+      g.add(box(0.9, 0.5, 0.9, 0x4a4038, gx, 0.25, gz));
+      g.add(sph(0.55, pick([0x2f6a34, 0x3f7a3f, 0x2a5a2f]), gx, 0.95, gz, 8, 6));
+      lb(gx, gz, 0.55, 0.55, 1.0);
+    }
+    const gTag = textSprite("🌿 TOUCH GRASS GARDEN", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    gTag.scale.multiplyScalar(0.68);
+    gTag.position.set(px2, 3.4, pz2);
+    g.add(gTag);
   }
   /* neon sign over the bar */
   const neon = textSprite("TIMELINE LOUNGE", { size: 60, color: "#ff90e0", strokeW: 9, maxWidth: 0 });
   neon.scale.multiplyScalar(1.15);
-  neon.position.set(0, 4.9, -1.4);
-  neon.userData.maxDist = 60;
+  neon.position.set(-12, 5.1, -7.2);
+  neon.userData.maxDist = 70;
   g.add(neon);
-  /* palms + plants in the corners */
-  for (const [px, pz] of [[13.5, 14.5], [-13.5, 2.5], [13.5, 0.5]]) {
+  /* palms in leftover corners */
+  for (const [px, pz] of [[28, 26], [-28, -6.5], [6, 26.5]]) {
     g.add(cyl(0.28, 0.36, 0.55, 0xb06a3a, px, 0.28, pz), sph(0.6, 0x2f6a34, px, 1.25, pz, 8, 6));
   }
   g.visible = false;
@@ -3650,10 +3802,11 @@ function activateSocialLounge() {
   }
   /* dim, warm, after-hours mood */
   scene.background = new THREE.Color(0x241419);
-  scene.fog = new THREE.Fog(0x241419, 24, 55);
+  scene.fog = new THREE.Fog(0x241419, 38, 95);
   buildLoungeDecor().visible = true;
   addLoungeObstacles();
-  pig.position.set(0, 0, 12);
+  vcTimer = rand(14, 24);
+  pig.position.set(0, 0, 23);
   pigY = 0; pigVy = 0;
   const wv = $("waveV"); if (wv) wv.textContent = "LOUNGE";
   const qv = $("quotaV"); if (qv) qv.textContent = "—";
@@ -3704,7 +3857,26 @@ function openTweetReader(e) {
   if (body) {
     body.innerHTML = (u.tweets || []).slice(0, 3).map((tw, i) =>
       `<div class="tr-tweet">${escapeHtml(tw)}<span class="tr-ago">post ${i + 1} of ${(u.tweets || []).length} · from your recent graph</span></div>`
-    ).join("");
+    ).join("") + `
+    <div class="tr-replybox">
+      <textarea id="trReply" rows="2" maxlength="280" placeholder="Post your reply to @${escapeHtml(u.handle)}…"></textarea>
+      <div class="tr-replyrow">
+        <span id="trCount">280</span>
+        <button type="button" id="trSend">Reply</button>
+      </div>
+      <div id="trSent" class="tr-sent hidden">Reply sent ✓ <span>(demo — nothing was posted to X)</span></div>
+    </div>`;
+    const ta = $("trReply"), cnt = $("trCount"), send = $("trSend"), sent = $("trSent");
+    if (ta && send) {
+      ta.addEventListener("input", () => { if (cnt) cnt.textContent = 280 - ta.value.length; if (sent) sent.classList.add("hidden"); });
+      send.addEventListener("click", () => {
+        if (!ta.value.trim()) { ta.focus(); return; }
+        if (sent) sent.classList.remove("hidden");
+        ta.value = "";
+        if (cnt) cnt.textContent = 280;
+        beep(880, 0.08, "square", 0.06); setTimeout(() => beep(1180, 0.1, "square", 0.06), 90);
+      });
+    }
   }
   root.classList.remove("hidden");
   root.setAttribute("aria-hidden", "false");
@@ -3765,7 +3937,11 @@ function updateSocialLounge(dt) {
   spawnQueue = 0;
   let nearest = null;
   let nd = SOCIAL_PROX;
+  const camF = new THREE.Vector3();
+  camera.getWorldDirection(camF);
+  camF.y = 0; camF.normalize();
   for (const e of enemies) {
+    if (e.type === "vc") { updateVCIntruder(e, dt); continue; }
     if (e.type !== "xuser") continue;
     /* mingle: idle in a spot chatting, then WALK to another spot */
     if (!e.state) { e.state = "idle"; e.stateT = rand(3, 8); }
@@ -3809,10 +3985,21 @@ function updateSocialLounge(dt) {
       e.mesh.rotation.y += dR * Math.min(1, dt * 4);
     }
     /* keep everyone inside the lounge walls */
-    e.mesh.position.x = Math.max(-14.2, Math.min(14.2, e.mesh.position.x));
-    e.mesh.position.z = Math.max(-1, Math.min(15.2, e.mesh.position.z));
+    e.mesh.position.x = Math.max(-29.4, Math.min(29.4, e.mesh.position.x));
+    e.mesh.position.z = Math.max(-7, Math.min(27.4, e.mesh.position.z));
+    /* anyone idling on the dance floor DANCES */
+    if (e.state === "idle" && Math.hypot(e.mesh.position.x - DANCE_CENTER.x, e.mesh.position.z - DANCE_CENTER.z) < 5) {
+      e.mesh.position.y = Math.abs(Math.sin(t * 7 + e.walk)) * 0.22;
+      e.mesh.rotation.y += Math.sin(t * 3.5 + e.walk) * dt * 2.2;
+    }
     const d = Math.hypot(pig.position.x - e.mesh.position.x, pig.position.z - e.mesh.position.z);
     if (d < nd) { nd = d; nearest = e; }
+    /* tweet bubble only when the player FACES this guest up close */
+    if (e.tag) {
+      const toU = new THREE.Vector3(e.mesh.position.x - pig.position.x, 0, e.mesh.position.z - pig.position.z);
+      const dl = toU.length();
+      e.tag.visible = dl > 0.01 && d < 9 && toU.multiplyScalar(1 / dl).dot(camF) > 0.78;
+    }
     /* only the nearest auto-advances chunks — keeps the room readable */
     if (e !== socialNear) continue;
     e.chunkT -= dt;
@@ -3844,34 +4031,189 @@ function updateSocialLounge(dt) {
   /* —— interactive objects —— */
   const L = loungeDecor && loungeDecor.userData;
   if (L) {
-    /* fireplace flicker */
     if (L.fire) L.fire.intensity = 5.5 + Math.sin(t * 11) * 1.5 + Math.sin(t * 23) * 0.9;
     if (L.firePlane) L.firePlane.material.opacity = 0.75 + Math.sin(t * 13) * 0.2;
     if (L.disco) L.disco.rotation.y += dt * 1.1;
+    if (L.discoL) L.discoL.color.setHSL((t * 0.12) % 1, 0.8, 0.6);
+    if (L.fountainWater) L.fountainWater.material.opacity = 0.65 + Math.sin(t * 4) * 0.12;
     L.jukeCool = Math.max(0, (L.jukeCool || 0) - dt);
-    L.dartCool = Math.max(0, (L.dartCool || 0) - dt);
     L.espCool = Math.max(0, (L.espCool || 0) - dt);
-    for (const b of boomerangs) {
-      if (L.jukeCool <= 0 && L.jukePos && b.mesh.position.distanceTo(L.jukePos) < 1.8) {
-        L.jukeCool = 1.6;
-        playJukeRiff();
-        if (L.jukeGlow) L.jukeGlow.material.color.setHex(pick([0xff90e0, 0x7CFFB0, 0x5ad1ff, 0xffb347]));
-        floatText(L.jukePos.clone().add(new THREE.Vector3(0, 1.6, 0)), "♪♫", { size: 44, color: "#ff90e0", strokeW: 6 }, 1.2);
-      }
-      if (L.dartCool <= 0 && L.dartPos && b.mesh.position.distanceTo(L.dartPos) < 1.5) {
-        L.dartCool = 1.2;
-        score += 50; updateHud();
-        SFX.pickup();
-        floatText(L.dartPos.clone().add(new THREE.Vector3(-0.6, 0.8, 0)), "BULLSEYE +50", { size: 40, color: "#7CFFB0", strokeW: 6 }, 1.3);
-      }
+    /* jukebox: walk up to spin a track */
+    if (L.jukeCool <= 0 && L.jukePos && pig.position.distanceTo(new THREE.Vector3(L.jukePos.x, 0, L.jukePos.z)) < 2.0) {
+      L.jukeCool = 4;
+      playJukeRiff();
+      if (L.jukeGlow) L.jukeGlow.material.color.setHex(pick([0xff90e0, 0x7CFFB0, 0x5ad1ff, 0xffb347]));
+      floatText(L.jukePos.clone().add(new THREE.Vector3(0, 1.6, 0)), "♪♫", { size: 44, color: "#ff90e0", strokeW: 6 }, 1.2);
     }
+    /* espresso boost */
     if (L.espCool <= 0 && L.espPos && pig.position.distanceTo(L.espPos) < 1.7) {
       L.espCool = 14;
       speedBoost = Math.min(12, speedBoost + 6);
       SFX.pickup();
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
+    /* dart table: walk up to start the mini-game */
+    if (!dartGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos && pig.position.distanceTo(L.dartTablePos) < 1.8) {
+      startDartGame();
+    }
+    dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
   }
+  /* —— VC intruder alarm —— */
+  vcTimer -= dt;
+  if (vcTimer <= 0 && enemies.filter(e => e.type === "vc").length < 2) {
+    vcTimer = rand(22, 38);
+    spawnVCIntruder();
+  }
+  const vcsIn = enemies.some(e => e.type === "vc");
+  if (vcsIn && L) {
+    if (!L.alarmL) {
+      L.alarmL = new THREE.PointLight(0xff2020, 0, 30);
+      L.alarmL.position.set(0, 5, 10);
+      loungeDecor.add(L.alarmL);
+    }
+    L.alarmL.intensity = 6 + Math.sin(t * 10) * 6;
+    L.alarmT = (L.alarmT || 0) - dt;
+    if (L.alarmT <= 0) { L.alarmT = 1.3; beep(880, 0.18, "square", 0.06); beep(660, 0.18, "square", 0.06); }
+  } else if (L && L.alarmL) {
+    L.alarmL.intensity = 0;
+  }
+}
+
+/* —— VC INTRUDERS: sneak in, pitch you, shoot them (left click) to eject —— */
+let vcTimer = 12;
+function spawnVCIntruder() {
+  const [name, handle] = pick(VC_LIST);
+  const u = { name, handle, color: "#ff3030" };
+  const mesh = buildXUser(u);
+  /* suit them up: gray blazer tint + red VC badge */
+  mesh.traverse(o => {
+    if (o.isMesh && o.material && o.material.color && !o.material.map && o.material !== OUTLINE_MAT) {
+      const c = o.material.color.getHex();
+      if (c !== 0xe8c4a8 && c !== 0x2a1c14 && c !== 0x1a1a1a) {
+        o.material = new THREE.MeshLambertMaterial({ color: 0x3a3f4a });
+      }
+    }
+  });
+  const badge = box(0.3, 0.18, 0.05, 0xd02020, 0.2, 1.35, 0.2);
+  mesh.add(badge);
+  /* spawn at a corner, sneaking in */
+  const sp = pick([[-28, -6], [28, -6], [-28, 26], [28, 26]]);
+  mesh.position.set(sp[0], 0, sp[1]);
+  const e = {
+    type: "vc", hp: 2, speed: 1.6, mesh, r: 0.65, walk: rand(0, 6.28),
+    user: u, shootT: 999, pitchT: 1.5,
+  };
+  scene.add(mesh);
+  enemies.push(e);
+  showMsg("🚨 VC IN THE LOUNGE — SHOOT TO EJECT");
+  floatText(mesh.position.clone().add(new THREE.Vector3(0, 3, 0)), "🚨", { size: 60, color: "#ff3030", strokeW: 8 }, 1.6);
+  return e;
+}
+function updateVCIntruder(e, dt) {
+  const toP = pig.position.clone().sub(e.mesh.position);
+  toP.y = 0;
+  const dist = toP.length();
+  if (dist > 2.2) {
+    toP.normalize();
+    e.mesh.position.addScaledVector(toP, e.speed * dt);
+    e.mesh.position.y = Math.abs(Math.sin(t * 8 + e.walk)) * 0.05;
+  }
+  e.mesh.rotation.y = Math.atan2(pig.position.x - e.mesh.position.x, pig.position.z - e.mesh.position.z);
+  e.pitchT -= dt;
+  if (e.pitchT <= 0) {
+    e.pitchT = rand(2.5, 4);
+    setXUserBubble(e, { text: pick(VC_PITCHES), part: 1, parts: 1 });
+    if (e.tag) e.tag.visible = true; /* VC pitches are always in your face */
+  }
+  if (e.tag) e.tag.visible = true;
+  /* touching you dilutes you */
+  if (dist < 1.2 && mode === "play") {
+    score = Math.max(0, score - 100);
+    updateHud();
+    floatText(pig.position.clone().add(new THREE.Vector3(0, 2.4, 0)), "DILUTED −100", { size: 46, color: "#ff3030", strokeW: 7 }, 1.5);
+    SFX.hurt();
+    removeVC(e, true);
+  }
+}
+function removeVC(e, silent = false) {
+  const i = enemies.indexOf(e);
+  if (i >= 0) enemies.splice(i, 1);
+  scene.remove(e.mesh);
+  if (!silent) {
+    burst(e.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xf2f2ee, 18, 6);
+    burst(e.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xd02020, 10, 5);
+    score += 300;
+    updateHud();
+    SFX.demon();
+    floatText(e.mesh.position.clone().add(new THREE.Vector3(0, 2, 0)), "TERM SHEET SHREDDED +300", { size: 44, color: "#7CFFB0", strokeW: 7 }, 1.6);
+  }
+}
+
+/* —— DARTS MINI-GAME: 3 darts, wobbling aim, ring scoring —— */
+const dartGame = { active: false, throwsLeft: 0, total: 0, aimY: 0, aimZ: 0, cool: 0, darts: [], reticle: null };
+function startDartGame() {
+  const L = loungeDecor && loungeDecor.userData;
+  if (!L || !L.dartBoardPos) return;
+  dartGame.active = true;
+  dartGame.throwsLeft = 3;
+  dartGame.total = 0;
+  dartGame.aimY = 0; dartGame.aimZ = 0;
+  socialReading = true; /* freezes the world; reader stays closed */
+  for (const d of dartGame.darts) scene.remove(d);
+  dartGame.darts = [];
+  if (!dartGame.reticle) {
+    dartGame.reticle = textSprite("+", { size: 60, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
+    dartGame.reticle.scale.multiplyScalar(0.5);
+    scene.add(dartGame.reticle);
+  }
+  dartGame.reticle.visible = true;
+  showMsg("🎯 DARTS — click to throw (3 darts)");
+  SFX.pickup();
+}
+function endDartGame() {
+  dartGame.active = false;
+  dartGame.cool = 6;
+  socialReading = false;
+  if (dartGame.reticle) dartGame.reticle.visible = false;
+  setTimeout(() => { for (const d of dartGame.darts) scene.remove(d); dartGame.darts = []; }, 2500);
+  showMsg(`🎯 DARTS TOTAL: +${dartGame.total}`);
+  score += dartGame.total;
+  updateHud();
+}
+function updateDartGame(dt) {
+  if (!dartGame.active) return;
+  const bp = loungeDecor.userData.dartBoardPos;
+  /* wobble + player aim */
+  const wy = Math.sin(t * 2.6) * 0.16 + Math.sin(t * 6.1) * 0.07;
+  const wz = Math.cos(t * 3.2) * 0.16 + Math.sin(t * 5.3) * 0.07;
+  dartGame.aimY = Math.max(-0.6, Math.min(0.6, dartGame.aimY));
+  dartGame.aimZ = Math.max(-0.6, Math.min(0.6, dartGame.aimZ));
+  dartGame.reticle.position.set(bp.x - 0.25, bp.y + dartGame.aimY + wy, bp.z + dartGame.aimZ + wz);
+  /* camera locked square to the board */
+  camera.position.lerp(new THREE.Vector3(bp.x - 5.5, bp.y + 0.3, bp.z), Math.min(1, dt * 6));
+  camera.lookAt(bp.x, bp.y, bp.z);
+}
+function throwDart() {
+  if (!dartGame.active || dartGame.throwsLeft <= 0) return;
+  const bp = loungeDecor.userData.dartBoardPos;
+  const hitY = dartGame.reticle.position.y, hitZ = dartGame.reticle.position.z;
+  const off = Math.hypot(hitY - bp.y, hitZ - bp.z);
+  const pts = off < 0.09 ? 50 : off < 0.2 ? 25 : off < 0.36 ? 15 : off < 0.55 ? 5 : 0;
+  dartGame.total += pts;
+  dartGame.throwsLeft--;
+  /* stick a dart in the board */
+  const dart = new THREE.Group();
+  const shaft = cyl(0.018, 0.018, 0.34, 0xd8d0b8, 0, 0, 0, 6);
+  shaft.rotation.z = Math.PI / 2;
+  dart.add(shaft);
+  dart.add(sph(0.035, pick([0xd44a90, 0x40c8a0, 0x5a8ad4]), -0.2, 0, 0));
+  dart.position.set(bp.x - 0.15, hitY, hitZ);
+  scene.add(dart);
+  dartGame.darts.push(dart);
+  SFX.hit();
+  floatText(new THREE.Vector3(bp.x - 0.5, hitY + 0.35, hitZ), pts ? `+${pts}${pts === 50 ? " BULL!" : ""}` : "MISS",
+    { size: 38, color: pts >= 25 ? "#7CFFB0" : pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.1);
+  if (dartGame.throwsLeft <= 0) setTimeout(endDartGame, 900);
 }
 
 
@@ -4194,6 +4536,9 @@ const $ = id => document.getElementById(id);
 const overlay = $("overlay");
 
 addEventListener("keydown", e => {
+  /* typing a reply in the tweet reader must not drive the game */
+  if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
+  if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
   keys[e.code] = true;
   if (e.key && e.key.length === 1) keys["Key" + e.key.toUpperCase()] = true;
   if (e.code === "Space") e.preventDefault();
@@ -4242,12 +4587,27 @@ addEventListener("keyup", e => {
 
 document.addEventListener("mousemove", e => {
   if (document.pointerLockElement !== renderer.domElement) return;
+  if (dartGame.active) {
+    /* mouse steers the dart reticle instead of the camera */
+    dartGame.aimZ -= e.movementX * 0.0016;
+    dartGame.aimY -= e.movementY * 0.0016;
+    return;
+  }
   yaw -= e.movementX * 0.0026;
   pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
 });
 renderer.domElement.addEventListener("mousedown", e => {
-  if (mode !== "play" || socialReading) return;
+  if (mode !== "play") return;
+  /* darts mini-game swallows clicks */
+  if (dartGame.active) { if (e.button === 0) throwDart(); return; }
+  if (socialReading) return;
   if (!isMobile() && document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock(); return; }
+  if (socialActive) {
+    /* lounge rules: left click = rifle (eject VCs), right click = engage a guest */
+    if (e.button === 0) fireRifle();
+    if (e.button === 2 && socialNear) openTweetReader(socialNear);
+    return;
+  }
   if (e.button === 0) {
     if (weaponIdx === 0) { charging = true; chargeT = 0; }
     else if (weaponIdx === 2) { flameFiring = true; }
@@ -4617,6 +4977,7 @@ function aimDir() {
   return d;
 }
 function throwBoomerang(big) {
+  if (socialActive) { showMsg("NO BOOMERANGS IN THE LOUNGE — RIGHT-CLICK TO ENGAGE"); return; }
   if (boomsOut >= 2) return;
   boomsOut++;
   const b = buildBoomerang();
@@ -5194,7 +5555,8 @@ function fireRifle() {
   tracers.push({ mesh: tr, life: 0.12 });
   scene.add(tr);
   if (target) {
-    if (target.type === "xuser") dismissXUser(target);
+    if (target.type === "vc") removeVC(target);
+    else if (target.type === "xuser") { if (!socialActive) dismissXUser(target); } /* lounge guests are safe — right-click engages */
     else if (target.type === "spammer") demonetize(target);
     else damage(target, 5, end);
   } else if (worldHit) {
@@ -5976,8 +6338,8 @@ function update(dt) {
       }
       continue;
     }
-    if (e.type === "xuser") {
-      /* lounge guests handled in updateSocialLounge */
+    if (e.type === "xuser" || e.type === "vc") {
+      /* lounge guests + VC intruders handled in updateSocialLounge */
       continue;
     }
     const toP = pig.position.clone().sub(e.mesh.position);
@@ -6231,6 +6593,7 @@ renderer.setAnimationLoop(() => {
     update(dt);
     updateFx(dt);
     updateCamera(dt);
+    updateDartGame(dt);
   } catch (err) {
     console.error("frame error", err);
   }
