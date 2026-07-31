@@ -3493,6 +3493,31 @@ function setOfficePodsVisible(vis) {
   }
 }
 
+function respawnFlamethrowerPickup() {
+  if (!starbaseGroup) return;
+  const mesh = starbaseGroup.userData.flamePickupMesh;
+  if (!mesh) return;
+  const pos = starbaseGroup.userData.flamePickupPos
+    || new THREE.Vector3(14, 0.4, FLOOR_D / 2 + 16);
+  /* strip any existing flamethrower pickups */
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    if (pickups[i].kind === "flamethrower") pickups.splice(i, 1);
+  }
+  mesh.visible = true;
+  mesh.position.set(pos.x, 0.55, pos.z);
+  mesh.rotation.set(0, -0.7, 0.15);
+  /* keep on starbase group so deactivate hides it with the lot */
+  if (mesh.parent !== starbaseGroup) {
+    try { scene.remove(mesh); } catch (_) {}
+    starbaseGroup.add(mesh);
+  }
+  pickups.push({
+    mesh,
+    t: 0, kind: "flamethrower", amount: 0, eject: false, vel: null, landY: 0.4,
+  });
+  starbaseGroup.userData.flameSpawned = true;
+}
+
 function activateStarbase() {
   if (starbaseActive) return;
   starbaseActive = true;
@@ -3573,13 +3598,8 @@ function activateStarbase() {
   pig.position.set(0, 0, FLOOR_D / 2 + 14);
   pigY = 0; pigVy = 0;
   bossPhraseIdx = 0;
-  if (starbaseGroup.userData.flamePickupMesh && !starbaseGroup.userData.flameSpawned) {
-    starbaseGroup.userData.flameSpawned = true;
-    pickups.push({
-      mesh: starbaseGroup.userData.flamePickupMesh,
-      t: 0, kind: "flamethrower", amount: 0, eject: false, vel: null, landY: 0.4,
-    });
-  }
+  /* always re-seed the flamethrower pickup (death / re-enter Starbase) */
+  try { respawnFlamethrowerPickup(); } catch (err) { console.warn("flame respawn", err); }
   /* kill countdown board: re-hang on HQ exterior facing the lot */
   if (wallTimerMesh) {
     wallTimerMesh.position.set(12, 4.2, FLOOR_D / 2 - 0.4);
@@ -3598,6 +3618,7 @@ function activateStarbase() {
 function deactivateStarbase() {
   starbaseActive = false;
   rocketLift = null;
+  if (starbaseGroup && starbaseGroup.userData) starbaseGroup.userData.flameSpawned = false;
   try {
     if (marsState && marsState.tag) scene.remove(marsState.tag);
     if (marsState && marsState.finger) scene.remove(marsState.finger);
@@ -6937,7 +6958,7 @@ function spawnEnemy(type) {
     const baseSpd = variant === "scout" ? rand(2.0, 3.4) : variant === "heavy" ? rand(0.7, 1.35) : rand(1.15, 2.35);
     e = {
       type: "bot", variant, mesh: buildBot(variant), r: variant === "heavy" ? 1.0 : 0.75,
-      hp: variant === "heavy" ? 6 : variant === "scout" ? 2 : 3,
+      hp: variant === "heavy" ? 4 : variant === "scout" ? 1 : 2, /* rifle-friendly */
       speed: baseSpd + wave * rand(0.12, 0.32) + rand(-0.2, 0.5),
       shootT: rand(2, 4),
     };
@@ -8640,9 +8661,17 @@ function hitscanWorld(origin, dir, maxDist = 55) {
     if (score < bestScore) { bestScore = score; best = { type, ref, dist, point: pos }; }
   };
   for (const e of enemies) {
-    const pad = (socialActive && (e.type === "xuser" || e.type === "vc")) ? 0.28 : 0;
-    const y = e.type === "vc" ? 1.4 : 1.15;
+    let pad = 0;
+    if (socialActive && (e.type === "xuser" || e.type === "vc")) pad = 0.28;
+    else if (e.type === "bot") pad = e.variant === "heavy" ? 0.22 : 0.16;
+    else if (e.type === "reporter") pad = 0.14;
+    else if (e.type === "spammer") pad = 0.12;
+    const y = e.type === "vc" ? 1.4 : e.type === "bot" && e.variant === "heavy" ? 1.55 : 1.2;
     consider(e.mesh.position.clone().add(new THREE.Vector3(0, y, 0)), "enemy", e, pad);
+    /* second sample on bots for taller heavy frames */
+    if (e.type === "bot") {
+      consider(e.mesh.position.clone().add(new THREE.Vector3(0, 0.7, 0)), "enemy", e, pad * 0.9);
+    }
   }
   for (const vm of vendingMachines) { if (!vm.dead && vm.mesh && vm.mesh.visible) consider(new THREE.Vector3(vm.x, 1.4, vm.z), "vending", vm, 0.14); }
   for (const c of computers) { if (!c.dead) consider(new THREE.Vector3(c.x, c.y, c.z), "computer", c, 0.08); }
@@ -8899,7 +8928,11 @@ function fireRifle() {
   const dir = aimDir();
   let target = null;
   let worldHit = null;
-  if (lockTarget && enemies.includes(lockTarget) && (locked || (socialActive && (lockTarget.type === "xuser" || lockTarget.type === "vc") && lockT > 0.05))) {
+  if (lockTarget && enemies.includes(lockTarget) && (
+      locked ||
+      (socialActive && (lockTarget.type === "xuser" || lockTarget.type === "vc") && lockT > 0.05) ||
+      (!socialActive && (lockTarget.type === "bot" || lockTarget.type === "spammer" || lockTarget.type === "reporter") && lockT > 0.08)
+    )) {
     target = lockTarget;
   } else {
     worldHit = hitscanWorld(origin, dir, 55);
@@ -8935,7 +8968,19 @@ function fireRifle() {
       else dismissXUser(target);
     }
     else if (target.type === "spammer") demonetize(target);
-    else damage(target, 5, end);
+    else if (target.type === "bot") {
+      /* rifle shreds robots — scout/normal often 1-shot, heavy 1–2 */
+      const dmg = target.variant === "heavy" ? 8 : 12;
+      damage(target, dmg, end);
+      if (target.hp > 0) {
+        floatText(target.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)),
+          target.hp + " HP", { size: 32, color: "#ffd94a", strokeW: 5, life: 0.7, worldScale: 0.55 }, 0.55);
+      }
+    } else if (target.type === "reporter") {
+      damage(target, 8, end); /* 1–2 hits */
+    } else {
+      damage(target, 8, end);
+    }
   } else if (worldHit) {
     if (worldHit.type === "vending") hitVending(worldHit.ref);
     else if (worldHit.type === "computer") hitComputer(worldHit.ref);
@@ -9683,11 +9728,17 @@ function update(dt) {
         if (e.type === "xuser") consider(e, 1.25, 38, 0.85, 0.4);
       }
     }
-    /* 3) spammers on main floor */
+    /* 3) combat targets: bots (priority) + spammers + reporters */
     if (!socialActive && !(cand && cand.type === "vc")) {
       best = 1e9; cand = null;
       for (const e of enemies) {
-        if (e.type === "spammer") consider(e, 1.1, 45, 0.28, 1.0);
+        if (e.type === "bot") consider(e, e.variant === "heavy" ? 1.5 : 1.2, 50, 0.42, 0.55);
+      }
+      if (!cand) {
+        for (const e of enemies) {
+          if (e.type === "spammer") consider(e, 1.1, 45, 0.32, 0.85);
+          if (e.type === "reporter") consider(e, 1.3, 45, 0.35, 0.75);
+        }
       }
     }
     if (cand && cand.type === "vc") {
@@ -9703,6 +9754,13 @@ function update(dt) {
       $("crosshair").textContent = locked ? "[ ⊕ ]" : "[ + ]";
       $("crosshair").style.color = locked ? "#7CFFB0" : "#aef2b6";
       lockTarget = cand;
+    } else if (cand && (cand.type === "bot" || cand.type === "spammer" || cand.type === "reporter")) {
+      if (cand !== lockTarget) { lockTarget = cand; lockT = 0; locked = false; }
+      lockT = Math.min(0.35, lockT + dt);
+      if (lockT >= 0.18 && !locked) { locked = true; try { SFX.lock(); } catch (_) {} }
+      const mark = cand.type === "bot" ? "BOT" : cand.type === "reporter" ? "PRESS" : "SPAM";
+      $("crosshair").textContent = locked ? "[ ⚠ " + mark + " ]" : "[ " + mark + " ]";
+      $("crosshair").style.color = locked ? "#ff5040" : "#ffd94a";
     } else if (cand && cand === lockTarget) {
       lockT = Math.min(0.5, lockT + dt);
       if (lockT >= 0.5 && !locked) { locked = true; SFX.lock(); }
