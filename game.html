@@ -21,6 +21,23 @@
   #chargeLabel { font-size: 12px; margin-bottom: 4px; }
   #chargeBar { width: 100%; height: 10px; border: 2px solid #fff; background: rgba(0,0,0,0.5); }
   #chargeFill { height: 100%; width: 0%; background: #6cf; }
+  #miniTouch { position: fixed; inset: 0; z-index: 55; pointer-events: auto; touch-action: none; }
+  #miniTouch.hidden { display: none !important; }
+  #miniQuit {
+    position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; z-index: 56;
+    background: rgba(20,10,14,0.9); color: #ff8080; border: 2px solid #ff5040; border-radius: 12px;
+    font: 800 16px/1 system-ui, sans-serif; padding: 14px 18px; letter-spacing: 0.06em;
+    touch-action: manipulation;
+  }
+  #miniHint {
+    position: absolute; bottom: max(96px, calc(env(safe-area-inset-bottom) + 80px));
+    left: 50%; transform: translateX(-50%);
+    color: #ffd94a; font: 800 14px/1.3 system-ui, sans-serif; letter-spacing: 0.06em;
+    text-shadow: 0 2px 0 #000, 0 0 12px rgba(0,0,0,0.8); text-align: center;
+    pointer-events: none; max-width: 92vw;
+    background: rgba(0,0,0,0.55); padding: 10px 16px; border-radius: 12px;
+    border: 1px solid rgba(255,217,74,0.35);
+  }
   #bossBarWrap {
     bottom: max(56px, calc(env(safe-area-inset-bottom, 0px) + 48px));
     left: 50%; transform: translateX(-50%); width: min(360px, 88vw);
@@ -690,20 +707,24 @@
   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
   #loungeMobBar .lmbtn.next { border-color: #ffd94a; color: #ffe9a0; background: rgba(40, 32, 8, 0.9); }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
-  /* guest chip under reticle area — compact */
+  /* focused guest handle — sits ABOVE the action bar, never on the pig's face */
   #guestChip {
-    display: none; position: fixed; left: 50%; top: 58%;
-    transform: translate(-50%, -50%);
-    z-index: 36; pointer-events: none;
-    background: rgba(8,12,20,0.7);
-    border: 1px solid rgba(124,255,176,0.4);
+    display: none; position: fixed; left: 50%;
+    bottom: max(178px, calc(env(safe-area-inset-bottom, 0px) + 160px));
+    transform: translateX(-50%);
+    z-index: 44; pointer-events: none;
+    background: rgba(8,12,20,0.82);
+    border: 1px solid rgba(124,255,176,0.45);
     color: #7CFFB0;
-    padding: 6px 12px; border-radius: 999px;
+    padding: 6px 14px; border-radius: 999px;
     font: 800 12px/1 system-ui, sans-serif;
     text-shadow: 0 1px 4px #000;
-    max-width: 70vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: min(70vw, 280px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   #guestChip.show { display: block; }
+  @media (orientation: landscape) and (max-height: 480px) {
+    #guestChip { bottom: max(120px, calc(env(safe-area-inset-bottom, 0px) + 108px)); }
+  }
   body.lounge-ui #mobileUI.lounge-mode #btnCol {
     bottom: max(18px, env(safe-area-inset-bottom, 0px));
   }
@@ -763,7 +784,7 @@
       .mbtn.rifle { width: 62px; height: 62px; }
       #loungeMobBar { bottom: 72px; padding: 4px 6px; }
       #loungeMobBar .lmbtn { min-height: 44px; font-size: 10px; padding: 8px 10px; }
-      #guestChip { top: 52%; font-size: 11px; }
+      #guestChip { font-size: 11px; }
     }
   }
   #overlay .modeRow {
@@ -794,6 +815,10 @@
     <div id="chargeBar"><div id="chargeFill"></div></div>
   </div>
   <div id="msg" class="hudBox"></div>
+  <div id="miniTouch" class="hidden" aria-hidden="true">
+    <button type="button" id="miniQuit">✕ QUIT</button>
+    <div id="miniHint">TAP TO PLAY</div>
+  </div>
   <div id="bossBarWrap" class="hudBox hidden">
     <div id="bossBarName">BOTZILLA</div>
     <div id="bossBarOuter"><div id="bossBarFill"></div></div>
@@ -4979,11 +5004,12 @@ function buildLoungeDecor() {
       cab.position.set(ax - 2 + i * 2.2, 0, az);
       g.add(cab);
       lb(cab.position.x, cab.position.z, 0.7, 0.6, 2.2);
+      /* store LOCAL anchors; converted to world after lounge scale */
       g.userData.arcades.push({
-        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex,
-        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.1),
-        camPos: new THREE.Vector3(cab.position.x, 2.35, cab.position.z + 1.95),
-        lookAt: new THREE.Vector3(cab.position.x, 1.42, cab.position.z + 0.42),
+        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex, cab,
+        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.15),
+        camPos: new THREE.Vector3(cab.position.x, 1.85, cab.position.z + 2.55),
+        lookAt: new THREE.Vector3(cab.position.x, 1.48, cab.position.z + 0.48),
       });
       const cTag = textSprite("🕹 " + CAB_NAMES[i], { size: 24, color: i ? "#7CFFB0" : "#5ad1ff", strokeW: 5, maxWidth: 0 });
       cTag.scale.multiplyScalar(0.55);
@@ -5209,10 +5235,22 @@ function buildLoungeDecor() {
   }
   /* expand lounge footprint 30% — geometry + interactive anchors */
   g.scale.set(LOUNGE_SCALE, 1, LOUNGE_SCALE);
-  for (const k of ["espPos", "jukePos", "dartBoardPos", "dartTablePos"]) {
+  const _S = LOUNGE_SCALE;
+  for (const k of ["espPos", "jukePos", "dartBoardPos", "dartTablePos", "strikerPos"]) {
     if (g.userData[k] && g.userData[k].isVector3) {
-      g.userData[k].x *= LOUNGE_SCALE;
-      g.userData[k].z *= LOUNGE_SCALE;
+      g.userData[k].x *= _S;
+      g.userData[k].z *= _S;
+    }
+  }
+  /* arcade anchors must be WORLD space (group is scaled; camera/pig are world) */
+  if (g.userData.arcades) {
+    for (const A of g.userData.arcades) {
+      A.pos.x *= _S; A.pos.z *= _S;
+      A.camPos.x *= _S; A.camPos.z *= _S;
+      A.lookAt.x *= _S; A.lookAt.z *= _S;
+      /* cam slightly higher for a clean screen view */
+      A.camPos.y = 1.95;
+      A.lookAt.y = 1.52;
     }
   }
   g.visible = false;
@@ -5254,15 +5292,17 @@ function syncLoungeMobileUI() {
       if (mob) hint.textContent = "stick forward full = auto-run · tap stick to unlock";
     }
   }
-  /* compact guest chip instead of long socialHint on mobile */
+  /* focused guest — label ABOVE action bar only (never mid-screen / on pig face) */
   if (chip) {
     if (on && mob && socialNear && socialNear.user && !socialReading) {
-      chip.textContent = "@" + (socialNear.user.handle || "user");
+      const h = socialNear.user.handle || "user";
+      chip.textContent = "@" + h;
       chip.classList.add("show");
       chip.setAttribute("aria-hidden", "false");
     } else {
       chip.classList.remove("show");
       chip.setAttribute("aria-hidden", "true");
+      chip.textContent = "";
     }
   }
   /* clean weapon panel in lounge */
@@ -5292,6 +5332,10 @@ function activateSocialLounge() {
   scene.background = new THREE.Color(0x241419);
   scene.fog = new THREE.Fog(0x241419, 42, 115);
   if (typeof setOfficePodsVisible === "function") setOfficePodsVisible(false);
+  if (loungeDecor) {
+    try { scene.remove(loungeDecor); } catch (_) {}
+    loungeDecor = null;
+  }
   buildLoungeDecor().visible = true;
   addLoungeObstacles();
   vcTimer = 120;
@@ -5319,7 +5363,7 @@ function deactivateSocialLounge() {
     const bar = $("loungeMobBar");
     if (bar) { bar.classList.remove("show"); bar.setAttribute("aria-hidden", "true"); }
     const chip = $("guestChip");
-    if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); }
+    if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
   } catch (_) {}
 
   socialActive = false;
@@ -5692,23 +5736,34 @@ function updateSocialLounge(dt) {
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
     /* dart table: walk up to start the mini-game */
-    if (!dartGame.active && !strikerGame.active && !arcadeGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos && pig.position.distanceTo(L.dartTablePos) < 1.8) {
+    if (!dartGame.active && !strikerGame.active && !arcadeGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos && pig.position.distanceTo(L.dartTablePos) < 2.4) {
       startDartGame();
     }
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
     /* clout striker */
     strikerGame.cool = Math.max(0, strikerGame.cool - dt);
     if (!strikerGame.active && !dartGame.active && !arcadeGame.active && strikerGame.cool <= 0 && L.strikerPos &&
-        pig.position.distanceTo(L.strikerPos) < 1.9) {
+        pig.position.distanceTo(L.strikerPos) < 2.6) {
       startStrikerGame();
     }
-    /* arcade cabinets */
+    /* arcade cabinets — generous radius; face-ish so you don't auto-start from behind */
     arcadeGame.cool = Math.max(0, arcadeGame.cool - dt);
+    let nearArcade = -1;
     if (!arcadeGame.active && !dartGame.active && !strikerGame.active && arcadeGame.cool <= 0 && L.arcades) {
+      let best = 1e9;
       for (let ai = 0; ai < L.arcades.length; ai++) {
-        if (pig.position.distanceTo(L.arcades[ai].pos) < 1.6) { startArcadeGame(ai); break; }
+        const d = pig.position.distanceTo(L.arcades[ai].pos);
+        if (d < best) { best = d; nearArcade = ai; }
+      }
+      if (nearArcade >= 0 && best < 2.8) {
+        /* auto-start when close enough (mobile-friendly) */
+        startArcadeGame(nearArcade);
+      } else {
+        nearArcade = -1;
       }
     }
+    /* clout / darts slightly easier too */
+
   }
   /* —— VC intruder RED ALERT — at most one, ~every 2 minutes —— */
   vcTimer -= dt;
@@ -6031,6 +6086,7 @@ function startDartGame() {
   dartGame.total = 0;
   dartGame.aimY = 0; dartGame.aimZ = 0;
   socialReading = true; /* freezes the world; reader stays closed */
+  try { setMiniTouch(true, isMobile() ? "DRAG TO AIM · TAP TO THROW" : "CLICK TO THROW · ESC QUITS"); } catch (_) {}
   for (const d of dartGame.darts) scene.remove(d);
   dartGame.darts = [];
   if (!dartGame.reticle) {
@@ -6046,6 +6102,7 @@ function endDartGame() {
   dartGame.active = false;
   dartGame.cool = 6;
   socialReading = false;
+  try { setMiniTouch(false); } catch (_) {}
   if (dartGame.reticle) dartGame.reticle.visible = false;
   setTimeout(() => { for (const d of dartGame.darts) scene.remove(d); dartGame.darts = []; }, 2500);
   showMsg(`🎯 DARTS TOTAL: +${dartGame.total}`);
@@ -6095,6 +6152,7 @@ function startStrikerGame() {
   strikerGame.tT = 0;
   socialReading = true;
   showMsg("TEST YOUR CLOUT — click to slam!");
+  try { setMiniTouch(true, isMobile() ? "TAP WHEN THE PUCK IS HIGH!" : "CLICK TO SLAM · ESC QUITS"); } catch (_) {}
   SFX.pickup();
 }
 function updateStrikerGame(dt) {
@@ -6128,6 +6186,7 @@ function resolveStriker() {
   strikerGame.active = false;
   strikerGame.cool = 6;
   socialReading = false;
+  try { setMiniTouch(false); } catch (_) {}
 }
 
 /* —— ARCADE: BOT INVADERS + WHACK-A-SPAM (canvas on cabinet screens) —— */
@@ -6138,7 +6197,7 @@ function startArcadeGame(which) {
   const A = loungeDecor && loungeDecor.userData.arcades && loungeDecor.userData.arcades[which];
   if (!A) return;
   Object.assign(arcadeGame, { active: true, which, timeLeft: 30, pts: 0, mx: 0.5, my: 0.5,
-    ship: 0.5, bullets: [], invDir: 1, invOff: 0, invDrop: 0, shootCd: 0, combo: 0, popCd: 0 });
+    ship: 0.5, bullets: [], invDir: 1, invOff: 0, invDrop: 0, shootCd: 0, combo: 0, popCd: 0, camBlend: 0 });
   if (which === 0) {
     arcadeGame.invaders = [];
     for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++)
@@ -6147,7 +6206,13 @@ function startArcadeGame(which) {
     arcadeGame.cells = Array.from({ length: 9 }, () => ({ up: 0 }));
   }
   socialReading = true;
-  showMsg((A.name) + " — mouse move · click to " + (which === 0 ? "shoot" : "whack") + " · Esc quits");
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  showMsg((A.name) + " — " + (which === 0 ? "steer & shoot" : "whack spam") + " · Esc quits");
+  try {
+    setMiniTouch(true, which === 0
+      ? (isMobile() ? "DRAG TO STEER · TAP TO SHOOT" : "MOVE MOUSE · CLICK SHOOT · ESC")
+      : (isMobile() ? "DRAG MALLET · TAP TO WHACK" : "MOVE MOUSE · CLICK WHACK · ESC"));
+  } catch (_) {}
   SFX.pickup();
 }
 function endArcadeGame() {
@@ -6155,6 +6220,7 @@ function endArcadeGame() {
   arcadeGame.active = false;
   arcadeGame.cool = 5;
   socialReading = false;
+  try { setMiniTouch(false); } catch (_) {}
   score += arcadeGame.pts;
   updateHud();
   showMsg((A ? A.name : "ARCADE") + ": +" + arcadeGame.pts);
@@ -6194,9 +6260,17 @@ function arcadeClick() {
 function updateArcadeGame(dt) {
   if (!arcadeGame.active) return;
   const A = loungeDecor && loungeDecor.userData.arcades && loungeDecor.userData.arcades[arcadeGame.which];
-  if (!A) { arcadeGame.active = false; socialReading = false; return; }
-  camera.position.lerp(A.camPos, Math.min(1, dt * 6));
-  camera.lookAt(A.lookAt);
+  if (!A) { arcadeGame.active = false; socialReading = false; try { setMiniTouch(false); } catch (_) {} return; }
+  /* lock camera onto the cabinet screen (world-space anchors) */
+  arcadeGame.camBlend = (arcadeGame.camBlend || 0) + dt;
+  if (arcadeGame.camBlend < 0.2) camera.position.lerp(A.camPos, Math.min(1, dt * 14));
+  else camera.position.copy(A.camPos);
+  camera.lookAt(A.lookAt.x, A.lookAt.y, A.lookAt.z);
+  /* keep pig parked at play pad so they don't walk away mid-game */
+  if (A.pos) {
+    pig.position.x += (A.pos.x - pig.position.x) * Math.min(1, dt * 4);
+    pig.position.z += (A.pos.z - pig.position.z) * Math.min(1, dt * 4);
+  }
   arcadeGame.timeLeft -= dt;
   if (arcadeGame.timeLeft <= 0) { endArcadeGame(); return; }
   const g2 = A.ctx, W2 = 192, H2 = 144;
@@ -6285,6 +6359,90 @@ function updateArcadeGame(dt) {
 
 
 
+
+
+
+/* —— MOBILE MINI-GAME TOUCH LAYER —— */
+function setMiniTouch(on, hint) {
+  const mt = document.getElementById("miniTouch");
+  if (!mt) return;
+  if (on) {
+    mt.classList.remove("hidden");
+    mt.setAttribute("aria-hidden", "false");
+    const h = document.getElementById("miniHint");
+    if (h) h.textContent = hint || "TAP TO PLAY";
+    try { if (isMobile()) showMobileUI(false); } catch (_) {}
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  } else {
+    mt.classList.add("hidden");
+    mt.setAttribute("aria-hidden", "true");
+    if (isMobile() && mode === "play" && !socialReading && !(dartGame && dartGame.active) && !(arcadeGame && arcadeGame.active) && !(strikerGame && strikerGame.active)) {
+      try { showMobileUI(true); } catch (_) {}
+      try { syncLoungeMobileUI(); } catch (_) {}
+    }
+  }
+}
+function quitActiveMiniGame() {
+  if (dartGame.active) endDartGame();
+  else if (strikerGame.active) {
+    strikerGame.active = false; strikerGame.cool = 4; socialReading = false;
+    try { setMiniTouch(false); } catch (_) {}
+  } else if (arcadeGame.active) endArcadeGame();
+  else try { setMiniTouch(false); } catch (_) {}
+}
+function miniTap() {
+  if (dartGame.active) throwDart();
+  else if (strikerGame.active) resolveStriker();
+  else if (arcadeGame.active) arcadeClick();
+}
+(function wireMiniTouch() {
+  const mt = document.getElementById("miniTouch");
+  if (!mt) return;
+  const q = document.getElementById("miniQuit");
+  if (q) {
+    const quit = (e) => { e.preventDefault(); e.stopPropagation(); quitActiveMiniGame(); };
+    q.addEventListener("click", quit);
+    q.addEventListener("touchstart", quit, { passive: false });
+  }
+  let tid = null, moved = 0, st = 0;
+  mt.addEventListener("touchstart", (e) => {
+    if (q && (e.target === q || q.contains(e.target))) return;
+    const t0 = e.changedTouches[0];
+    tid = t0.identifier; moved = 0; st = performance.now();
+    mt._prev = { x: t0.clientX, y: t0.clientY };
+    e.preventDefault();
+  }, { passive: false });
+  mt.addEventListener("touchmove", (e) => {
+    let t0 = null;
+    for (const x of e.changedTouches) if (x.identifier === tid) t0 = x;
+    if (!t0) return;
+    const prev = mt._prev || { x: t0.clientX, y: t0.clientY };
+    const dx = t0.clientX - prev.x, dy = t0.clientY - prev.y;
+    mt._prev = { x: t0.clientX, y: t0.clientY };
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (dartGame.active) {
+      dartGame.aimZ -= dx * 0.004;
+      dartGame.aimY -= dy * 0.004;
+    } else if (arcadeGame.active) {
+      arcadeGame.mx = Math.max(0.05, Math.min(0.95, arcadeGame.mx + dx * 0.004));
+      arcadeGame.my = Math.max(0.05, Math.min(0.95, arcadeGame.my + dy * 0.004));
+    }
+    e.preventDefault();
+  }, { passive: false });
+  mt.addEventListener("touchend", (e) => {
+    let t0 = null;
+    for (const x of e.changedTouches) if (x.identifier === tid) t0 = x;
+    if (!t0) return;
+    tid = null;
+    if (moved < 22 && performance.now() - st < 500) miniTap();
+    e.preventDefault();
+  }, { passive: false });
+  /* desktop click on overlay also acts */
+  mt.addEventListener("mousedown", (e) => {
+    if (q && (e.target === q || q.contains(e.target))) return;
+    if (e.button === 0) miniTap();
+  });
+})();
 
 const REPORTER_STYLES = ["male_blazer", "female_blazer", "male_field", "female_field"];
 const REPORTER_PHRASES = [
@@ -9884,7 +10042,7 @@ window.__game = {
   startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
   previewLevel2, activateStarbase, levelUp,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
-  dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss,
+  dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
