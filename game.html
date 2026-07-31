@@ -1876,6 +1876,13 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
     kind: /sushi/i.test(label || "") ? "sushi" : (/rx|prescrip|pill/i.test(label || "") ? "rx" : "rx"),
   };
   if (zone === "starbase") g.visible = false; /* office floor is default */
+  if (zone === "starbase" && /rx/i.test(label || "")) {
+    const tag = textSprite("RX · PRESCRIPTIONS", { size: 32, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.55);
+    tag.position.set(0, 3.35, 0);
+    tag.userData.maxDist = 55;
+    g.add(tag);
+  }
   vendingMachines.push(vm);
   g.userData.vending = vm;
   return g;
@@ -1897,13 +1904,19 @@ mkVending(28, -FLOOR_D / 2 + 1.6, 0, 0xb06a28, "#ffe4cf", "RX");
 /* south wall */
 mkVending(-22, FLOOR_D / 2 - 1.6, Math.PI, 0xb02828, "#ffdddd", "SNACKS");
 
-/* Starbase lobby vendings — 1 by entry (RX) + 5 inside, NOT on photo walls (E/W) */
-mkVending(10, FLOOR_D / 2 - 5.5, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase"); /* by entry — prescription */
-mkVending(-14, 14, 0.4, 0xb02828, "#ffdddd", "SODA", "starbase");
-mkVending(14, 12, -0.5, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
-mkVending(-18, -6, 0.2, 0x28a0b0, "#d8f8ff", "COFFEE", "starbase");
-mkVending(18, -10, -0.3, 0xb02850, "#ffd8e8", "RX", "starbase");
-mkVending(0, -22, 0, 0x2858b0, "#cfe4ff", "SNACKS", "starbase"); /* north-ish interior */
+/* Starbase lobby vendings — RX by reception plaza (screenshot area) + entry + break room */
+/* center plaza, south of reception desk — faces players coming from the lot */
+mkVending(8, 10.5, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
+/* west of reception — second RX so you can't miss it */
+mkVending(-8, 10.5, Math.PI, 0xc45a20, "#ffe8d0", "RX", "starbase");
+/* just inside south entry (from outdoor lot) */
+mkVending(12, FLOOR_D / 2 - 6, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
+/* break-room corner (near BREAK ROOM sign) */
+mkVending(-42, -28, Math.PI / 2, 0xb06a28, "#ffe4cf", "RX", "starbase");
+/* extras along N/S free space (not on E/W photo gallery walls) */
+mkVending(16, -16, -0.4, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
+mkVending(-16, 18, 0.3, 0x28a0b0, "#d8f8ff", "COFFEE", "starbase");
+mkVending(0, -24, 0, 0xb02828, "#ffdddd", "SODA", "starbase");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -3488,11 +3501,19 @@ function activateStarbase() {
   /* giant LOBBY — strip cubicle farm, marble + high ceiling */
   setOfficePodsVisible(false);
   if (lobbyDecor) lobbyDecor.visible = true;
-  /* office wall machines off; Starbase lobby machines on */
+  /* office wall machines off; Starbase lobby machines on (fresh RX for the shift) */
   for (const vm of vendingMachines) {
     if (!vm.mesh) continue;
-    const show = vm.zone === "starbase" && !vm.dead;
-    vm.mesh.visible = show;
+    if (vm.zone === "starbase") {
+      vm.dead = false;
+      vm.hp = vm.maxHp || 2;
+      vm.mesh.visible = true;
+      vm.mesh.position.y = 0;
+      vm.mesh.rotation.z = 0;
+      vm.mesh.traverse(o => { if (o.isMesh && o.material) { try { o.material.opacity = 1; o.material.transparent = false; } catch (_) {} } });
+    } else {
+      vm.mesh.visible = false;
+    }
   }
   if (officeFloor) {
     officeFloor.visible = false; /* marble lobby floor takes over inside */
