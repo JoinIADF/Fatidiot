@@ -462,10 +462,27 @@ function textSprite(text, { size = 64, color = "#ffd94a", stroke = "#000", strok
   });
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, toneMapped: false });
+  /* depthTest ON: text is occluded by walls like everything else */
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false, toneMapped: false });
   const sp = new THREE.Sprite(mat);
   sp.scale.set(w / 64, c.height / 64, 1);
+  /* register for distance culling (default 45 units; override via userData.maxDist) */
+  TEXT_SPRITES.push(sp);
   return sp;
+}
+const TEXT_SPRITES = [];
+const _tsPos = new THREE.Vector3();
+function cullTextSprites() {
+  for (let i = TEXT_SPRITES.length - 1; i >= 0; i--) {
+    const sp = TEXT_SPRITES[i];
+    if (!sp.parent) { TEXT_SPRITES.splice(i, 1); continue; } /* detached → forget */
+    sp.getWorldPosition(_tsPos);
+    const maxD = sp.userData.maxDist || 45;
+    const d = camera.position.distanceTo(_tsPos);
+    sp.visible = d < maxD;
+    /* soft fade over the last 20% of range */
+    if (sp.visible) sp.material.opacity = Math.min(1, (maxD - d) / (maxD * 0.2));
+  }
 }
 
 function canvasTex(w, h, draw) {
@@ -1659,8 +1676,8 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
   const g = new THREE.Group();
   const s = scale;
   /* stainless exoskeleton: phong for a real metal sheen; some trucks matte-black wrapped */
-  const bodyTint = isBoss ? 0xd8dce2 : (Math.random() < 0.22 ? 0x2e3236 : 0xc9cdd3);
-  const steelM = new THREE.MeshPhongMaterial({ color: bodyTint, specular: 0x9aa6b2, shininess: 70, flatShading: true });
+  const bodyTint = isBoss ? 0xe6eaef : (Math.random() < 0.12 ? 0x2e3236 : 0xdde1e6);
+  const steelM = new THREE.MeshPhongMaterial({ color: bodyTint, specular: 0xe8f0f8, shininess: 110, flatShading: true });
   const steelDark = new THREE.MeshPhongMaterial({ color: 0x82888f, specular: 0x66707a, shininess: 40, flatShading: true });
   const blackM = new THREE.MeshLambertMaterial({ color: 0x0c0e12 });
   const rubberM = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
@@ -1675,21 +1692,42 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
     g.add(m);
     return m;
   };
-  /* —— angular body (Cybertruck silhouette) —— */
-  /* main lower hull */
-  addBox(2.2 * s, 0.7 * s, 4.6 * s, steelM, 0, 0.85 * s, 0.1 * s);
-  /* sharp front nose wedge */
-  addBox(2.15 * s, 0.55 * s, 1.3 * s, steelM, 0, 1.05 * s, -2.0 * s, 0.35, 0, 0);
-  /* cabin prism — steep rear, flat top */
-  addBox(2.05 * s, 0.85 * s, 2.4 * s, steelM, 0, 1.55 * s, -0.15 * s, -0.08, 0, 0);
-  /* bed / vault rear */
-  addBox(2.1 * s, 0.55 * s, 1.9 * s, steelDark, 0, 1.2 * s, 1.7 * s);
-  addBox(2.05 * s, 0.08 * s, 1.85 * s, blackM, 0, 1.5 * s, 1.7 * s); /* tonneau */
-  /* body line crease */
-  addBox(2.22 * s, 0.06 * s, 4.8 * s, steelDark, 0, 1.15 * s, 0.05 * s);
-  /* wheel arches / fenders */
-  for (const [wx, wz] of [[-1.15, -1.45], [1.15, -1.45], [-1.15, 1.55], [1.15, 1.55]]) {
-    addBox(0.35 * s, 0.55 * s, 0.9 * s, steelM, wx * s, 0.7 * s, wz * s);
+  /* —— ONE-PIECE WEDGE HULL: the real CT silhouette, no stacked boxes ——
+     side profile: nose face → rising hood → beltline sweeping to tailgate */
+  const prof = new THREE.Shape();
+  prof.moveTo(-2.55, 0.55);
+  prof.lineTo(-2.55, 0.98);   /* blunt nose face */
+  prof.lineTo(-1.05, 1.32);   /* long rising hood */
+  prof.lineTo(2.55, 1.44);    /* clean beltline all the way to the tail */
+  prof.lineTo(2.55, 0.55);    /* tailgate */
+  prof.closePath();
+  const hullGeo = new THREE.ExtrudeGeometry(prof, {
+    depth: 2.15, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 1,
+  });
+  hullGeo.translate(0, 0, -1.075);
+  hullGeo.rotateY(-Math.PI / 2);
+  const hull = new THREE.Mesh(hullGeo, steelM);
+  hull.scale.setScalar(s);
+  hull.castShadow = hull.receiveShadow = true;
+  g.add(hull);
+  /* glass greenhouse: single triangular prism from hood to bed — see-through */
+  const gh = new THREE.Shape();
+  gh.moveTo(-1.05, 1.3);
+  gh.lineTo(0.42, 2.0);       /* sharp apex just behind the seats */
+  gh.lineTo(2.4, 1.42);
+  gh.closePath();
+  const ghGeo = new THREE.ExtrudeGeometry(gh, { depth: 1.9, bevelEnabled: false });
+  ghGeo.translate(0, 0, -0.95);
+  ghGeo.rotateY(-Math.PI / 2);
+  const ghMesh = new THREE.Mesh(ghGeo, glassM);
+  ghMesh.scale.setScalar(s);
+  g.add(ghMesh);
+  /* thin steel roof spine along the apex (the CT's sail pillar line) */
+  addBox(0.14 * s, 0.05 * s, 2.1 * s, steelM, 0, 2.0 * s, 1.35 * s, -0.28, 0, 0);
+  /* angular BLACK fender flares (real CT arches are black plastic) */
+  for (const [wx, wz] of [[-1.12, -1.45], [1.12, -1.45], [-1.12, 1.55], [1.12, 1.55]]) {
+    const flare = addBox(0.28 * s, 0.4 * s, 1.15 * s, blackM, wx * s, 0.68 * s, wz * s);
+    flare.rotation.x = 0.0;
   }
   /* wheels — thick cybertruck style */
   for (const [wx, wz] of [[-1.05, -1.5], [1.05, -1.5], [-1.05, 1.55], [1.05, 1.55]]) {
@@ -1726,24 +1764,7 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
   addBox(2.0 * s, 0.07 * s, 0.05 * s, new THREE.MeshBasicMaterial({ color: 0xff3030 }), 0, 1.15 * s, 2.62 * s);
   addBox(0.55 * s, 0.18 * s, 0.03 * s, new THREE.MeshLambertMaterial({ map: CT_PLATE_TEX }), 0, 0.85 * s, 2.63 * s);
 
-  /* —— GLASS (see-through) —— */
-  const wind = new THREE.Mesh(new THREE.PlaneGeometry(1.85 * s, 0.85 * s), glassM);
-  wind.position.set(0, 1.65 * s, -1.35 * s);
-  wind.rotation.x = -0.42;
-  g.add(wind);
-  /* rear glass */
-  const rearG = new THREE.Mesh(new THREE.PlaneGeometry(1.7 * s, 0.7 * s), glassM);
-  rearG.position.set(0, 1.7 * s, 0.95 * s);
-  rearG.rotation.x = 0.25;
-  g.add(rearG);
-  for (const side of [-1, 1]) {
-    const sw = new THREE.Mesh(new THREE.PlaneGeometry(2.0 * s, 0.7 * s), glassM);
-    sw.position.set(side * 1.04 * s, 1.6 * s, -0.2 * s);
-    sw.rotation.y = side * Math.PI / 2;
-    g.add(sw);
-  }
-
-  /* —— INTERIOR (visible through glass) —— */
+  /* —— INTERIOR (visible through the glass greenhouse) —— */
   addBox(1.85 * s, 0.06 * s, 2.2 * s, blackM, 0, 1.12 * s, -0.25 * s); /* cabin floor */
   /* seats */
   addBox(0.65 * s, 0.5 * s, 0.6 * s, new THREE.MeshLambertMaterial({ color: 0x2a3038 }), -0.45 * s, 1.4 * s, -0.15 * s);
@@ -1798,6 +1819,7 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
     const tag = textSprite("BOSS", { size: 36, color: "#ffd94a", strokeW: 7, maxWidth: 0 });
     tag.scale.multiplyScalar(0.55 * Math.min(s, 1.4));
     tag.position.set(0, 2.6 * s, 0);
+    tag.userData.maxDist = 90; /* BOSS tag readable across the lot */
     g.add(tag);
   }
 
@@ -1895,6 +1917,7 @@ function buildStarbase() {
   const exitTag = textSprite("EXIT  ·  LOT", { size: 32, color: "#c8d0d8", strokeW: 5, maxWidth: 0 });
   exitTag.scale.multiplyScalar(0.7);
   exitTag.position.set(0, doorH + 0.9, lotZ0 + 0.5);
+  exitTag.userData.maxDist = 80;
   g.add(exitTag);
 
   /* parking grid: painted angled stalls with wheel stops; trucks in most, oil
@@ -1978,6 +2001,7 @@ function buildStarbase() {
     const scTag = textSprite("SUPERCHARGER", { size: 30, color: "#ff5050", strokeW: 6, maxWidth: 0 });
     scTag.scale.multiplyScalar(0.8);
     scTag.position.set(-FLOOR_W / 2 + 2, 3.0, lotZ0 + 12.5);
+    scTag.userData.maxDist = 60;
     g.add(scTag);
   }
   /* desert surround: sand apron + distant mesas so the lot isn't floating in void */
@@ -2098,6 +2122,7 @@ function buildStarbase() {
     const hqTag = textSprite("𝕏  HQ", { size: 54, color: "#ffffff", strokeW: 8, maxWidth: 0 });
     hqTag.scale.multiplyScalar(1.1);
     hqTag.position.set(0, 4.6, facadeZ + 3.4);
+    hqTag.userData.maxDist = 100;
     g.add(hqTag);
     for (const s of [-1, 1]) {
       g.add(box(4.5, 0.9, 1.1, 0x2d6a34, s * 10.5, 0.45, facadeZ + 4.2));
@@ -2172,6 +2197,7 @@ function buildStarbase() {
     const label = textSprite("ROCKET FUEL", { size: 48, color: "#ffd94a", strokeW: 9, maxWidth: 0 });
     label.scale.multiplyScalar(1.1);
     label.position.set(0, 5.2, 0);
+    label.userData.maxDist = 80;
     tankG.add(label);
     const label2 = textSprite("REFILL FLAMETHROWER", { size: 28, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
     label2.scale.multiplyScalar(0.85);
@@ -5264,6 +5290,12 @@ renderer.setAnimationLoop(() => {
     lockBracket.scale.setScalar(2.2 * (2 - p));
     lockBracket.material.color.setHex(locked ? 0xff5040 : 0xffd200);
   } else lockBracket.visible = false;
+  cullTextSprites();
+  /* lock bracket is HUD-like: exempt from culling */
+  if (mode === "play" && lockTarget && enemies.includes(lockTarget)) {
+    lockBracket.visible = true;
+    lockBracket.material.opacity = 1;
+  }
   renderer.render(scene, camera);
 });
 
