@@ -1676,8 +1676,9 @@ function buildCybertruck(x, y, z, rotY = 0, scale = 1, isBoss = false) {
   const g = new THREE.Group();
   const s = scale;
   /* stainless exoskeleton: phong for a real metal sheen; some trucks matte-black wrapped */
-  const bodyTint = isBoss ? 0xe6eaef : (Math.random() < 0.12 ? 0x2e3236 : 0xdde1e6);
-  const steelM = new THREE.MeshPhongMaterial({ color: bodyTint, specular: 0xe8f0f8, shininess: 110, flatShading: true });
+  /* gunmetal gray with a hard glossy specular — dark but shiny */
+  const bodyTint = isBoss ? 0x788088 : (Math.random() < 0.12 ? 0x24272b : 0x666d75);
+  const steelM = new THREE.MeshPhongMaterial({ color: bodyTint, specular: 0xffffff, shininess: 160, flatShading: true });
   const steelDark = new THREE.MeshPhongMaterial({ color: 0x82888f, specular: 0x66707a, shininess: 40, flatShading: true });
   const blackM = new THREE.MeshLambertMaterial({ color: 0x0c0e12 });
   const rubberM = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
@@ -1928,7 +1929,7 @@ function buildStarbase() {
   const lineFadeM = new THREE.MeshLambertMaterial({ color: 0x8a8a78 });
   const stopM = new THREE.MeshLambertMaterial({ color: 0xc8a020 });
   const stainM = new THREE.MeshBasicMaterial({ color: 0x101216, transparent: true, opacity: 0.45 });
-  const lineGeo = new THREE.BoxGeometry(0.13, 0.02, 5.6);
+  const lineGeo = new THREE.BoxGeometry(0.13, 0.02, 7.6);
   const stopGeo = new THREE.BoxGeometry(2.6, 0.18, 0.35);
   const stainGeo = new THREE.CircleGeometry(0.9, 12);
   const paintStall = (tx, tz, ry, faded) => {
@@ -1962,9 +1963,10 @@ function buildStarbase() {
         sg.add(st);
       }
       if (empty) continue;
-      const tr = buildCybertruck(tx, 0, lotZ0 + tz, ry + (Math.random() - 0.5) * 0.08, 1, false);
+      /* real CTs are HUGE — 1.6x the old size */
+      const tr = buildCybertruck(tx, 0, lotZ0 + tz, ry + (Math.random() - 0.5) * 0.08, 1.6, false);
       g.add(tr);
-      blockArea(tx, lotZ0 + tz, 1.4, 2.5, 2.2);
+      blockArea(tx, lotZ0 + tz, 2.1, 3.8, 3.4);
     }
   }
   /* lane arrows down the center drive */
@@ -2045,9 +2047,9 @@ function buildStarbase() {
   /* no pad label clutter */
 
   /* BOSS cybertruck — TWICE as big — parked right in front of the rockets */
-  bossTruck = buildCybertruck(0, 0, padZ + 10, 0, 2.0, true);
+  bossTruck = buildCybertruck(0, 0, padZ + 10, 0, 2.8, true);
   g.add(bossTruck);
-  blockArea(0, padZ + 10, 2.8, 5.2, 4.5);
+  blockArea(0, padZ + 10, 3.6, 7.4, 6.2);
 
   /* simple tower/crane near pad */
   g.add(box(1.3, 26, 1.3, 0x9aa0a8, 28, 13, padZ));
