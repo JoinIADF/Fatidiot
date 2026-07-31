@@ -8305,8 +8305,8 @@ function updateBossFight(dt) {
   if (!starbaseActive || bossFight.dead || mode !== "play") return;
   if (!bossFight.active) {
     const k = bossFight.kills || 0;
-    /* also treat wallQuota depletion as the kill goal (same counter) */
-    const goalHit = k >= 100 || (typeof wallQuota !== "undefined" && wallQuota <= 0 && (k >= 1 || wallQuotaMax > 0));
+    /* goal = 100 confirmed kills OR kills-needed counter drained with at least some kills */
+    const goalHit = k >= 100 || (wallQuota <= 0 && k >= 50);
     if (k >= 90 && !bossFight.warned) {
       bossFight.warned = true;
       showMsg("SOMETHING BIG NOTICED THE PURGE — 10 KILLS TO CONTACT");
@@ -8792,6 +8792,9 @@ function killEnemy(e, silent = false) {
     tickWallTimer(1);
     if (starbaseActive && typeof bossFight !== "undefined") {
       bossFight.kills = (bossFight.kills || 0) + 1;
+      /* keep kill body-count aligned with HUD counter */
+      const earned = Math.max(0, (wallQuotaMax | 0) - (wallQuota | 0));
+      if (earned > bossFight.kills) bossFight.kills = earned;
     }
     floatText(p.clone().add(new THREE.Vector3(0, 0.6, 0)),
       String(Math.max(0, wallQuota)),
@@ -9020,7 +9023,12 @@ function update(dt) {
   if (socialActive) updateSocialLounge(dt);
   if (starbaseActive) updateRocketPlaques(dt);
   if (starbaseActive) updateBossFight(dt);
-  if (socialReading) return; /* freeze world while reading a thread */
+  /* rocket lift must keep animating even if a mini-game froze combat */
+  if (rocketLift && typeof updateRocketLift === "function") {
+    /* primary call is still the animation loop; no double-step here */
+  }
+  /* freeze combat/world during thread reader OR mini-games (socialReading flag) */
+  if (socialReading) return;
   /* --- ambient actors always animate --- */
   /* Elon — storms office when enraged, spews killer phrases */
   const eu = elon.userData;
@@ -9849,43 +9857,96 @@ function updateCamera(dt) {
   camera.lookAt(look);
 }
 
+function safeStep(name, fn) {
+  try { fn(); }
+  catch (err) {
+    console.error("[frame:" + name + "]", err);
+    window.__frameErrors = window.__frameErrors || [];
+    window.__frameErrors.push({ name, msg: String(err && err.message || err), t: performance.now() });
+    if (window.__frameErrors.length > 40) window.__frameErrors.shift();
+  }
+}
+
 renderer.setAnimationLoop(() => {
   let dt = Math.min(clock.getDelta(), 0.05);
+  if (!(dt > 0) || dt !== dt) dt = 1 / 60; /* guard NaN/0 clock glitches */
   if (hitstop > 0) { hitstop -= dt; dt *= 0.1; }
-  try {
-    update(dt);
-    updateFx(dt);
-    updateCamera(dt);
-    updateDartGame(dt);
-    updateStrikerGame(dt);
-    updateArcadeGame(dt);
-    if (typeof updateRocketLift === "function") updateRocketLift(dt);
-  } catch (err) {
-    console.error("frame error", err);
-  }
+  window.__frame = (window.__frame || 0) + 1;
+  window.__lastDt = dt;
+  /* each subsystem isolated — one throw must not kill rocket / boss / render */
+  safeStep("update", () => update(dt));
+  safeStep("fx", () => updateFx(dt));
+  safeStep("camera", () => updateCamera(dt));
+  safeStep("dart", () => updateDartGame(dt));
+  safeStep("striker", () => updateStrikerGame(dt));
+  safeStep("arcade", () => updateArcadeGame(dt));
+  safeStep("rocket", () => { if (typeof updateRocketLift === "function") updateRocketLift(dt); });
   /* lock bracket follows target */
-  if (mode === "play" && lockTarget && enemies.includes(lockTarget)) {
-    lockBracket.visible = true;
-    lockBracket.position.copy(lockTarget.mesh.position).add(new THREE.Vector3(0, 1.2, 0));
-    const p = locked ? 1 : lockT / 0.5;
-    lockBracket.scale.setScalar(2.2 * (2 - p));
-    lockBracket.material.color.setHex(locked ? 0xff5040 : 0xffd200);
-  } else lockBracket.visible = false;
-  renderer.render(scene, camera);
+  try {
+    if (mode === "play" && lockTarget && enemies.includes(lockTarget)) {
+      lockBracket.visible = true;
+      lockBracket.position.copy(lockTarget.mesh.position).add(new THREE.Vector3(0, 1.2, 0));
+      const p = locked ? 1 : lockT / 0.5;
+      lockBracket.scale.setScalar(2.2 * (2 - p));
+      lockBracket.material.color.setHex(locked ? 0xff5040 : 0xffd200);
+    } else lockBracket.visible = false;
+  } catch (_) {}
+  try { renderer.render(scene, camera); }
+  catch (err) { console.error("[frame:render]", err); }
 });
+
+/* full frame step used by automated checks */
+function runFrameSystems(dt = 1 / 60) {
+  safeStep("update", () => update(dt));
+  safeStep("fx", () => updateFx(dt));
+  safeStep("camera", () => updateCamera(dt));
+  safeStep("dart", () => updateDartGame(dt));
+  safeStep("striker", () => updateStrikerGame(dt));
+  safeStep("arcade", () => updateArcadeGame(dt));
+  safeStep("rocket", () => { if (typeof updateRocketLift === "function") updateRocketLift(dt); });
+}
 
 /* debug/test hook: manually step N frames (used by automated checks; harmless in play) */
 window.__step = (n = 1, dt = 1 / 60) => {
-  for (let i = 0; i < n; i++) { update(dt); updateFx(dt); updateCamera(dt); }
-  return {
-    mode, wave, score, lives, ammo, enemies: enemies.length, booms: boomerangs.length,
-    spamTexts: spamTexts.length, bolts: bolts.length,
-    pig: { x: pig.position.x, y: pig.position.y, z: pig.position.z },
-    yaw,
-    social: socialActive,
-    xusers: enemies.filter(e => e.type === "xuser").map(e => e.user && e.user.handle),
-    near: socialNear && socialNear.user ? socialNear.user.handle : null,
-  };
+  for (let i = 0; i < n; i++) runFrameSystems(dt);
+  return window.__debug();
+};
+window.__debug = () => ({
+  frame: window.__frame || 0,
+  dt: window.__lastDt || 0,
+  mode, wave, score, lives, ammo,
+  enemies: enemies.length,
+  booms: boomerangs.length,
+  spamTexts: spamTexts.length,
+  bolts: bolts.length,
+  pig: { x: +pig.position.x.toFixed(2), y: +pig.position.y.toFixed(2), z: +pig.position.z.toFixed(2) },
+  yaw,
+  social: !!socialActive,
+  socialReading: !!socialReading,
+  starbase: !!starbaseActive,
+  wallQuota, wallQuotaMax,
+  rocket: rocketLift ? { phase: rocketLift.phase, t: +rocketLift.t.toFixed(2), y: rocketLift.mesh ? +rocketLift.mesh.position.y.toFixed(2) : null } : null,
+  boss: { active: !!bossFight.active, dead: !!bossFight.dead, kills: bossFight.kills|0, hp: bossFight.hp, state: bossFight.state },
+  portalReady: !!portalReady,
+  arcade: arcadeGame && arcadeGame.active ? { which: arcadeGame.which, pts: arcadeGame.pts } : null,
+  errors: (window.__frameErrors || []).slice(-8),
+  near: socialNear && socialNear.user ? socialNear.user.handle : null,
+});
+/* force climax for QA: drain kills needed → BOTZILLA + rocket */
+window.__forceClimax = () => {
+  if (!starbaseActive) {
+    if (mode !== "play" && typeof startGame === "function") startGame();
+    if (typeof activateStarbase === "function") activateStarbase();
+  }
+  if (typeof bossFight !== "undefined") {
+    bossFight.kills = 100;
+    bossFight.dead = false;
+    bossFight.active = false;
+  }
+  wallQuota = 1;
+  tickWallTimer(1);
+  runFrameSystems(1 / 30);
+  return window.__debug();
 };
 window.__socialGotoNearest = () => {
   const e = enemies.find(x => x.type === "xuser");
