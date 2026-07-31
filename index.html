@@ -5004,12 +5004,12 @@ function buildLoungeDecor() {
       cab.position.set(ax - 2 + i * 2.2, 0, az);
       g.add(cab);
       lb(cab.position.x, cab.position.z, 0.7, 0.6, 2.2);
-      /* store LOCAL anchors; converted to world after lounge scale */
+      /* engage pad in front of cab; camera uses live screen world pos in update */
       g.userData.arcades.push({
-        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex, cab,
-        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.15),
-        camPos: new THREE.Vector3(cab.position.x, 1.85, cab.position.z + 2.55),
-        lookAt: new THREE.Vector3(cab.position.x, 1.48, cab.position.z + 0.48),
+        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex, cab, scr,
+        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.35),
+        camPos: new THREE.Vector3(cab.position.x, 1.55, cab.position.z + 1.35),
+        lookAt: new THREE.Vector3(cab.position.x, 1.5, cab.position.z + 0.46),
       });
       const cTag = textSprite("🕹 " + CAB_NAMES[i], { size: 24, color: i ? "#7CFFB0" : "#5ad1ff", strokeW: 5, maxWidth: 0 });
       cTag.scale.multiplyScalar(0.55);
@@ -5242,15 +5242,14 @@ function buildLoungeDecor() {
       g.userData[k].z *= _S;
     }
   }
-  /* arcade anchors must be WORLD space (group is scaled; camera/pig are world) */
+  /* arcade engage pads → world space (camera is derived live from screen mesh) */
   if (g.userData.arcades) {
     for (const A of g.userData.arcades) {
       A.pos.x *= _S; A.pos.z *= _S;
       A.camPos.x *= _S; A.camPos.z *= _S;
       A.lookAt.x *= _S; A.lookAt.z *= _S;
-      /* cam slightly higher for a clean screen view */
-      A.camPos.y = 1.95;
-      A.lookAt.y = 1.52;
+      /* slightly larger screen so pixel game is readable up close */
+      if (A.scr) A.scr.scale.set(1.35, 1.35, 1);
     }
   }
   g.visible = false;
@@ -6076,6 +6075,26 @@ function removeVC(e, silent = false) {
   }
 }
 
+
+function miniGameActive() {
+  return !!(
+    (typeof dartGame !== "undefined" && dartGame.active) ||
+    (typeof strikerGame !== "undefined" && strikerGame.active) ||
+    (typeof arcadeGame !== "undefined" && arcadeGame.active)
+  );
+}
+function setHeroForMiniGame(on) {
+  /* hide pig + guns so camera can sit on the cabinet screen */
+  try {
+    if (pig) pig.visible = !on;
+    if (typeof rifleSlung !== "undefined" && rifleSlung) rifleSlung.visible = !on && weaponIdx !== 2;
+    if (typeof rifleHeld !== "undefined" && rifleHeld) rifleHeld.visible = false;
+    if (typeof flameWpn !== "undefined" && flameWpn) flameWpn.visible = !on && weaponIdx === 2;
+    if (typeof lockBracket !== "undefined" && lockBracket) lockBracket.visible = false;
+    const ch = $("crosshair"); if (ch) ch.style.opacity = on ? "0" : "";
+  } catch (_) {}
+}
+
 /* —— DARTS MINI-GAME: 3 darts, wobbling aim, ring scoring —— */
 const dartGame = { active: false, throwsLeft: 0, total: 0, aimY: 0, aimZ: 0, cool: 0, darts: [], reticle: null };
 function startDartGame() {
@@ -6086,6 +6105,7 @@ function startDartGame() {
   dartGame.total = 0;
   dartGame.aimY = 0; dartGame.aimZ = 0;
   socialReading = true; /* freezes the world; reader stays closed */
+  setHeroForMiniGame(true);
   try { setMiniTouch(true, isMobile() ? "DRAG TO AIM · TAP TO THROW" : "CLICK TO THROW · ESC QUITS"); } catch (_) {}
   for (const d of dartGame.darts) scene.remove(d);
   dartGame.darts = [];
@@ -6102,6 +6122,7 @@ function endDartGame() {
   dartGame.active = false;
   dartGame.cool = 6;
   socialReading = false;
+  setHeroForMiniGame(false);
   try { setMiniTouch(false); } catch (_) {}
   if (dartGame.reticle) dartGame.reticle.visible = false;
   setTimeout(() => { for (const d of dartGame.darts) scene.remove(d); dartGame.darts = []; }, 2500);
@@ -6151,6 +6172,7 @@ function startStrikerGame() {
   strikerGame.active = true;
   strikerGame.tT = 0;
   socialReading = true;
+  setHeroForMiniGame(true);
   showMsg("TEST YOUR CLOUT — click to slam!");
   try { setMiniTouch(true, isMobile() ? "TAP WHEN THE PUCK IS HIGH!" : "CLICK TO SLAM · ESC QUITS"); } catch (_) {}
   SFX.pickup();
@@ -6164,6 +6186,7 @@ function updateStrikerGame(dt) {
   L.strikerMarker.position.y = 0.65 + p * 3.15;
   const sp = L.strikerPos;
   camera.position.lerp(new THREE.Vector3(sp.x - 6, 2.6, sp.z), Math.min(1, dt * 6));
+  setHeroForMiniGame(true);
   camera.lookAt(sp.x, 2.3, sp.z);
 }
 function resolveStriker() {
@@ -6186,6 +6209,7 @@ function resolveStriker() {
   strikerGame.active = false;
   strikerGame.cool = 6;
   socialReading = false;
+  setHeroForMiniGame(false);
   try { setMiniTouch(false); } catch (_) {}
 }
 
@@ -6206,7 +6230,10 @@ function startArcadeGame(which) {
     arcadeGame.cells = Array.from({ length: 9 }, () => ({ up: 0 }));
   }
   socialReading = true;
+  setHeroForMiniGame(true);
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  /* park pig behind the camera pad so re-entry is clean */
+  if (A.pos) pig.position.set(A.pos.x, 0, A.pos.z);
   showMsg((A.name) + " — " + (which === 0 ? "steer & shoot" : "whack spam") + " · Esc quits");
   try {
     setMiniTouch(true, which === 0
@@ -6220,6 +6247,7 @@ function endArcadeGame() {
   arcadeGame.active = false;
   arcadeGame.cool = 5;
   socialReading = false;
+  setHeroForMiniGame(false);
   try { setMiniTouch(false); } catch (_) {}
   score += arcadeGame.pts;
   updateHud();
@@ -6260,16 +6288,41 @@ function arcadeClick() {
 function updateArcadeGame(dt) {
   if (!arcadeGame.active) return;
   const A = loungeDecor && loungeDecor.userData.arcades && loungeDecor.userData.arcades[arcadeGame.which];
-  if (!A) { arcadeGame.active = false; socialReading = false; try { setMiniTouch(false); } catch (_) {} return; }
-  /* lock camera onto the cabinet screen (world-space anchors) */
+  if (!A) {
+    arcadeGame.active = false; socialReading = false;
+    setHeroForMiniGame(false);
+    try { setMiniTouch(false); } catch (_) {}
+    return;
+  }
+  /* camera sits IN FRONT of the live screen mesh — never behind the pig */
+  const look = new THREE.Vector3();
+  const camP = new THREE.Vector3();
+  if (A.scr) {
+    A.scr.getWorldPosition(look);
+    /* face normal of cabinet screen (+Z local → world) */
+    const n = new THREE.Vector3(0, 0, 1);
+    if (A.cab) {
+      const q = new THREE.Quaternion();
+      A.cab.getWorldQuaternion(q);
+      n.applyQuaternion(q).normalize();
+    }
+    /* close-up so 192×144 canvas fills the view */
+    camP.copy(look).addScaledVector(n, 1.05);
+    camP.y = look.y + 0.02;
+  } else {
+    look.copy(A.lookAt);
+    camP.copy(A.camPos);
+  }
   arcadeGame.camBlend = (arcadeGame.camBlend || 0) + dt;
-  if (arcadeGame.camBlend < 0.2) camera.position.lerp(A.camPos, Math.min(1, dt * 14));
-  else camera.position.copy(A.camPos);
-  camera.lookAt(A.lookAt.x, A.lookAt.y, A.lookAt.z);
-  /* keep pig parked at play pad so they don't walk away mid-game */
+  if (arcadeGame.camBlend < 0.12) camera.position.lerp(camP, Math.min(1, dt * 16));
+  else camera.position.copy(camP);
+  camera.lookAt(look.x, look.y, look.z);
+  /* keep pig hidden + parked off to the side of the pad */
+  setHeroForMiniGame(true);
   if (A.pos) {
-    pig.position.x += (A.pos.x - pig.position.x) * Math.min(1, dt * 4);
-    pig.position.z += (A.pos.z - pig.position.z) * Math.min(1, dt * 4);
+    pig.position.x = A.pos.x + 1.4;
+    pig.position.z = A.pos.z + 0.4;
+    pig.position.y = 0;
   }
   arcadeGame.timeLeft -= dt;
   if (arcadeGame.timeLeft <= 0) { endArcadeGame(); return; }
@@ -6386,9 +6439,13 @@ function quitActiveMiniGame() {
   if (dartGame.active) endDartGame();
   else if (strikerGame.active) {
     strikerGame.active = false; strikerGame.cool = 4; socialReading = false;
+    setHeroForMiniGame(false);
     try { setMiniTouch(false); } catch (_) {}
   } else if (arcadeGame.active) endArcadeGame();
-  else try { setMiniTouch(false); } catch (_) {}
+  else {
+    setHeroForMiniGame(false);
+    try { setMiniTouch(false); } catch (_) {}
+  }
 }
 function miniTap() {
   if (dartGame.active) throwDart();
@@ -9075,7 +9132,11 @@ function update(dt) {
   pigParts.earR.rotation.x = 0.5 + (Math.sin(t * 1.1 + 3) > 0.985 ? 0.5 : 0);
   pigParts.head.rotation.x += (0 - pigParts.head.rotation.x) * dt * 6;
   invuln = Math.max(0, invuln - dt);
-  pig.visible = invuln <= 0 || Math.sin(t * 30) > -0.3;
+  if (miniGameActive()) {
+    pig.visible = false;
+  } else {
+    pig.visible = invuln <= 0 || Math.sin(t * 30) > -0.3;
+  }
 
   /* charge */
   if (flameFiring && mode === "play") fireFlamethrower(dt);
