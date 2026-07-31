@@ -2057,7 +2057,7 @@ for (let x = -48; x <= -20; x += 3.2) {
   planter(-12, 16, 1.1); planter(12, 16, 1.1);
   planter(-12, -2, 1); planter(12, -2, 1);
   planter(-22, 6, 0.9); planter(22, 6, 0.9);
-  planter(0, 22, 1.2);
+  /* was planter(0,22) — blocked Test Your Clout camera */
   /* wing markers */
   planter(-45, -20, 1); planter(45, -20, 1);
   planter(-45, 20, 1); planter(45, 20, 1);
@@ -4798,7 +4798,7 @@ function placeSocialGuests(users) {
 let loungeDecor = null;
 const LOUNGE_SCALE = 1.3; /* 30% larger floor plan; props stay proportional via group scale */
 const LOUNGE_BLOCKS = []; /* obstacle specs, added only while lounge is active */
-const LOUNGE_POCKETS = [[-12, 6, 2.6], [12, 6, 2.6], [0, 15, 2.6]];
+const LOUNGE_POCKETS = [[-12, 6, 2.6], [12, 6, 2.6], [0, 10, 2.4]]; /* center pocket clear of clout striker */
 const DANCE_CENTER = new THREE.Vector3(18 * LOUNGE_SCALE, 0, 20 * LOUNGE_SCALE);
 function lb(x, z, hw, hd, h) {
   LOUNGE_BLOCKS.push([x * LOUNGE_SCALE, z * LOUNGE_SCALE, hw * LOUNGE_SCALE, hd * LOUNGE_SCALE, h]);
@@ -4809,14 +4809,14 @@ function addLoungeObstacles() {
 }
 function buildLoungeDecor() {
   /* rebuild if missing seating (hot reload / prior lounge without chairs) */
-  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.hasExtraSeating === 2) return loungeDecor;
+  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.hasExtraSeating === 3) return loungeDecor;
   if (loungeDecor) {
     try { scene.remove(loungeDecor); } catch (_) {}
     loungeDecor = null;
     LOUNGE_BLOCKS.length = 0;
   }
   const g = new THREE.Group();
-  g.userData.hasExtraSeating = 2;
+  g.userData.hasExtraSeating = 3;
   const WALNUT = 0x4a3020, WALNUT_D = 0x352214, VELVET = 0x6e1f35, VELVET2 = 0x1f4a3a,
         BRASS = 0xc8a24a, PLUM = 0x4a2440, CREAM = 0xe8d8b8;
   /* herringbone-ish parquet floor */
@@ -5312,7 +5312,8 @@ function buildLoungeDecor() {
   neon.userData.maxDist = 70;
   g.add(neon);
   /* palms in leftover corners */
-  for (const [px, pz] of [[28, 26], [-28, -6.5], [6, 26.5]]) {
+  /* palms only in far corners — none in striker camera lane */
+  for (const [px, pz] of [[28, 26], [-28, -6.5], [-28, 26]]) {
     g.add(cyl(0.28, 0.36, 0.55, 0xb06a3a, px, 0.28, pz), sph(0.6, 0x2f6a34, px, 1.25, pz, 8, 6));
   }
   /* expand lounge footprint 30% — geometry + interactive anchors */
@@ -6262,66 +6263,148 @@ function throwDart() {
   if (dartGame.throwsLeft <= 0) setTimeout(endDartGame, 900);
 }
 
-/* —— TEST YOUR CLOUT: carnival high-striker, click to stop the puck —— */
-const strikerGame = { active: false, tT: 0, cool: 0 };
+/* —— TEST YOUR CLOUT: timing striker — click at the PEAK for 100% + victory bell —— */
+const strikerGame = { active: false, tT: 0, cool: 0, power: 0, slammed: false };
+function ringVictoryBell() {
+  /* deep carnival bell cascade */
+  try {
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5];
+    notes.forEach((f, i) => {
+      setTimeout(() => {
+        try { beep(f, 0.35, "triangle", 0.14 - i * 0.015); } catch (_) {}
+        try { beep(f * 0.5, 0.45, "sine", 0.08); } catch (_) {}
+      }, i * 90);
+    });
+    setTimeout(() => { try { beep(1568, 0.55, "triangle", 0.12); } catch (_) {} }, 480);
+    setTimeout(() => { try { noiseBurst(0.08, 0.06, 2000, 400); } catch (_) {} }, 200);
+  } catch (_) {}
+}
+function setStrikerAudienceHidden(on) {
+  /* clear guests / bubbles so the meter isn't blocked */
+  try {
+    for (const e of enemies) {
+      if (e.type === "xuser" || e.type === "vc") {
+        if (e.mesh) e.mesh.visible = !on;
+        if (e.tag) e.tag.visible = !on;
+      }
+    }
+  } catch (_) {}
+}
 function startStrikerGame() {
   strikerGame.active = true;
   strikerGame.tT = 0;
   strikerGame.camBlend = 0;
+  strikerGame.power = 0;
+  strikerGame.slammed = false;
   socialReading = true;
   setHeroForMiniGame(true);
-  showMsg("PAUSED — TEST YOUR CLOUT · click to slam · Esc quits");
-  try { setMiniTouch(true, isMobile() ? "TAP WHEN THE PUCK IS HIGH!" : "CLICK TO SLAM · ESC QUITS"); } catch (_) {}
+  setStrikerAudienceHidden(true);
+  showMsg("PAUSED — CLICK AT THE PEAK for 100% · Esc quits");
+  try {
+    setMiniTouch(true, isMobile()
+      ? "TAP AT THE TOP OF THE METER!"
+      : "CLICK WHEN THE PUCK HITS THE TOP · ESC");
+  } catch (_) {}
   SFX.pickup();
 }
 function updateStrikerGame(dt) {
   if (!strikerGame.active) return;
-  const L = loungeDecor.userData;
+  const L = loungeDecor && loungeDecor.userData;
   if (!L || !L.strikerMarker) return;
-  strikerGame.tT += dt;
-  const p = Math.abs(Math.sin(strikerGame.tT * (2.2 + strikerGame.tT * 0.25)));
-  /* marker rides local Y on the tower root */
-  L.strikerMarker.position.y = 0.7 + p * 3.2;
-  /* pulse puck so the rising target is obvious */
-  const pulse = 0.9 + 0.15 * Math.sin(strikerGame.tT * 14);
-  L.strikerMarker.scale.set(pulse, 1, pulse);
-  if (L.strikerMarker.material && L.strikerMarker.material.color) {
-    L.strikerMarker.material.color.setHex(p > 0.92 ? 0xffd94a : p > 0.7 ? 0xfff0a0 : 0xe8eef8);
-  }
   setHeroForMiniGame(true);
-  /* park pig behind camera so they never fill the frame */
+  setStrikerAudienceHidden(true);
+  /* steady pendulum — peak every ~0.85s; speed creeps up slightly for pressure */
+  if (!strikerGame.slammed) {
+    strikerGame.tT += dt;
+    const speed = 2.55 + Math.min(1.1, strikerGame.tT * 0.08);
+    /* 0..1 power; 1.0 only at the absolute crest */
+    const wave = Math.sin(strikerGame.tT * speed);
+    const p = Math.abs(wave); /* 0 floor → 1 peak */
+    strikerGame.power = p;
+    L.strikerMarker.position.y = 0.7 + p * 3.2;
+    const atPeak = p >= 0.985;
+    const pulse = atPeak ? 1.25 : 0.9 + 0.12 * p;
+    L.strikerMarker.scale.set(pulse, 1, pulse);
+    if (L.strikerMarker.material && L.strikerMarker.material.color) {
+      L.strikerMarker.material.color.setHex(
+        atPeak ? 0xffd94a : p > 0.85 ? 0xff8c40 : p > 0.55 ? 0xfff0a0 : 0xe8eef8
+      );
+    }
+    /* gold flash on bell when puck is in the sweet zone */
+    if (L.strikerBell && L.strikerBell.material) {
+      try {
+        L.strikerBell.material.color.setHex(atPeak ? 0xffe27a : 0xc8a24a);
+        if (L.strikerBell.scale) L.strikerBell.scale.setScalar(atPeak ? 1.15 : 1);
+      } catch (_) {}
+    }
+  }
+  /* park pig behind camera */
   if (L.strikerPos) {
     pig.position.set(L.strikerPos.x, 0, L.strikerPos.z + 5.5 * (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1));
   }
   const camP = L.strikerCam || new THREE.Vector3(L.strikerPos.x, 2.35, L.strikerPos.z + 4.6);
   const look = L.strikerLook || new THREE.Vector3(L.strikerPos.x, 2.4, L.strikerPos.z);
+  /* slightly higher / closer so meter fills frame, no floor clutter */
+  camP.y = 2.55;
+  look.y = 2.55;
   strikerGame.camBlend = (strikerGame.camBlend || 0) + dt;
   if (strikerGame.camBlend < 0.15) camera.position.lerp(camP, Math.min(1, dt * 14));
   else camera.position.copy(camP);
   camera.lookAt(look.x, look.y, look.z);
 }
 function resolveStriker() {
-  const L = loungeDecor.userData;
-  if (!L || !L.strikerMarker) { strikerGame.active = false; socialReading = false; return; }
-  const h = Math.max(0, Math.min(1, (L.strikerMarker.position.y - 0.7) / 3.2));
-  const pts = h > 0.97 ? 150 : Math.round(h * 100);
-  const label = h > 0.97 ? "CLOUT MAXED +" + pts : h > 0.75 ? "BIG ACCOUNT +" + pts : h > 0.4 ? "MIDSIZE POSTER +" + pts : "REPLY GUY +" + pts;
+  const L = loungeDecor && loungeDecor.userData;
+  if (!L || !L.strikerMarker) {
+    strikerGame.active = false; socialReading = false;
+    setStrikerAudienceHidden(false);
+    return;
+  }
+  if (strikerGame.slammed) return;
+  strikerGame.slammed = true;
+  /* power at click — require near-perfect crest for 100% / bell */
+  const h = Math.max(0, Math.min(1, strikerGame.power || 0));
+  const perfect = h >= 0.985;
+  const pts = perfect ? 150 : h >= 0.92 ? 120 : h >= 0.75 ? Math.round(h * 100) : Math.round(h * 80);
+  const label = perfect ? "🔔 CLOUT MAXED +150"
+    : h >= 0.92 ? "SO CLOSE +" + pts
+    : h >= 0.75 ? "BIG ACCOUNT +" + pts
+    : h >= 0.45 ? "MIDSIZE POSTER +" + pts
+    : "REPLY GUY +" + pts;
   score += pts; updateHud();
   floatText(L.strikerPos.clone().add(new THREE.Vector3(0, 4.6, 0)), label,
-    { size: 42, color: h > 0.97 ? "#ffd94a" : h > 0.75 ? "#7CFFB0" : "#cfd6e0", strokeW: 7 }, 1.5);
-  if (h > 0.97) {
-    L.strikerBell.material = new THREE.MeshBasicMaterial({ color: 0xffe27a });
-    setTimeout(() => { try { L.strikerBell.material = mat(0xc8a24a); } catch (_) {} }, 700);
-    beep(1568, 0.3, "triangle", 0.1); setTimeout(() => beep(2093, 0.4, "triangle", 0.09), 140);
-    shake = Math.max(shake, 0.35);
+    { size: perfect ? 52 : 42, color: perfect ? "#ffd94a" : h >= 0.75 ? "#7CFFB0" : "#cfd6e0", strokeW: 7 }, 1.6);
+  /* freeze puck at impact height briefly */
+  L.strikerMarker.position.y = 0.7 + h * 3.2;
+  if (perfect) {
+    if (L.strikerBell) {
+      L.strikerBell.material = new THREE.MeshBasicMaterial({ color: 0xffe27a });
+      if (L.strikerBell.scale) L.strikerBell.scale.setScalar(1.35);
+      setTimeout(() => {
+        try {
+          L.strikerBell.material = mat(0xc8a24a);
+          L.strikerBell.scale.setScalar(1);
+        } catch (_) {}
+      }, 1200);
+    }
+    ringVictoryBell();
+    shake = Math.max(shake, 0.55);
+    showMsg("🔔 BELL RUNG — CLOUT MAXED");
+    try { SFX.purge(); } catch (_) {}
   } else {
     SFX.hit();
+    try { thump(90, 0.12, 0.1); } catch (_) {}
+    if (h >= 0.92) showMsg("Almost! Hit the peak for the bell");
+    else showMsg("Too early/late — wait for the GOLD peak");
   }
-  strikerGame.active = false;
-  strikerGame.cool = 6;
-  socialReading = false;
-  setHeroForMiniGame(false);
-  try { setMiniTouch(false); } catch (_) {}
+  setTimeout(() => {
+    strikerGame.active = false;
+    strikerGame.cool = 5;
+    strikerGame.slammed = false;
+    socialReading = false;
+    setHeroForMiniGame(false);
+    setStrikerAudienceHidden(false);
+    try { setMiniTouch(false); } catch (_) {}
+  }, perfect ? 1400 : 700);
 }
 
 /* —— ARCADE: BOT INVADERS + WHACK-A-SPAM (canvas on cabinet screens) —— */
@@ -6562,6 +6645,7 @@ function quitActiveMiniGame() {
   else if (strikerGame.active) {
     strikerGame.active = false; strikerGame.cool = 4; socialReading = false;
     setHeroForMiniGame(false);
+    try { setStrikerAudienceHidden(false); } catch (_) {}
     try { setMiniTouch(false); } catch (_) {}
   } else if (arcadeGame.active) endArcadeGame();
   else {
@@ -7087,7 +7171,7 @@ addEventListener("keydown", e => {
   /* typing a reply in the tweet reader must not drive the game */
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
-  if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; return; }
+  if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
   keys[e.code] = true;
   if (e.key && e.key.length === 1) keys["Key" + e.key.toUpperCase()] = true;
