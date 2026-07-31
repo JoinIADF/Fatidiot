@@ -3508,6 +3508,15 @@ function activateStarbase() {
       const bw = $("bossBarWrap"); if (bw) bw.classList.add("hidden");
     }
   } catch (_) {}
+  /* reset the escape arc */
+  try {
+    if (marsState && marsState.tag) scene.remove(marsState.tag);
+    if (marsState && marsState.finger) scene.remove(marsState.finger);
+  } catch (_) {}
+  marsState = null;
+  window.__camLock = false;
+  pig.visible = true;
+  if (bossTruck) { bossTruck.visible = true; }
   starbaseGroup.visible = true;
   /* OPEN south wall — free walk into the parking lot */
   if (officeShell.southWall) officeShell.southWall.visible = false;
@@ -3589,6 +3598,14 @@ function activateStarbase() {
 function deactivateStarbase() {
   starbaseActive = false;
   rocketLift = null;
+  try {
+    if (marsState && marsState.tag) scene.remove(marsState.tag);
+    if (marsState && marsState.finger) scene.remove(marsState.finger);
+  } catch (_) {}
+  marsState = null;
+  window.__camLock = false;
+  pig.visible = true;
+  if (bossTruck) bossTruck.visible = true;
   starbaseGroup.visible = false;
   for (const vm of vendingMachines) {
     if (!vm.mesh) continue;
@@ -7444,26 +7461,27 @@ function tickWallTimer(amount = 1) {
 function onKillGoalReached() {
   if (mode !== "play" || socialActive) return;
   if (starbaseActive) {
-    /* climax: BOTZILLA invades + rocket ignition (if not already) */
+    /* post-boss grind complete → your seat on the second rocket is earned */
+    if (marsState && marsState.phase === "grind") { enableBoarding(); return; }
+    /* climax: BOTZILLA invades — the rocket does NOT launch until it's dead */
     try {
       if (typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead) {
         bossFight.kills = Math.max(bossFight.kills || 0, 100);
         startBossFight();
       }
     } catch (err) { console.warn("boss start", err); }
-    try { startRocketIgnition(); } catch (err) { console.warn("rocket", err); }
-    showMsg("100 KILLS — BOTZILLA INBOUND · STARSHIP IGNITION");
+    showMsg("100 KILLS — BOTZILLA INBOUND · PROTECT THE ROCKETS");
   } else {
     openLevelPortal();
   }
 }
-function startRocketIgnition() {
+function startRocketIgnition(preferredMesh) {
   if (rocketLift || mode !== "play") return;
   wallQuota = 0;
   wallTimerDirty = true;
   updateHud();
   const rockets = (starbaseGroup && starbaseGroup.userData.rockets) || [];
-  let mesh = rockets[0] || rockets[1] || null;
+  let mesh = preferredMesh || rockets[0] || rockets[1] || null;
   if (!mesh && starbaseGroup) {
     /* fallback: first tall child named rocket-ish */
     starbaseGroup.traverse(o => {
@@ -7539,7 +7557,8 @@ function updateRocketLift(dt) {
       burst(m.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 0xffaa00, 5, 4);
     }
     shake = Math.max(shake, 0.2);
-    if (r.t >= 4.5 && !portalReady) {
+    if (r.t >= 4.5 && !portalReady && !marsState) {
+      /* during the escape arc the exit is the SECOND rocket, not a portal */
       openLevelPortal();
     }
     if (r.t >= 12) {
@@ -7552,6 +7571,130 @@ function updateRocketLift(dt) {
     }
   }
 }
+/* ============================== THE GREAT ESCAPE ==============================
+ * killBoss → rocket 1 launches → CEO bails ("I'm out") and drives into the
+ * sunset → counter resets to 100 → grind to 0 → rocket 2 boardable by jumping
+ * in → middle-finger cutscene → liftoff → Mars victory screen. */
+let marsState = null;
+function enableBoarding() {
+  const rockets = (starbaseGroup && starbaseGroup.userData.rockets) || [];
+  const r2 = rockets[1] || rockets[0];
+  if (!r2) return;
+  marsState = { phase: "board", t: 0, rocket: r2 };
+  const tag = textSprite("🚀 YOUR RIDE — JUMP IN", { size: 44, color: "#7CFFB0", strokeW: 8, maxWidth: 0 });
+  tag.position.copy(r2.position).add(new THREE.Vector3(0, 12, 0));
+  tag.userData.maxDist = 140;
+  scene.add(tag);
+  marsState.tag = tag;
+  showMsg("🚀 SEAT EARNED — JUMP INTO THE STARSHIP");
+  try { say("Your ride is fueled. Don't scratch it.", { rate: 0.95 }); } catch (_) {}
+  try { SFX.wave(); } catch (_) {}
+}
+function updateMarsEscape(dt) {
+  if (!marsState || mode !== "play" || !starbaseActive) return;
+  const M = marsState;
+  M.t += dt;
+  if (M.phase === "victory") {
+    /* beat of calm, then the CEO's rocket goes up */
+    if (M.t >= 1.5) {
+      try { if (!rocketLift) startRocketIgnition(); } catch (_) {}
+      M.phase = "ceoWatch"; M.t = 0;
+    }
+  } else if (M.phase === "ceoWatch") {
+    /* once the rocket is climbing, the CEO bails */
+    if (rocketLift && rocketLift.phase === "lift" && M.t >= 5) {
+      M.phase = "ceoExit"; M.t = 0;
+      try { say("Cool. Good luck cleaning up here. I'm out.", { rate: 0.95 }); } catch (_) {}
+      floatText(bossTruck.position.clone().add(new THREE.Vector3(0, 8, 0)),
+        "\"Cool. Good luck cleaning up here, I'm out.\"", { size: 40, color: "#ffd94a", strokeW: 7 }, 2.6);
+      if (bossTruck) bossTruck.rotation.y = -Math.PI / 2; /* face the sunset (west) */
+      clearObstaclesByTag("bossTruck");
+    }
+  } else if (M.phase === "ceoExit") {
+    /* the boss Cybertruck drives into the sunset */
+    if (bossTruck && bossTruck.visible) {
+      bossTruck.position.x -= 14 * dt;
+      if (Math.random() < 0.4) burst(bossTruck.position.clone().add(new THREE.Vector3(3, 0.3, rand(-2, 2))), 0x8a7f6a, 2, 2, 5);
+      if (bossTruck.position.x < -FLOOR_W / 2 - 30) {
+        bossTruck.visible = false;
+        M.phase = "grind"; M.t = 0;
+        setWallQuota(100);
+        showMsg("HE LEFT YOU THE MESS. 100 KILLS BUYS YOUR SEAT OUT.");
+      }
+    } else { M.phase = "grind"; setWallQuota(100); }
+  } else if (M.phase === "board") {
+    if (M.tag) M.tag.position.y = M.rocket.position.y + 12 + Math.sin(t * 2) * 0.6;
+    /* jump in: airborne and close to the rocket */
+    const d = Math.hypot(pig.position.x - M.rocket.position.x, pig.position.z - M.rocket.position.z);
+    if (d < 5.5 && !onGround) startEscapeCutscene();
+  } else if (M.phase === "cutscene") {
+    window.__camLock = true;
+    const R = M.rocket;
+    if (M.t < 3.0) {
+      /* the hero turns to the crowd and raises the finger */
+      pig.position.set(R.position.x, 0, R.position.z + 5.2);
+      const camP = new THREE.Vector3(R.position.x, 1.6, R.position.z + 11);
+      camera.position.lerp(camP, Math.min(1, dt * 4));
+      camera.lookAt(pig.position.x, 1.4, pig.position.z);
+      pig.rotation.y = 0; /* face the lot (and the camera) */
+      if (!M.finger) {
+        M.finger = textSprite("🖕", { size: 90, color: "#ffd0a0", strokeW: 6, maxWidth: 0 });
+        M.finger.position.set(R.position.x, 3.2, R.position.z + 5.2);
+        M.finger.scale.multiplyScalar(0.01);
+        scene.add(M.finger);
+        try { say("So long, losers.", { rate: 0.9 }); } catch (_) {}
+      }
+      M.finger.scale.setScalar(Math.min(2.4, M.t * 1.6));
+    } else if (M.t < 4.0) {
+      /* board */
+      if (M.finger) { scene.remove(M.finger); M.finger = null; }
+      pig.visible = false;
+      if (M.tag) { scene.remove(M.tag); M.tag = null; }
+    } else if (M.t < 4.2 && !M.launched) {
+      M.launched = true;
+      rocketLift = null; /* free the launcher for rocket 2 */
+      try { startRocketIgnition(M.rocket); } catch (_) {}
+    } else if (M.t >= 4.2) {
+      /* low hero-shot of the climb — the hero is aboard, keep him hidden */
+      pig.visible = false;
+      const camP = new THREE.Vector3(M.rocket.position.x + 9, 2.5, M.rocket.position.z + 16);
+      camera.position.lerp(camP, Math.min(1, dt * 2));
+      camera.lookAt(M.rocket.position.x, Math.max(6, M.rocket.position.y + 14), M.rocket.position.z);
+      if (M.t >= 12) marsVictory();
+    }
+  }
+}
+function startEscapeCutscene() {
+  if (!marsState || marsState.phase !== "board") return;
+  marsState.phase = "cutscene";
+  marsState.t = 0;
+  pigVy = 0; pigY = 0; onGround = true;
+  invuln = 999; /* nothing interrupts the exit */
+  spawnQueue = 0;
+  showMsg("🖕 SEE YOU NEVER");
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+}
+function marsVictory() {
+  marsState.phase = "done";
+  window.__camLock = false;
+  mode = "over";
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+  if (score > high) { high = score; localStorage.setItem(HS_KEY, String(high)); }
+  const ov = overlay;
+  ov.querySelector("h1").textContent = "YOU ESCAPED X";
+  ov.querySelector("p").innerHTML =
+    `<span style="font-size:44px;letter-spacing:0.2em">✦ 🐷🚀 ✦</span><br><br>` +
+    `<b style="color:#7CFFB0">CONGRATULATIONS — you finally escaped X.</b><br>` +
+    `Enjoy the night off.<br>` +
+    `<span style="color:#8fd1ff">We'll be landing on Mars shortly...</span><br><br>` +
+    `SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}`;
+  const go = $("overlayGo");
+  if (go) go.textContent = "ENTER — NEW RUN (BACK TO THE GRIND)";
+  ov.classList.remove("hidden");
+  try { say("Congratulations. You finally escaped X. Enjoy the night off. We will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
+}
+
 function openLevelPortal() {
   if (portalReady || mode !== "play") return;
   portalReady = true;
@@ -8291,6 +8434,8 @@ function killBoss() {
   }, 3.2);
   try { say("Employee of the month. Bonus approved. Back to work.", { rate: 0.9 }); } catch (_) {}
   showMsg("THE CEO IS PLEASED. IRONICALLY.");
+  /* NOW the first rocket may launch — and the great escape arc begins */
+  marsState = { phase: "victory", t: 0 };
   for (let i = 0; i < 3; i++) {
     setTimeout(() => {
       const g2 = new THREE.Group();
@@ -8315,8 +8460,7 @@ function updateBossFight(dt) {
     }
     if (goalHit && !bossFight.dead) {
       if (k < 100) bossFight.kills = 100;
-      startBossFight();
-      try { if (!rocketLift) startRocketIgnition(); } catch (_) {}
+      startBossFight(); /* rocket stays grounded until BOTZILLA dies */
     }
     return;
   }
@@ -8977,6 +9121,8 @@ function triggerEscape() {
 }
 function killByPhrase() {
   if (mode !== "play" || socialActive) return;
+  if (invuln > 0) return; /* respects i-frames (incl. the escape cutscene) */
+  if (marsState && (marsState.phase === "cutscene" || marsState.phase === "done")) return;
   lives = 0;
   updateHud();
   try { gameOver("weekend"); } catch (e) { console.error(e); mode = "over"; }
@@ -9030,6 +9176,7 @@ function update(dt) {
   }
   if (socialActive) updateSocialLounge(dt);
   if (starbaseActive) updateBossFight(dt);
+  if (starbaseActive) updateMarsEscape(dt);
   /* --- ambient actors always animate --- */
   /* Elon — storms office when enraged, spews killer phrases */
   const eu = elon.userData;
@@ -10347,6 +10494,8 @@ window.__game = {
   previewLevel2, activateStarbase, levelUp,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
+  killBoss, enableBoarding, startEscapeCutscene, marsVictory,
+  get marsState() { return marsState; },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
