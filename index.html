@@ -1338,6 +1338,7 @@ const servers = []; /* {mesh, x, y, z, hp, cool} */
 const windowZones = [];
 const bossHitbox = { x: 0, z: 0, hw: 6.2, hd: 4.8, enraged: false, stormT: 0, phraseT: 0 };
 let speedBoost = 0;
+let botFreezeT = 0; /* time-clock powerup: freeze bots + halt spawns */
 let deathKind = null;
 let vendingsOpened = 0; /* machines fully cracked open */
 let sleepBagGranted = false;
@@ -1970,8 +1971,8 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
   const lab = label || "";
   if (/sushi/i.test(lab)) kind = "sushi";
   else if (/fuel|flame|rocket/i.test(lab)) kind = "fuel";
+  else if (/time|clock|freeze/i.test(lab)) kind = "clock";
   else if (/rx|prescrip|pill/i.test(lab)) kind = "rx";
-  else if (/sushi/i.test(lab)) kind = "sushi";
   const vm = {
     mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label, zone, kind,
   };
@@ -1997,6 +1998,13 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
     tag.userData.maxDist = 55;
     g.add(tag);
   }
+  if (/time|clock|freeze/i.test(lab)) {
+    const tag = textSprite("TIME CLOCK · FREEZE 30s", { size: 24, color: "#5ad1ff", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.5);
+    tag.position.set(0, 3.35, 0);
+    tag.userData.maxDist = 55;
+    g.add(tag);
+  }
   vendingMachines.push(vm);
   g.userData.vending = vm;
   return g;
@@ -2016,6 +2024,10 @@ mkVending(-28, -FLOOR_D / 2 + 1.6, 0, 0x2858b0, "#cfe4ff", "RX");
 mkVending(28, -FLOOR_D / 2 + 1.6, 0, 0xb06a28, "#ffe4cf", "RX");
 /* south wall */
 mkVending(-22, FLOOR_D / 2 - 1.6, Math.PI, 0xb02828, "#ffdddd", "SODA");
+/* TIME CLOCK — freezes bots 30s */
+mkVending(FLOOR_W / 2 - 1.5, 2, -Math.PI / 2, 0x1a4a8a, "#cfe8ff", "TIME");
+mkVending(-FLOOR_W / 2 + 1.5, 8, Math.PI / 2, 0x1a4a8a, "#cfe8ff", "TIME");
+mkVending(0, FLOOR_D / 2 - 1.6, Math.PI, 0x1a4a8a, "#cfe8ff", "TIME");
 
 /* Starbase lobby + lot */
 mkVending(8, 10.5, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
@@ -2030,6 +2042,8 @@ mkVending(0, -24, 0, 0xff6a00, "#ffe0c0", "FUEL", "starbase");
 /* parking lot: SUSHI by boss Cybertruck + FUEL near pad */
 mkVending(8, FLOOR_D / 2 + 62, Math.PI, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
 mkVending(-10, FLOOR_D / 2 + 58, -0.4, 0xff6a00, "#ffe0c0", "FUEL", "starbase");
+mkVending(14, 6, -0.6, 0x1a4a8a, "#cfe8ff", "TIME", "starbase");
+mkVending(-14, FLOOR_D / 2 + 50, 0.3, 0x1a4a8a, "#cfe8ff", "TIME", "starbase");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -7558,7 +7572,7 @@ function startGame(opts = {}) {
   resumeStarbase = false;
   mode = "play";
   score = 0; lives = 9; wave = 1; invuln = 0;
-  speedBoost = 0; deathKind = null;
+  speedBoost = 0; botFreezeT = 0; deathKind = null;
   levelUpT = 0;
   clearLevelPortal();
   if (typeof deactivateSocialLounge === "function") deactivateSocialLounge();
@@ -8430,13 +8444,48 @@ function mkFuelCan() {
   g.scale.setScalar(1.2);
   return g;
 }
+function mkTimeClock() {
+  const g = new THREE.Group();
+  /* punch-clock body */
+  g.add(box(0.72, 0.55, 0.38, 0x2a3a4a, 0, 0.45, 0));
+  g.add(box(0.78, 0.08, 0.42, 0x1a2838, 0, 0.18, 0));
+  g.add(box(0.78, 0.08, 0.42, 0x1a2838, 0, 0.72, 0));
+  /* cyan digital face */
+  const face = canvasTex(128, 64, (gg, w, h) => {
+    gg.fillStyle = "#061820"; gg.fillRect(0, 0, w, h);
+    gg.strokeStyle = "#5ad1ff"; gg.lineWidth = 4; gg.strokeRect(4, 4, w - 8, h - 8);
+    gg.fillStyle = "#5ad1ff";
+    gg.font = "bold 28px monospace";
+    gg.textAlign = "center"; gg.textBaseline = "middle";
+    gg.fillText("30:00", w / 2, h * 0.42);
+    gg.font = "bold 12px monospace";
+    gg.fillStyle = "#7CFFB0";
+    gg.fillText("FREEZE", w / 2, h * 0.78);
+  });
+  const scr = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.58, 0.32),
+    new THREE.MeshBasicMaterial({ map: face })
+  );
+  scr.position.set(0, 0.48, 0.2);
+  g.add(scr);
+  /* red handle / lever */
+  g.add(box(0.08, 0.22, 0.08, 0xc02020, 0.28, 0.55, 0.05));
+  g.add(sph(0.07, 0xff3030, 0.28, 0.7, 0.05, 8, 6));
+  const tag = textSprite("TIME", { size: 40, color: "#5ad1ff", strokeW: 7 });
+  tag.scale.multiplyScalar(0.42);
+  tag.position.set(0, 1.05, 0);
+  g.add(tag);
+  g.scale.setScalar(1.15);
+  return g;
+}
 function dropPill(vmOrX, zMaybe) {
-  /* dropPill(vm) — RX / SUSHI / FUEL */
+  /* dropPill(vm) — RX / SUSHI / FUEL / TIME CLOCK */
   let x, z, ry = 0, kind = "pill";
   if (typeof vmOrX === "object" && vmOrX && vmOrX.x != null) {
     x = vmOrX.x; z = vmOrX.z; ry = vmOrX.ry || 0;
     if (vmOrX.kind === "sushi") kind = "sushi";
     else if (vmOrX.kind === "fuel") kind = "fuel";
+    else if (vmOrX.kind === "clock") kind = "clock";
     else kind = "pill";
   } else {
     x = vmOrX; z = zMaybe; ry = 0;
@@ -8444,6 +8493,7 @@ function dropPill(vmOrX, zMaybe) {
   const fx = Math.sin(ry), fz = Math.cos(ry);
   const g = kind === "sushi" ? mkSushi()
     : kind === "fuel" ? mkFuelCan()
+    : kind === "clock" ? mkTimeClock()
     : mkRxBottle();
   /* spawn at pickup flap height, just in front of glass */
   const flapY = 0.55;
@@ -8474,6 +8524,11 @@ function dropPill(vmOrX, zMaybe) {
   } else if (kind === "fuel") {
     burst(start, 0xff6a00, 10, 4);
     SFX.pickup();
+  } else if (kind === "clock") {
+    burst(start, 0x5ad1ff, 12, 5);
+    burst(start, 0x7CFFB0, 6, 3);
+    SFX.pickup();
+    try { beep(880, 0.08, "square", 0.08); } catch (_) {}
   } else {
     spitPills(start.clone().add(new THREE.Vector3(fx * 0.2, 0.1, fz * 0.2)), 8);
     SFX.pill();
@@ -8501,14 +8556,16 @@ function hitVending(vm) {
     SFX.boom();
     const isSushi = vm.kind === "sushi";
     const isFuel = vm.kind === "fuel";
-    burst(new THREE.Vector3(vm.x, 1.5, vm.z), isFuel ? 0xff6a00 : isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
-    if (!isSushi && !isFuel) spitPills(flap, 18);
-    const n = isFuel ? 2 : isSushi ? 2 : 4;
+    const isClock = vm.kind === "clock";
+    burst(new THREE.Vector3(vm.x, 1.5, vm.z),
+      isClock ? 0x5ad1ff : isFuel ? 0xff6a00 : isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
+    if (!isSushi && !isFuel && !isClock) spitPills(flap, 18);
+    const n = isClock ? 1 : isFuel ? 2 : isSushi ? 2 : 4;
     for (let i = 0; i < n; i++) setTimeout(() => dropPill(vm), i * 70);
     floatText(
       flap.clone().add(new THREE.Vector3(0, 1.2, 0)),
-      isFuel ? "FLAME FUEL!" : isSushi ? "SUSHI FULL HEAL!" : "RX DROP!",
-      { size: 40, color: isFuel ? "#ff6a00" : isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
+      isClock ? "TIME CLOCK!" : isFuel ? "FLAME FUEL!" : isSushi ? "SUSHI FULL HEAL!" : "RX DROP!",
+      { size: 40, color: isClock ? "#5ad1ff" : isFuel ? "#ff6a00" : isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
       1.1
     );
     score += 40; updateHud();
@@ -8603,8 +8660,8 @@ function hitGrok(point) {
   /* each shot extends rage lightly — fewer reinforcements */
   gu.rageT = Math.max(gu.rageT, 7);
   gu.spawnT = Math.min(gu.spawnT, 0.8);
-  /* immediate: just one extra bot */
-  spawnEnemy("bot");
+  /* immediate: just one extra bot (unless TIME CLOCK freeze) */
+  if (!(botFreezeT > 0)) spawnEnemy("bot");
   return true;
 }
 function bossPhraseOrigin(point) {
@@ -8898,7 +8955,7 @@ function updateBossFight(dt) {
       floatText(bx.clone().add(new THREE.Vector3(0, 9, 0)), "OVERHEATED — HIT IT NOW", {
         size: 40, color: "#ffd94a", strokeW: 7
       }, 1.4);
-      if (bossFight.phase >= 2) {
+      if (bossFight.phase >= 2 && !(botFreezeT > 0)) {
         for (let i = 0; i < 2; i++) {
           spawnEnemy("bot");
           const nb = enemies[enemies.length - 1];
@@ -9669,10 +9726,14 @@ function update(dt) {
       gu.spawnT -= dt;
       if (gu.spawnT <= 0) {
         gu.spawnT = rand(2.4, 3.6);
+        if (botFreezeT > 0) {
+          /* frozen timeline — dog barks but can't summon */
+        } else {
         const roll = Math.random();
         if (roll < 0.45) spawnEnemy("bot");
         else if (roll < 0.80) spawnEnemy("spammer");
         else if (wave >= 2 && roll < 0.95) spawnEnemy("reporter");
+        }
         /* L1 dog rage: bots/spammers only */
         floatText(grok.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
           pick(["SIC 'EM", "MORE BOTS", "SPAM THEM", "GO GET HIM", "BARK BARK"]),
@@ -9812,6 +9873,20 @@ function update(dt) {
 
   }
   if (speedBoost > 0) speedBoost = Math.max(0, speedBoost - dt);
+  if (botFreezeT > 0) {
+    const prev = botFreezeT;
+    botFreezeT = Math.max(0, botFreezeT - dt);
+    /* pulse freeze aura occasionally */
+    if (Math.floor(prev) !== Math.floor(botFreezeT) && botFreezeT > 0) {
+      try {
+        showMsg("⏱ FREEZE " + Math.ceil(botFreezeT) + "s");
+      } catch (_) {}
+    }
+    if (prev > 0 && botFreezeT <= 0) {
+      showMsg("⏱ TIME'S UP — BOTS RESUME");
+      try { beep(220, 0.15, "sawtooth", 0.08); } catch (_) {}
+    }
+  }
   /* jump */
   if ((keys.Space || keys.KeyJ) && onGround) {
     pigVy = 9.2; onGround = false; squash = 0.8; /* clears ~2.3u — hop short desks */
@@ -9904,10 +9979,10 @@ function update(dt) {
       }
     } else {
       pu.mesh.rotation.y += dt * (pu.kind === "pill" ? 2.2 : 3);
-      const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "sleepbag") ? 0.55 : 0.4;
+      const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "clock" || pu.kind === "sleepbag") ? 0.55 : 0.4;
       pu.mesh.position.y = bob + Math.sin(pu.t * 3) * 0.12;
     }
-    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "sleepbag" || pu.kind === "flamethrower") ? 1.9 : 1.3;
+    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "clock" || pu.kind === "sleepbag" || pu.kind === "flamethrower") ? 1.9 : 1.3;
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "flamethrower") {
         flameUnlocked = true;
@@ -9954,6 +10029,24 @@ function update(dt) {
         floatText(pu.mesh.position.clone(), "FUEL +200", { size: 42, color: "#ff6a00", strokeW: 7 }, 1.1);
         SFX.pickup();
         try { SFX.purge(); } catch (_) {}
+        updateHud();
+      } else if (pu.kind === "clock") {
+        botFreezeT = Math.max(botFreezeT, 30);
+        floatText(pu.mesh.position.clone(), "⏱ BOTS FROZEN 30s", {
+          size: 44, color: "#5ad1ff", strokeW: 8
+        }, 1.4);
+        showMsg("⏱ TIME CLOCK — BOTS FROZEN · NO SPAWNS 30s");
+        SFX.pickup();
+        try { beep(660, 0.1, "square", 0.1); setTimeout(() => beep(990, 0.12, "square", 0.09), 80); } catch (_) {}
+        try { shockRing(pig.position.clone(), 0x5ad1ff, 2.2); } catch (_) {}
+        /* cyan freeze burst on every combat enemy */
+        for (const e of enemies) {
+          if (e.type === "bot" || e.type === "spammer" || e.type === "reporter") {
+            try {
+              burst(e.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0x5ad1ff, 8, 3);
+            } catch (_) {}
+          }
+        }
         updateHud();
       } else if (pu.kind === "sleepbag") {
         /* sleeping bags removed — treat as fuel */
@@ -10145,6 +10238,17 @@ function update(dt) {
     }
     if (e.type === "xuser" || e.type === "vc") {
       /* lounge guests + VC intruders handled in updateSocialLounge */
+      continue;
+    }
+    /* TIME CLOCK: freeze combat bots in place (no move / shoot / stab) */
+    if (botFreezeT > 0 && (e.type === "bot" || e.type === "spammer" || e.type === "reporter")) {
+      e.mesh.position.y = Math.sin(t * 6 + (e.walk || 0)) * 0.03;
+      e.mesh.rotation.z = Math.sin(t * 4) * 0.04;
+      if (Math.random() < 0.04) {
+        try {
+          burst(e.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0)), 0x5ad1ff, 1, 1, 8);
+        } catch (_) {}
+      }
       continue;
     }
     const toP = pig.position.clone().sub(e.mesh.position);
@@ -10339,6 +10443,9 @@ function update(dt) {
   objectPhraseCd = Math.max(0, objectPhraseCd - dt);
   if (socialActive) {
     spawnQueue = 0;
+  } else if (botFreezeT > 0) {
+    /* TIME CLOCK active — no new bots / spammers / reporters */
+    spawnT = Math.max(spawnT, 0.4);
   } else if (spawnQueue > 0) {
     spawnT -= dt;
     if (spawnT <= 0) {
