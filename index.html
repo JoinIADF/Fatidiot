@@ -3084,27 +3084,29 @@ function buildLobbyDecor() {
   }
 
   /* —— ROCKET HISTORY GALLERY —— framed illustrations + plaques —— */
+  /* Chronological: earliest → most recent (debut year, then lineage).
+     Wall layout places index 0 at the SOUTH (entry) so walking in reads early→late. */
   const ROCKET_HISTORY = [
-    { id: "falcon1", name: "Falcon 1", years: "2006 – 2009",
+    { id: "falcon1", name: "Falcon 1", years: "2006 – 2009", debut: 2006, order: 1,
       blurb: "The first SpaceXAI orbital attempt vehicle. Four flights taught hard lessons; flight 4 finally reached orbit and proved private launch was possible." },
-    { id: "falcon9", name: "Falcon 9", years: "2010 – present",
-      blurb: "Workhorse two-stage launcher. First stage returns to droneships and landing zones — the backbone of cadence, rideshares, and Starlink deployment." },
-    { id: "dragon", name: "Dragon", years: "2010 – present",
+    { id: "falcon9", name: "Falcon 9", years: "2010 – present", debut: 2010, order: 2,
+      blurb: "Workhorse two-stage launcher. First stage returns to droneships and landing zones — the backbone of cadence, rideshares, and Starlink deployment. Most prolific flight vehicle." },
+    { id: "dragon", name: "Dragon", years: "2010 – present", debut: 2010, order: 3,
       blurb: "Cargo and crew capsule. Delivered to the ISS under NASA CRS/CCtCap, then human-rated as Crew Dragon — the first commercial craft to fly astronauts." },
-    { id: "grasshopper", name: "Grasshopper", years: "2012 – 2013",
+    { id: "grasshopper", name: "Grasshopper", years: "2012 – 2013", debut: 2012, order: 4,
       blurb: "Vertical-takeoff, vertical-landing testbed. Short hops at McGregor proved propulsive landing was more than a slide deck." },
-    { id: "falconheavy", name: "Falcon Heavy", years: "2018 – present",
-      blurb: "Three Falcon 9 cores strapped together. Debut lofted a roadster toward Mars — still the most powerful operational orbital booster flying regularly." },
-    { id: "starship", name: "Starship", years: "2019 – present",
-      blurb: "Fully reusable stainless upper stage for Earth orbit, the Moon, and Mars. Paired with Super Heavy for orbital attempts from Starbase." },
-    { id: "superheavy", name: "Super Heavy", years: "2023 – present",
-      blurb: "The booster beneath Starship. Dozens of Raptors, catch attempts at the tower, and the path to rapid full reuse." },
-    { id: "raptor", name: "Raptor Engine", years: "2016 – present",
+    { id: "raptor", name: "Raptor Engine", years: "2016 – present", debut: 2016, order: 5,
       blurb: "Full-flow staged combustion methane/LOX engine. The high-thrust heart of Starship and Super Heavy — refined across Raptor 1, 2, and 3." },
-    { id: "starlink", name: "Starlink Stack", years: "2019 – present",
-      blurb: "Not a launcher — a mission profile. Dense Falcon 9 deployments of broadband sats that fund the next generation of vehicles." },
-    { id: "its", name: "ITS / BFR Concept", years: "2016 – 2018",
+    { id: "its", name: "ITS / BFR Concept", years: "2016 – 2018", debut: 2016, order: 6,
       blurb: "Interplanetary Transport System and Big Falcon Rocket concept art that evolved into today's Starship architecture." },
+    { id: "falconheavy", name: "Falcon Heavy", years: "2018 – present", debut: 2018, order: 7,
+      blurb: "Three Falcon 9 cores strapped together. Debut lofted a roadster toward Mars — still the most powerful operational orbital booster flying regularly." },
+    { id: "starlink", name: "Starlink Stack", years: "2019 – present", debut: 2019, order: 8,
+      blurb: "Not a launcher — a mission profile. Dense Falcon 9 deployments of broadband sats that fund the next generation of vehicles." },
+    { id: "starship", name: "Starship", years: "2019 – present", debut: 2019, order: 9,
+      blurb: "Fully reusable stainless upper stage for Earth orbit, the Moon, and Mars. Paired with Super Heavy for orbital attempts from Starbase." },
+    { id: "superheavy", name: "Super Heavy", years: "2023 – present", debut: 2023, order: 10,
+      blurb: "The booster beneath Starship. Dozens of Raptors, catch attempts at the tower, and the path to rapid full reuse — the current frontier." },
   ];
 
   function paintRocketPortrait(kind, ctx, w, h) {
@@ -3193,14 +3195,22 @@ function buildLobbyDecor() {
   }
 
   rocketPlaques.length = 0;
-  const exhibits = ROCKET_HISTORY;
+  /* sort early → recent so wall order stays correct even if array is edited */
+  const exhibits = ROCKET_HISTORY.slice().sort((a, b) => {
+    const da = a.debut != null ? a.debut : 9999;
+    const db = b.debut != null ? b.debut : 9999;
+    if (da !== db) return da - db;
+    return (a.order || 0) - (b.order || 0);
+  });
   const texLoader = new THREE.TextureLoader();
-  /* ALL heritage photos on the LEFT wall when entering from the lot (west / -X) */
+  /* ALL heritage photos on the LEFT wall (west / -X).
+     Index 0 (earliest) near SOUTH entry; latest deeper north — walk in = timeline forward */
   const count = exhibits.length;
   exhibits.forEach((rk, i) => {
-    const z0 = -FLOOR_D / 2 + 6;
-    const z1 = FLOOR_D / 2 - 8;
-    const z = z0 + (count <= 1 ? 0 : (i / (count - 1)) * (z1 - z0));
+    const z0 = -FLOOR_D / 2 + 6; /* north / deeper */
+    const z1 = FLOOR_D / 2 - 8;  /* south / entrance from lot */
+    const z = count <= 1 ? (z0 + z1) / 2
+      : z1 - (i / (count - 1)) * (z1 - z0); /* early at entry, recent deeper */
     const wallX = -FLOOR_W / 2 + 0.08;
     const face = 1; /* face into room from west wall */
     const ry = Math.PI / 2;
