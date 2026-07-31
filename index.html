@@ -6237,8 +6237,8 @@ function startArcadeGame(which) {
   showMsg((A.name) + " — " + (which === 0 ? "steer & shoot" : "whack spam") + " · Esc quits");
   try {
     setMiniTouch(true, which === 0
-      ? (isMobile() ? "DRAG TO STEER · TAP TO SHOOT" : "MOVE MOUSE · CLICK SHOOT · ESC")
-      : (isMobile() ? "DRAG MALLET · TAP TO WHACK" : "MOVE MOUSE · CLICK WHACK · ESC"));
+      ? (isMobile() ? "DRAG / STICK TO STEER · TAP SHOOT" : "MOUSE or A/D to move · CLICK shoot · ESC")
+      : (isMobile() ? "DRAG TO AIM · TAP WHACK" : "MOVE MOUSE over spam · CLICK · ESC"));
   } catch (_) {}
   SFX.pickup();
 }
@@ -6331,7 +6331,18 @@ function updateArcadeGame(dt) {
   g2.fillStyle = "#1a2430"; g2.fillRect(0, H2 - 4, W2, 4);
   if (arcadeGame.which === 0) {
     arcadeGame.shootCd = Math.max(0, arcadeGame.shootCd - dt);
-    arcadeGame.ship += (arcadeGame.mx - arcadeGame.ship) * Math.min(1, dt * 10);
+    /* keyboard steer (A/D · arrows · stick) — works even if mouse aim is sticky */
+    const keyL = !!(keys.KeyA || keys.ArrowLeft);
+    const keyR = !!(keys.KeyD || keys.ArrowRight);
+    if (keyL || keyR) {
+      if (keyL) arcadeGame.mx = Math.max(0.04, arcadeGame.mx - 0.9 * dt);
+      if (keyR) arcadeGame.mx = Math.min(0.96, arcadeGame.mx + 0.9 * dt);
+    }
+    /* mobile stick also steers ship */
+    if (typeof stick !== "undefined" && stick && (Math.abs(stick.x) > 0.15)) {
+      arcadeGame.mx = Math.max(0.04, Math.min(0.96, arcadeGame.mx + stick.x * 1.4 * dt));
+    }
+    arcadeGame.ship += (arcadeGame.mx - arcadeGame.ship) * Math.min(1, dt * 12);
     const speed = 0.05 + (30 - arcadeGame.timeLeft) * 0.004;
     arcadeGame.invOff += arcadeGame.invDir * speed * dt;
     if (arcadeGame.invOff > 0.16 || arcadeGame.invOff < -0.16) {
@@ -6461,12 +6472,21 @@ function miniTap() {
     q.addEventListener("click", quit);
     q.addEventListener("touchstart", quit, { passive: false });
   }
-  let tid = null, moved = 0, st = 0;
+  let tid = null, moved = 0, st = 0, dragging = false;
+  const aimAt = (cx, cy) => {
+    if (arcadeGame.active && typeof aimArcadeFromClient === "function") aimArcadeFromClient(cx, cy);
+    else if (arcadeGame.active) {
+      const w = window.innerWidth || 1, h = window.innerHeight || 1;
+      arcadeGame.mx = Math.max(0.04, Math.min(0.96, cx / w));
+      arcadeGame.my = Math.max(0.04, Math.min(0.96, cy / h));
+    }
+  };
   mt.addEventListener("touchstart", (e) => {
     if (q && (e.target === q || q.contains(e.target))) return;
     const t0 = e.changedTouches[0];
     tid = t0.identifier; moved = 0; st = performance.now();
     mt._prev = { x: t0.clientX, y: t0.clientY };
+    aimAt(t0.clientX, t0.clientY);
     e.preventDefault();
   }, { passive: false });
   mt.addEventListener("touchmove", (e) => {
@@ -6478,11 +6498,11 @@ function miniTap() {
     mt._prev = { x: t0.clientX, y: t0.clientY };
     moved += Math.abs(dx) + Math.abs(dy);
     if (dartGame.active) {
-      dartGame.aimZ -= dx * 0.004;
-      dartGame.aimY -= dy * 0.004;
+      dartGame.aimZ -= dx * 0.005;
+      dartGame.aimY -= dy * 0.005;
     } else if (arcadeGame.active) {
-      arcadeGame.mx = Math.max(0.05, Math.min(0.95, arcadeGame.mx + dx * 0.004));
-      arcadeGame.my = Math.max(0.05, Math.min(0.95, arcadeGame.my + dy * 0.004));
+      /* absolute + delta — snappy on phones */
+      aimAt(t0.clientX, t0.clientY);
     }
     e.preventDefault();
   }, { passive: false });
@@ -6494,11 +6514,23 @@ function miniTap() {
     if (moved < 22 && performance.now() - st < 500) miniTap();
     e.preventDefault();
   }, { passive: false });
-  /* desktop click on overlay also acts */
+  /* desktop: move mouse over overlay to aim, click to act */
+  mt.addEventListener("mousemove", (e) => {
+    if (arcadeGame.active) aimAt(e.clientX, e.clientY);
+    else if (dartGame.active) {
+      dartGame.aimZ -= e.movementX * 0.0024;
+      dartGame.aimY -= e.movementY * 0.0024;
+    }
+  });
   mt.addEventListener("mousedown", (e) => {
     if (q && (e.target === q || q.contains(e.target))) return;
-    if (e.button === 0) miniTap();
+    if (e.button !== 0) return;
+    dragging = true;
+    if (arcadeGame.active) aimAt(e.clientX, e.clientY);
+    miniTap();
+    e.preventDefault();
   });
+  window.addEventListener("mouseup", () => { dragging = false; });
 })();
 
 const REPORTER_STYLES = ["male_blazer", "female_blazer", "male_field", "female_field"];
@@ -7003,19 +7035,36 @@ addEventListener("keyup", e => {
   if (e.code === "KeyF") flameFiring = false;
 });
 
+function aimArcadeFromClient(clientX, clientY) {
+  /* map pointer to 0..1 game pad (center of screen is playfield) */
+  const w = window.innerWidth || 1, h = window.innerHeight || 1;
+  /* use a centered "cabinet screen" region ~70% of viewport for comfort */
+  const padX = w * 0.15, padY = h * 0.18;
+  const iw = Math.max(1, w - padX * 2), ih = Math.max(1, h - padY * 2);
+  let mx = (clientX - padX) / iw;
+  let my = (clientY - padY) / ih;
+  arcadeGame.mx = Math.max(0.04, Math.min(0.96, mx));
+  arcadeGame.my = Math.max(0.04, Math.min(0.96, my));
+}
 document.addEventListener("mousemove", e => {
-  if (document.pointerLockElement !== renderer.domElement) return;
+  /* mini-games work WITHOUT pointer lock (we exit lock on start) */
   if (dartGame.active) {
-    dartGame.aimZ -= e.movementX * 0.0016;
-    dartGame.aimY -= e.movementY * 0.0016;
+    if (document.pointerLockElement === renderer.domElement) {
+      dartGame.aimZ -= e.movementX * 0.0016;
+      dartGame.aimY -= e.movementY * 0.0016;
+    } else {
+      dartGame.aimZ -= e.movementX * 0.0022;
+      dartGame.aimY -= e.movementY * 0.0022;
+    }
     return;
   }
   if (arcadeGame.active) {
-    arcadeGame.mx = Math.max(0.05, Math.min(0.95, arcadeGame.mx + e.movementX * 0.0035));
-    arcadeGame.my = Math.max(0.08, Math.min(0.92, arcadeGame.my + e.movementY * 0.0035));
+    /* absolute aim = reliable for whack + invaders steer */
+    aimArcadeFromClient(e.clientX, e.clientY);
     return;
   }
-  if (strikerGame.active) return; /* camera owned by striker */
+  if (strikerGame.active) return;
+  if (document.pointerLockElement !== renderer.domElement) return;
   yaw -= e.movementX * 0.0026;
   pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
 });
