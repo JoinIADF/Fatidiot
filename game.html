@@ -7568,12 +7568,23 @@ function setWallQuota(n) {
   wallTimerDirty = true;
   updateHud();
 }
+function postBossGrindActive() {
+  /* after BOTZILLA dies, counter must keep ticking even while rocket 1 is climbing */
+  return !!(typeof marsState !== "undefined" && marsState &&
+    (marsState.phase === "grind" || marsState.phase === "board"));
+}
 function tickWallTimer(amount = 1) {
-  if (socialActive || mode !== "play" || portalReady) return;
-  /* allow countdown during brief levelUp flash; only hard-block portalReady */
+  if (socialActive || mode !== "play") return;
+  const grinding = postBossGrindActive();
+  /* portal freezes office flow — never freeze the post-boss seat grind */
+  if (portalReady && !grinding) return;
   if (levelUpT > 0 && !starbaseActive) return;
-  if (rocketLift && rocketLift.phase === "lift") return;
-  if (wallQuota <= 0 && !(starbaseActive && typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead)) return;
+  /* rocket 1 lift used to freeze ALL kills forever; allow grind phase through */
+  if (rocketLift && rocketLift.phase === "lift" && !grinding) return;
+  if (wallQuota <= 0) {
+    /* only process 0-quota when first climax can still fire BOTZILLA */
+    if (!(starbaseActive && typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead)) return;
+  }
   const before = wallQuota;
   wallQuota = Math.max(0, wallQuota - amount);
   wallTimerDirty = true;
@@ -7586,7 +7597,12 @@ function onKillGoalReached() {
   if (mode !== "play" || socialActive) return;
   if (starbaseActive) {
     /* post-boss grind complete → your seat on the second rocket is earned */
-    if (marsState && marsState.phase === "grind") { enableBoarding(); return; }
+    if (marsState && marsState.phase === "grind") {
+      enableBoarding();
+      return;
+    }
+    /* already boarding / escaping — ignore */
+    if (marsState && (marsState.phase === "board" || marsState.phase === "cutscene" || marsState.phase === "done")) return;
     /* climax: BOTZILLA invades — the rocket does NOT launch until it's dead */
     try {
       if (typeof bossFight !== "undefined" && !bossFight.active && !bossFight.dead) {
@@ -7742,10 +7758,20 @@ function updateMarsEscape(dt) {
       if (bossTruck.position.x < -FLOOR_W / 2 - 30) {
         bossTruck.visible = false;
         M.phase = "grind"; M.t = 0;
+        portalReady = false;
+        try { if (portalMesh) { scene.remove(portalMesh); portalMesh = null; } } catch (_) {}
         setWallQuota(100);
+        wallTimerDirty = true;
+        updateHud();
         showMsg("HE LEFT YOU THE MESS. 100 KILLS BUYS YOUR SEAT OUT.");
       }
-    } else { M.phase = "grind"; setWallQuota(100); }
+    } else {
+      M.phase = "grind"; M.t = 0;
+      portalReady = false;
+      setWallQuota(100);
+      wallTimerDirty = true;
+      updateHud();
+    }
   } else if (M.phase === "board") {
     if (M.tag) M.tag.position.y = M.rocket.position.y + 12 + Math.sin(t * 2) * 0.6;
     /* jump in: airborne and close to the rocket */
@@ -9083,9 +9109,9 @@ function killEnemy(e, silent = false) {
   /* wall timer + BOTZILLA body-count (Starbase) */
   if (!silent && (e.type === "bot" || e.type === "spammer" || e.type === "reporter")) {
     tickWallTimer(1);
-    if (starbaseActive && typeof bossFight !== "undefined") {
+    if (starbaseActive && typeof bossFight !== "undefined" && !bossFight.dead) {
+      /* only track pre-BOTZILLA body count */
       bossFight.kills = (bossFight.kills || 0) + 1;
-      /* keep kill body-count aligned with HUD counter */
       const earned = Math.max(0, (wallQuotaMax | 0) - (wallQuota | 0));
       if (earned > bossFight.kills) bossFight.kills = earned;
     }
