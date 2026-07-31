@@ -6764,6 +6764,11 @@ const REPORTER_PHRASES = [
   "How many interns built this heat shield?",
   "Is the pig a contractor or an employee?",
   "Can Grok fact-check the launch?",
+  "Any comment on the unpaid overtime?",
+  "Is this launch sponsored by big oil?",
+  "Why is the CEO leaving you the mess?",
+  "Did Mars HR approve this?",
+  "Sources say the pig has a flamethrower?",
 ];
 
 function buildMediaProp(kind) {
@@ -6830,6 +6835,35 @@ function buildKnife() {
 
   return k;
 }
+function makePressShirtMat(field) {
+  /* PRESS is painted into the shirt texture — not a floating font layer */
+  const base = field ? "#fff2a8" : "#fff6c8";
+  const tex = canvasTex(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, w, h);
+    /* fabric noise */
+    for (let i = 0; i < 120; i++) {
+      ctx.fillStyle = "rgba(0,0,0," + (0.02 + Math.random() * 0.04) + ")";
+      ctx.fillRect(Math.random() * w, Math.random() * h, 2, 2);
+    }
+    /* dark chest panel */
+    ctx.fillStyle = "#12151a";
+    const pw = w * 0.72, ph = h * 0.28;
+    const px = (w - pw) / 2, py = h * 0.36;
+    ctx.fillRect(px, py, pw, ph);
+    /* gold PRESS word mark baked into fabric */
+    ctx.fillStyle = "#ffd200";
+    ctx.font = "bold 54px Arial Black, Impact, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PRESS", w / 2, py + ph / 2 + 2);
+    /* thin gold underline */
+    ctx.fillStyle = "#ffd200";
+    ctx.fillRect(w * 0.28, py + ph - 8, w * 0.44, 3);
+  });
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshLambertMaterial({ map: tex });
+}
 function buildReporter(style) {
   const g = new THREE.Group();
   const female = style.startsWith("female");
@@ -6838,49 +6872,21 @@ function buildReporter(style) {
   const hair = female
     ? pick([0x2a1a10, 0xc4a060, 0x1a1a1a, 0x8a3030])
     : pick([0x1a1a1a, 0x3a2a1c, 0x4a4a4a, 0xc8b060]);
-  /* bright PRESS media vest / shirt so they read as reporters instantly */
-  const vest = field ? 0xfff2a8 : 0xfff6c8; /* high-vis press yellow */
   const vestDark = 0x1a1e28;
   /* legs */
   g.add(box(0.28, 0.7, 0.28, 0x22262c, -0.16, 0.35, 0));
   g.add(box(0.28, 0.7, 0.28, 0x22262c, 0.16, 0.35, 0));
-  /* torso — solid PRESS shirt */
-  g.add(box(0.72, 0.9, 0.42, vest, 0, 1.18, 0));
-  /* dark shoulder panels */
+  /* torso — shirt mesh uses baked PRESS texture on the body itself */
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.42), makePressShirtMat(field));
+  torso.position.set(0, 1.18, 0);
+  g.add(torso);
+  /* dark shoulder panels (sleeves start) */
   g.add(box(0.74, 0.18, 0.44, vestDark, 0, 1.55, 0));
-  /* PRESS word on chest (canvas plane) */
-  const pressTex = canvasTex(256, 96, (ctx, w, h) => {
-    ctx.fillStyle = "#fff6c8";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#111318";
-    ctx.fillRect(8, 8, w - 16, h - 16);
-    ctx.fillStyle = "#ffd200";
-    ctx.font = "bold 52px Arial Black, Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("PRESS", w / 2, h / 2 + 2);
-  });
-  const pressShirt = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.62, 0.28),
-    new THREE.MeshBasicMaterial({ map: pressTex, transparent: true })
-  );
-  pressShirt.position.set(0, 1.22, 0.23);
-  g.add(pressShirt);
-  /* back PRESS too */
-  const pressBack = pressShirt.clone();
-  pressBack.position.set(0, 1.22, -0.23);
-  pressBack.rotation.y = Math.PI;
-  g.add(pressBack);
-  /* lanyard + credential badge */
+  /* lanyard + credential badge (geometry, no floating text) */
   g.add(box(0.04, 0.35, 0.02, 0x1d9bf0, 0.12, 1.45, 0.22));
   g.add(box(0.04, 0.35, 0.02, 0x1d9bf0, -0.12, 1.45, 0.22));
   g.add(box(0.22, 0.16, 0.04, 0xffffff, 0, 1.22, 0.26));
-  g.add(box(0.2, 0.06, 0.02, 0xff2020, 0, 1.28, 0.28)); /* red MEDIA strip */
-  /* floating PRESS label over head for distant ID */
-  const pressTag = textSprite("PRESS", { size: 42, color: "#ffd200", strokeW: 8, maxWidth: 0 });
-  pressTag.position.set(0, 2.55, 0);
-  pressTag.scale.multiplyScalar(0.55);
-  g.add(pressTag);
+  g.add(box(0.2, 0.05, 0.02, 0xff2020, 0, 1.28, 0.28)); /* red MEDIA stripe */
   /* head */
   g.add(box(0.42, 0.45, 0.42, skin, 0, 1.85, 0));
   if (female) {
@@ -6890,13 +6896,15 @@ function buildReporter(style) {
   } else {
     g.add(box(0.44, 0.18, 0.44, hair, 0, 2.12, 0));
   }
-  /* PRESS baseball cap */
+  /* dark baseball cap with painted PRESS brim strip (geometry + material, not sprite) */
   g.add(box(0.48, 0.12, 0.48, 0x1a1e28, 0, 2.18, 0));
-  g.add(box(0.22, 0.04, 0.28, 0x1a1e28, 0, 2.12, 0.28)); /* brim */
-  const capPress = textSprite("PRESS", { size: 28, color: "#ffd200", strokeW: 5, maxWidth: 0 });
-  capPress.position.set(0, 2.28, 0.2);
-  capPress.scale.multiplyScalar(0.28);
-  g.add(capPress);
+  g.add(box(0.22, 0.04, 0.28, 0x1a1e28, 0, 2.12, 0.28));
+  const capBand = new THREE.Mesh(
+    new THREE.BoxGeometry(0.36, 0.06, 0.02),
+    new THREE.MeshBasicMaterial({ color: 0xffd200 })
+  );
+  capBand.position.set(0, 2.2, 0.25);
+  g.add(capBand);
 
   /* media prop type: field prefers camera; others mic or notepad */
   const mediaKind = field ? pick(["camera", "camera", "mic"]) : pick(["mic", "notepad", "notepad", "camera"]);
@@ -6949,8 +6957,19 @@ function spawnEnemy(type) {
       mesh: buildReporter(style),
       shootT: 999, r: 0.75, zig: rand(0, 6.28),
       stabT: 0, stabAnim: 0,
-      /* no phrase tags / no thrown questions — knife only */
     };
+    /* floating question / phrase above head (not "PRESS") */
+    const phrase = pick(REPORTER_PHRASES);
+    const repTag = textSprite(phrase, {
+      size: 40, color: "#ffd200", strokeW: 7, maxWidth: 420
+    });
+    repTag.position.set(0, 2.95, 0);
+    repTag.scale.multiplyScalar(0.72);
+    e.mesh.add(repTag);
+    e.tag = repTag;
+    e.tagPhrase = phrase;
+    e.tagT = rand(2.8, 5.0);
+    e.tagKind = "reporter";
   } else if (type === "spammer") {
     e = { type, hp: 2, speed: rand(1.9, 3.6) + wave * 0.28, mesh: buildSpammer(), shootT: rand(1.6, 3.8), r: 0.9, zig: rand(0, 6.28) };
   } else {
@@ -9928,7 +9947,22 @@ function update(dt) {
         }, 0.65);
         try { SFX.hurt(); beep(180, 0.08, "sawtooth", 0.08); } catch (_) {}
       }
-      /* reporters do NOT throw phrases — silent chase + knife only */
+      /* rotate stationary phrases above head (no thrown projectiles) */
+      e.tagT = (e.tagT || 0) - dt;
+      if (e.tagT <= 0) {
+        e.tagT = rand(2.8, 5.2);
+        const phrase = pick(REPORTER_PHRASES);
+        e.tagPhrase = phrase;
+        if (e.tag) {
+          try { e.mesh.remove(e.tag); scene.remove(e.tag); } catch (_) {}
+        }
+        const repTag = textSprite(phrase, { size: 40, color: "#ffd200", strokeW: 7, maxWidth: 420 });
+        repTag.position.set(0, 2.95, 0);
+        repTag.scale.multiplyScalar(0.72);
+        e.mesh.add(repTag);
+        e.tag = repTag;
+      }
+      if (e.tag) e.tag.visible = true;
     } else if (e.type === "spammer") {
       e.zig += dt * 3;
       const zig = new THREE.Vector3(-toP.z, 0, toP.x).multiplyScalar(Math.sin(e.zig) * 0.8);
