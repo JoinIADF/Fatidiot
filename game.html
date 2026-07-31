@@ -1871,21 +1871,33 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
   g.position.set(x, 0, z); g.rotation.y = ry;
   scene.add(g);
   blockArea(x, z, 1.0, 0.8);
+  let kind = "rx";
+  const lab = label || "";
+  if (/sushi/i.test(lab)) kind = "sushi";
+  else if (/fuel|flame|rocket/i.test(lab)) kind = "fuel";
+  else if (/rx|prescrip|pill/i.test(lab)) kind = "rx";
+  else if (/sushi/i.test(lab)) kind = "sushi";
   const vm = {
-    mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label, zone,
-    kind: /sushi/i.test(label || "") ? "sushi" : (/rx|prescrip|pill/i.test(label || "") ? "rx" : "rx"),
+    mesh: g, hp: 2, maxHp: 2, x, z, ry, dead: false, label, zone, kind,
   };
   if (zone === "starbase") g.visible = false; /* office floor is default */
-  if (zone === "starbase" && /rx/i.test(label || "")) {
-    const tag = textSprite("RX · PRESCRIPTIONS", { size: 32, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
-    tag.scale.multiplyScalar(0.55);
+  if (/rx/i.test(lab)) {
+    const tag = textSprite("RX · SPEED", { size: 30, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.5);
     tag.position.set(0, 3.35, 0);
     tag.userData.maxDist = 55;
     g.add(tag);
   }
-  if (zone === "starbase" && /sushi/i.test(label || "")) {
-    const tag = textSprite("SUSHI · HEAL", { size: 32, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
-    tag.scale.multiplyScalar(0.55);
+  if (/sushi/i.test(lab)) {
+    const tag = textSprite("SUSHI · FULL HEAL", { size: 28, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.5);
+    tag.position.set(0, 3.35, 0);
+    tag.userData.maxDist = 55;
+    g.add(tag);
+  }
+  if (/fuel|flame/i.test(lab)) {
+    const tag = textSprite("FUEL · FLAMETHROWER", { size: 26, color: "#ff6a00", strokeW: 6, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.5);
     tag.position.set(0, 3.35, 0);
     tag.userData.maxDist = 55;
     g.add(tag);
@@ -1894,40 +1906,35 @@ function mkVending(x, z, ry, bodyCol, glow, label, zone = "office") {
   g.userData.vending = vm;
   return g;
 }
-/* exactly 10 machines: RX / SUSHI / SODA / COFFEE + one SLEEP BAG */
-/* 10 vending machines scattered along walls (not center of room) */
+/* Office floor machines: RX / SUSHI / FUEL / SODA / COFFEE — no sleeping bags */
 /* east wall */
 mkVending(FLOOR_W / 2 - 1.5, -22, -Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
 mkVending(FLOOR_W / 2 - 1.5, -8, -Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
 mkVending(FLOOR_W / 2 - 1.5, 10, -Math.PI / 2, 0xb06a28, "#ffe4cf", "RX");
-mkVending(FLOOR_W / 2 - 1.5, 24, -Math.PI / 2, 0x28a0b0, "#d8f8ff", "COFFEE");
+mkVending(FLOOR_W / 2 - 1.5, 24, -Math.PI / 2, 0xff6a00, "#ffe0c0", "FUEL");
 /* west wall */
 mkVending(-FLOOR_W / 2 + 1.5, -20, Math.PI / 2, 0xb02850, "#ffd8e8", "RX");
 mkVending(-FLOOR_W / 2 + 1.5, -2, Math.PI / 2, 0x1a8a5a, "#d8ffe8", "SUSHI");
-mkVending(-FLOOR_W / 2 + 1.5, 18, Math.PI / 2, 0xb02828, "#ffdddd", "SODA");
-/* north wall (away from boss office center) */
+mkVending(-FLOOR_W / 2 + 1.5, 18, Math.PI / 2, 0xff6a00, "#ffe0c0", "FUEL");
+/* north wall */
 mkVending(-28, -FLOOR_D / 2 + 1.6, 0, 0x2858b0, "#cfe4ff", "RX");
 mkVending(28, -FLOOR_D / 2 + 1.6, 0, 0xb06a28, "#ffe4cf", "RX");
 /* south wall */
-mkVending(-22, FLOOR_D / 2 - 1.6, Math.PI, 0xb02828, "#ffdddd", "SNACKS");
+mkVending(-22, FLOOR_D / 2 - 1.6, Math.PI, 0xb02828, "#ffdddd", "SODA");
 
-/* Starbase lobby vendings — RX by reception plaza (screenshot area) + entry + break room */
-/* center plaza, south of reception desk — faces players coming from the lot */
+/* Starbase lobby + lot */
 mkVending(8, 10.5, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
-/* west of reception — second RX so you can't miss it */
 mkVending(-8, 10.5, Math.PI, 0xc45a20, "#ffe8d0", "RX", "starbase");
-/* just inside south entry (from outdoor lot) */
 mkVending(12, FLOOR_D / 2 - 6, Math.PI, 0xb06a28, "#ffe4cf", "RX", "starbase");
-/* break-room corner (near BREAK ROOM sign) */
 mkVending(-42, -28, Math.PI / 2, 0xb06a28, "#ffe4cf", "RX", "starbase");
-/* extras along N/S free space (not on E/W photo gallery walls) */
 mkVending(16, -16, -0.4, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
-/* second sushi inside lobby (east plaza) */
 mkVending(-20, 8, 0.5, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
-mkVending(-16, 18, 0.3, 0x28a0b0, "#d8f8ff", "COFFEE", "starbase");
-mkVending(0, -24, 0, 0xb02828, "#ffdddd", "SODA", "starbase");
-/* parking lot sushi next to boss Cybertruck (south of HQ wall) */
-mkVending(6, FLOOR_D / 2 + 52, Math.PI, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
+/* flamethrower fuel cans (replaces sleep-bag machines) */
+mkVending(-16, 18, 0.3, 0xff6a00, "#ffe0c0", "FUEL", "starbase");
+mkVending(0, -24, 0, 0xff6a00, "#ffe0c0", "FUEL", "starbase");
+/* parking lot: SUSHI by boss Cybertruck + FUEL near pad */
+mkVending(8, FLOOR_D / 2 + 62, Math.PI, 0x1a8a5a, "#d8ffe8", "SUSHI", "starbase");
+mkVending(-10, FLOOR_D / 2 + 58, -0.4, 0xff6a00, "#ffe0c0", "FUEL", "starbase");
 
 /* break room (−x, −z corner): tables, chairs, counter, microwave, fridge, sign */
 {
@@ -7871,7 +7878,7 @@ function mkSushi() {
   fish.position.y = 0.24; g.add(fish);
   g.add(box(0.08, 0.2, 0.26, 0x1a2a1a, 0, 0.18, 0));
   g.add(sph(0.05, 0x6aff4a, 0.22, 0.08, 0.18));
-  const tag = textSprite("SUSHI", { size: 40, color: "#7CFFB0", strokeW: 7 });
+  const tag = textSprite("FULL HEAL", { size: 36, color: "#7CFFB0", strokeW: 7 });
   tag.scale.multiplyScalar(0.4);
   tag.position.set(0, 0.85, 0);
   g.add(tag);
@@ -7879,44 +7886,39 @@ function mkSushi() {
   return g;
 }
 function mkSleepingBag() {
+  /* legacy no-op visual — sleeping bags removed */
+  return mkFuelCan();
+}
+function mkFuelCan() {
   const g = new THREE.Group();
-  /* rolled sleeping bag */
-  const roll = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.28, 0.28, 0.85, 14),
-    new THREE.MeshLambertMaterial({ color: 0x3a6a4a })
-  );
-  roll.rotation.z = Math.PI / 2;
-  roll.position.y = 0.28;
-  g.add(roll);
-  /* straps */
-  g.add(box(0.9, 0.06, 0.08, 0x2a2a2a, 0, 0.28, 0.22));
-  g.add(box(0.9, 0.06, 0.08, 0x2a2a2a, 0, 0.28, -0.22));
-  /* orange stuff-sack ends */
-  g.add(cyl(0.3, 0.3, 0.1, 0xff8c2a, -0.42, 0.28, 0, 12));
-  g.add(cyl(0.3, 0.3, 0.1, 0xff8c2a, 0.42, 0.28, 0, 12));
-  g.children[g.children.length - 1].rotation.z = Math.PI / 2;
-  g.children[g.children.length - 2].rotation.z = Math.PI / 2;
-  const tag = textSprite("SLEEP", { size: 40, color: "#c9a0ff", strokeW: 7 });
+  /* jerry can body */
+  g.add(box(0.55, 0.7, 0.35, 0xff6a00, 0, 0.4, 0));
+  g.add(box(0.48, 0.12, 0.28, 0x1a1a1a, 0, 0.78, 0)); /* cap band */
+  g.add(cyl(0.08, 0.08, 0.18, 0x2a2a2a, 0.12, 0.92, 0, 8)); /* spout */
+  g.add(box(0.08, 0.22, 0.08, 0x333333, -0.18, 0.55, 0)); /* handle */
+  g.add(box(0.22, 0.08, 0.08, 0x333333, -0.12, 0.66, 0));
+  /* flame sticker */
+  const tag = textSprite("FUEL", { size: 40, color: "#ffd94a", strokeW: 7 });
   tag.scale.multiplyScalar(0.42);
-  tag.position.set(0, 0.85, 0);
+  tag.position.set(0, 1.05, 0);
   g.add(tag);
-  g.scale.setScalar(1.25);
+  g.scale.setScalar(1.2);
   return g;
 }
 function dropPill(vmOrX, zMaybe) {
-  /* dropPill(vm) — RX / SUSHI / SLEEP BAG */
+  /* dropPill(vm) — RX / SUSHI / FUEL */
   let x, z, ry = 0, kind = "pill";
   if (typeof vmOrX === "object" && vmOrX && vmOrX.x != null) {
     x = vmOrX.x; z = vmOrX.z; ry = vmOrX.ry || 0;
     if (vmOrX.kind === "sushi") kind = "sushi";
-    else if (vmOrX.kind === "sleepbag") kind = "sleepbag";
+    else if (vmOrX.kind === "fuel") kind = "fuel";
     else kind = "pill";
   } else {
     x = vmOrX; z = zMaybe; ry = 0;
   }
   const fx = Math.sin(ry), fz = Math.cos(ry);
   const g = kind === "sushi" ? mkSushi()
-    : kind === "sleepbag" ? mkSleepingBag()
+    : kind === "fuel" ? mkFuelCan()
     : mkRxBottle();
   /* spawn at pickup flap height, just in front of glass */
   const flapY = 0.55;
@@ -7944,8 +7946,8 @@ function dropPill(vmOrX, zMaybe) {
   if (kind === "sushi") {
     burst(start, 0x7CFFB0, 8, 3);
     SFX.pickup();
-  } else if (kind === "sleepbag") {
-    burst(start, 0xc9a0ff, 10, 4);
+  } else if (kind === "fuel") {
+    burst(start, 0xff6a00, 10, 4);
     SFX.pickup();
   } else {
     spitPills(start.clone().add(new THREE.Vector3(fx * 0.2, 0.1, fz * 0.2)), 8);
@@ -7971,30 +7973,17 @@ function hitVending(vm) {
     /* 2nd shot: dump goods */
     vm.dead = true;
     vendingsOpened++;
-    /*
-      Sleeping bag is random: after 4 machines are opened, the NEXT machine
-      you crack drops a sleep bag (no labeled SLEEP BAG machine).
-    */
-    const dropSleep = !sleepBagGranted && vendingsOpened > SLEEP_BAG_UNLOCK;
-    if (dropSleep) {
-      sleepBagGranted = true;
-      vm.kind = "sleepbag";
-      showMsg("SLEEP BAG!");
-    } else if (vendingsOpened === SLEEP_BAG_UNLOCK) {
-      showMsg("Something rattles in the machines…");
-      floatText(new THREE.Vector3(vm.x, 2.4, vm.z), "??? READY", { size: 36, color: "#c9a0ff", strokeW: 6 }, 1.2);
-    }
     SFX.boom();
     const isSushi = vm.kind === "sushi";
-    const isSleep = vm.kind === "sleepbag";
-    burst(new THREE.Vector3(vm.x, 1.5, vm.z), isSleep ? 0xc9a0ff : isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
-    if (!isSushi && !isSleep) spitPills(flap, 18);
-    const n = isSleep ? 1 : isSushi ? 3 : 4;
+    const isFuel = vm.kind === "fuel";
+    burst(new THREE.Vector3(vm.x, 1.5, vm.z), isFuel ? 0xff6a00 : isSushi ? 0x7CFFB0 : 0xffd200, 22, 8);
+    if (!isSushi && !isFuel) spitPills(flap, 18);
+    const n = isFuel ? 2 : isSushi ? 2 : 4;
     for (let i = 0; i < n; i++) setTimeout(() => dropPill(vm), i * 70);
     floatText(
       flap.clone().add(new THREE.Vector3(0, 1.2, 0)),
-      isSleep ? "SLEEP BAG!" : isSushi ? "SUSHI HEAL!" : "RX DROP!",
-      { size: 40, color: isSleep ? "#c9a0ff" : isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
+      isFuel ? "FLAME FUEL!" : isSushi ? "SUSHI FULL HEAL!" : "RX DROP!",
+      { size: 40, color: isFuel ? "#ff6a00" : isSushi ? "#7CFFB0" : "#ff4a7a", strokeW: 6 },
       1.1
     );
     score += 40; updateHud();
@@ -9362,10 +9351,10 @@ function update(dt) {
       }
     } else {
       pu.mesh.rotation.y += dt * (pu.kind === "pill" ? 2.2 : 3);
-      const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag") ? 0.55 : 0.4;
+      const bob = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "sleepbag") ? 0.55 : 0.4;
       pu.mesh.position.y = bob + Math.sin(pu.t * 3) * 0.12;
     }
-    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "sleepbag" || pu.kind === "flamethrower") ? 1.9 : 1.3;
+    const grabR = (pu.kind === "pill" || pu.kind === "sushi" || pu.kind === "fuel" || pu.kind === "sleepbag" || pu.kind === "flamethrower") ? 1.9 : 1.3;
     if (pu.mesh.position.distanceTo(pig.position) < grabR) {
       if (pu.kind === "flamethrower") {
         flameUnlocked = true;
@@ -9387,24 +9376,39 @@ function update(dt) {
         floatText(pu.mesh.position.clone(), "RX SPEED!", { size: 40, color: "#ff6ad5", strokeW: 6 }, 1.0);
         showMsg("PRESCRIPTION SPEED");
       } else if (pu.kind === "sushi") {
-        if (lives < 9) {
-          lives = Math.min(9, lives + 1);
-          floatText(pu.mesh.position.clone(), "+1 LIFE", { size: 42, color: "#7CFFB0", strokeW: 6 }, 1.1);
-          showMsg("SUSHI HEAL");
-        } else {
-          invuln = Math.max(invuln, 2.0);
-          floatText(pu.mesh.position.clone(), "FULL + SHIELD", { size: 36, color: "#7CFFB0", strokeW: 6 }, 1.0);
-          showMsg("SUSHI SHIELD");
-        }
+        /* full heal to max lives */
+        const before = lives;
+        lives = 9;
+        invuln = Math.max(invuln, 1.2);
+        floatText(pu.mesh.position.clone(), before < 9 ? "FULL HEAL!" : "FULL LIFE!", {
+          size: 44, color: "#7CFFB0", strokeW: 7
+        }, 1.15);
+        showMsg("🍣 SUSHI — LIFE FULL");
         SFX.pickup();
         SFX.pill();
         updateHud();
-      } else if (pu.kind === "sleepbag") {
+      } else if (pu.kind === "fuel") {
+        flameFuel = 200;
+        if (!flameUnlocked) {
+          flameUnlocked = true;
+          if (flameWpn) flameWpn.visible = weaponIdx === 2;
+          showMsg("🔥 FLAMETHROWER UNLOCKED + FUEL FULL");
+        } else {
+          showMsg("🔥 FLAME FUEL FULL");
+        }
+        const am = $("ammoV"); if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
+        applyWeaponHud();
+        floatText(pu.mesh.position.clone(), "FUEL +200", { size: 42, color: "#ff6a00", strokeW: 7 }, 1.1);
         SFX.pickup();
-        scene.remove(pu.mesh);
-        pickups.splice(i, 1);
-        triggerSleepRest();
-        continue;
+        try { SFX.purge(); } catch (_) {}
+        updateHud();
+      } else if (pu.kind === "sleepbag") {
+        /* sleeping bags removed — treat as fuel */
+        pu.kind = "fuel";
+        flameFuel = 200;
+        showMsg("🔥 FLAME FUEL FULL");
+        SFX.pickup();
+        updateHud();
       } else {
         const got = pu.amount || 2;
         ammo += got;
