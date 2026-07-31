@@ -3320,38 +3320,39 @@ function buildLobbyDecor() {
   });
 
 
-  /* —— WALL OF SHAME (east / right when entering) — abstract dossier art, no real likenesses —— */
+  /* —— WALL OF SHAME (east / right when entering) — abstract dossier art, no real likenesses ——
+     Each blurb: the attack narrative → how it backfired / the public rejected it. */
   const SHAME_WALL = [
     { id: "iger", name: "Bob Iger", years: "Feud since 2023",
-      verdict: "JOB ELIMINATED",
-      blurb: "Disney ad boycott era. Musk’s “go f*** yourself” exchange with Disney’s then-CEO entered lobby lore. Advertiser pullouts, counter-fire, and a very on-brand demand that Iger be fired. The Mouse that roared — then unsubscribed." },
+      verdict: "BOYCOTT BACKFIRED",
+      blurb: "THE SPIN: Pull Disney ads, starve X of oxygen, force Musk to beg. THE BACKFIRE: Musk’s “go f*** yourself” clip became free Super Bowl ads for free speech cosplay — and advertisers who fled quietly trickled back when the boycott looked like a boardroom tantrum. Public takeaway: the Mouse roared, the timeline shrugged, and “fire Iger” trended harder than “boycott X.” Narrative DOA." },
     { id: "lemon", name: "Don Lemon", years: "Feud since 2024",
-      verdict: "SHOW CANCELED",
-      blurb: "A combative X livestream interview that went sideways and killed Lemon’s short-lived X show deal. Both sides claimed the other was the problem. When the guest becomes the segment." },
+      verdict: "INTERVIEW ATE THE HOST",
+      blurb: "THE SPIN: Ambush livestream = gotcha TV, host as truth-teller, Musk as the meltdown. THE BACKFIRE: Clips of the host needling while the guest stayed colder went viral the wrong way. X canceled the show deal; the audience decided the interviewer was the segment. Public takeaway: you don’t land a hit piece when the chat is live-fact-checking you in 4K." },
     { id: "swisher", name: "Kara Swisher", years: "Feud since 2022",
-      verdict: "FRIENDSHIP TERMINATED",
-      blurb: "Once-friendly tech-press rapport flipped into open roasting: podcasts, posts, mutual insults. Classic Silicon Valley divorce arc — minus the lawyers, plus quote-tweets." },
+      verdict: "ACCESS JOURNALISM SELF-OWN",
+      blurb: "THE SPIN: Former-friendly tech whisperer exposes the “real” Musk for the dinner-party set. THE BACKFIRE: Years of cozy access made the sudden moral turn read as a brand pivot, not a revelation. Podcast dunks met quote-tweet autopsies; the room that once valued the invite started side-eyeing the inviter. Public takeaway: you can’t cash friendship chips and then claim pure objectivity — the timeline keeps the receipts." },
     { id: "kimmel", name: "Jimmy Kimmel", years: "Feud since 2023",
-      verdict: "RATIOED ON AIR",
-      blurb: "Late-night monologues vs. main-character energy on X. Reciprocal name-calling across TV and timeline. Monologue cold open, ratio for dessert." },
+      verdict: "MONOLOGUE RATIOED",
+      blurb: "THE SPIN: Late-night cold open owns the billionaire; studio laughs = public consensus. THE BACKFIRE: Same jokes hit different on X — monologues got clipped, ratioed, and remixed faster than the band could play out. TV ratings can’t veto a reply guy with a better punchline. Public takeaway: network applause is not a poll; the comment section filed a dissenting opinion in real time." },
     { id: "lorenz", name: "Taylor Lorenz", years: "Feud since 2022",
-      verdict: "FAKE NEWS EXPOSED",
-      blurb: "Critical internet-culture coverage met platform drama, temporary suspensions, and a firehose of online backlash. Journalism vs. Main Character Syndrome — both claimed the high ground." },
+      verdict: "MAIN CHARACTER DENIED",
+      blurb: "THE SPIN: Critical internet-culture reporting plus platform martyrdom = moral high ground. THE BACKFIRE: Suspension drama and pile-ons flipped the frame from “journalist under siege” to “influencer in the story.” Readers who wanted the beat got a brand war instead. Public takeaway: when the coverage is about you, the public stops buying the byline as neutral — and the narrative collapses under its own main-character energy." },
     { id: "zanny", name: "Zanny Minton Beddoes", years: "Feud since 2026",
-      verdict: "NARRATIVE FLIPPED",
-      blurb: "A tense 2026 Economist interview where Musk flipped media popularity critiques back onto the press. When the chart goes the other way mid-question." },
+      verdict: "CHART WENT THE OTHER WAY",
+      blurb: "THE SPIN: 2026 Economist interview frames Musk as unpopular outlier; press as adult in the room. THE BACKFIRE: He flipped the popularity question onto legacy media mid-sit-down — and the room felt it. Clips of the pivot outperformed the intended thesis. Public takeaway: if your narrative needs the guest to look small, don’t hand him the whiteboard. The spin failed live, on brand voice, with subtitles." },
     { id: "king", name: "Stephen King", years: "Feud since 2022",
-      verdict: "PLOT HOLE FOUND",
-      blurb: "Bestselling author vs. multiplanetary CEO: repeated public jabs about politics, influence, and platform power. Horror legend meets timeline horror." },
+      verdict: "HORROR LEGEND, WEAK SEQUEL",
+      blurb: "THE SPIN: Bestselling moral authority lectures the timeline; CEO is the villain of the novel. THE BACKFIRE: Political quote-tweets from a horror icon read like franchise filler — loud, familiar, zero new scares. Fans who loved the books didn’t need the author as cable-news extra. Public takeaway: prestige doesn’t auto-win the argument; the plot hole was “celebrity = consensus,” and the audience closed the book." },
     { id: "soros", name: "George Soros", years: "Feud since 2023",
-      verdict: "STRINGS EXPOSED",
-      blurb: "Public battle framed around Media Matters, NGO influence networks, and ad-market pressure on X. Musk has called Soros “anti-humanity” in heated posts. Ideological cage match, no second date." },
+      verdict: "INFLUENCE NARRATIVE EXPOSED",
+      blurb: "THE SPIN: NGO/Media Matters pressure + ad-market squeeze paints X as radioactive and Musk as isolated. THE BACKFIRE: The harder the off-platform campaign hit, the more users treated X as the resistance channel — and Musk’s “anti-humanity” broadsides made the influence story the story. Public takeaway: trying to starve a network of oxygen can hand it a martyr plot. The boycott thesis failed when the product kept growing anyway." },
     { id: "stewart", name: "Jon Stewart", years: "Feud since 2024",
-      verdict: "PROPAGANDA CHECK",
-      blurb: "Comedian/talk-show host and Musk traded “propagandist” accusations over democracy and voting narratives. Both brought receipts; neither left a tip." },
+      verdict: "PROPAGANDIST BOOMERANG",
+      blurb: "THE SPIN: Comedy elder brands Musk a propagandist on democracy/voting; studio truth-to-power win. THE BACKFIRE: “Propagandist” is a grenade that lands on whoever’s holding the camera. Clips of mutual name-calling leveled the field — neither looked like the sole adult. Public takeaway: calling the other guy propaganda only works if your side doesn’t look like a monologue factory. The label stuck to both hands." },
     { id: "lopez", name: "Linette Lopez", years: "Feud since 2018",
-      verdict: "TEMPORARY BAN",
-      blurb: "Years of hard-edged Tesla investigations from Business Insider drew personal counter-fire and a temporary Twitter suspension after Musk’s takeover. FOIA meets FSD." },
+      verdict: "HIT PIECE LOST THE STREET",
+      blurb: "THE SPIN: Years of hard Tesla shorts-adjacent investigations prove the cars (and the CEO) are a con. THE BACKFIRE: Markets, deliveries, and owners kept voting with keys while the dossier stayed maximalist. A temporary Twitter suspension after the takeover became a martyr badge that didn’t convert skeptics into buyers of the thesis. Public takeaway: when the product outruns the narrative, the exposé becomes a time capsule — loud, meticulous, and rejected by the curb." },
   ];
 
   /* banner HIGH on the wall — above all photos (no overlap) */
@@ -3366,7 +3367,7 @@ function buildLobbyDecor() {
       ctx.fillText("WALL OF SHAME", w / 2, h * 0.42);
       ctx.fillStyle = "#ffd94a";
       ctx.font = "bold 22px Arial";
-      ctx.fillText("PUBLIC FEUDS  ·  PARODY DOSSIERS  ·  NO LIKENESSES", w / 2, h * 0.72);
+      ctx.fillText("SPIN FAILED  ·  NARRATIVE BACKFIRE  ·  PARODY DOSSIERS", w / 2, h * 0.72);
     });
     const ban = new THREE.Mesh(
       new THREE.PlaneGeometry(22, 2.2),
