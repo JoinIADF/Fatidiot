@@ -65,9 +65,9 @@
   #msg { top: 34%; left: 50%; transform: translate(-50%,-50%); width: 100%; text-align: center;
     font-size: 44px; color: #ffd94a; -webkit-text-stroke: 2px #000; }
   #crosshair { top: 50%; left: 50%; transform: translate(-50%,-50%); color: #4ff; font-size: 22px; }
-  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+  #overlay { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center;
     justify-content: center; background: rgba(6,8,14,0.82); color: #fff; text-align: center; cursor: pointer;
-    overflow: hidden; isolation: isolate; }
+    overflow: hidden; isolation: isolate; pointer-events: auto; }
   #overlay .tagline {
     font-size: clamp(15px, 2.4vw, 20px);
     font-weight: 700;
@@ -4451,8 +4451,6 @@ let socialNear = null;
 let socialQueue = [];
 let socialPool = [];
 const SOCIAL_VISIBLE = 15; /* bigger room, more mingling guests */
-const SOCIAL_BUBBLE = 3.6 * (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1.3); /* personal space — no guest closer than this */
-const SOCIAL_BUBBLE_SQ = SOCIAL_BUBBLE * SOCIAL_BUBBLE;
 const SOCIAL_PROX = 5.2;
 
 /* Seeded "most recently interacted" accounts + 3 recent posts each.
@@ -4976,6 +4974,8 @@ function placeSocialGuests(users) {
    dance floor (SE), arcade + darts (NE), garden patio (SW) */
 let loungeDecor = null;
 const LOUNGE_SCALE = 1.3; /* 30% larger floor plan; props stay proportional via group scale */
+const SOCIAL_BUBBLE = 3.6 * LOUNGE_SCALE; /* personal space — guests won't clump inside this radius */
+const SOCIAL_BUBBLE_SQ = SOCIAL_BUBBLE * SOCIAL_BUBBLE;
 const LOUNGE_BLOCKS = []; /* obstacle specs, added only while lounge is active */
 const LOUNGE_POCKETS = [[-12, 6, 2.6], [12, 6, 2.6], [0, 10, 2.4]]; /* center pocket clear of clout striker */
 const DANCE_CENTER = new THREE.Vector3(18 * LOUNGE_SCALE, 0, 20 * LOUNGE_SCALE);
@@ -7600,7 +7600,9 @@ addEventListener("mouseup", e => {
   }
   if (e.button === 0 || e.button === 2) flameFiring = false;
 });
-overlay.addEventListener("click", () => {
+overlay.addEventListener("click", (ev) => {
+  /* level buttons handle themselves — don't double-fire */
+  if (ev.target && ev.target.closest && ev.target.closest(".modeBtn, .modeRow")) return;
   ac();
   if (mode === "portal" && deathKind === "portal") {
     resumeFromPortal();
@@ -7617,27 +7619,27 @@ overlay.addEventListener("click", () => {
   if (mode === "title" || mode === "over") startGame();
 });
 
-/* Timeline Lounge / mode buttons */
+/* Timeline Lounge / mode buttons — pointerdown so mobile taps always fire */
 (function wireModeButtons() {
-  const play = $("btnPlay");
-  const lounge = $("btnLounge");
-  const star = $("btnStarbase");
-  if (play) play.addEventListener("click", (ev) => {
-    ev.stopPropagation(); ac(); startGame();
-  });
-  if (lounge) lounge.addEventListener("click", (ev) => {
-    ev.stopPropagation(); ac(); startGame({ social: true });
-  });
-  if (star) star.addEventListener("click", (ev) => {
-    ev.stopPropagation(); ac();
+  const bind = (el, fn) => {
+    if (!el) return;
+    let armed = false;
+    const run = (ev) => {
+      try { ev.preventDefault(); ev.stopPropagation(); } catch (_) {}
+      if (armed) return;
+      armed = true;
+      setTimeout(() => { armed = false; }, 400);
+      try { ac(); } catch (_) {}
+      try { fn(); } catch (err) { console.error("modeBtn", err); }
+    };
+    el.addEventListener("pointerup", run);
+    el.addEventListener("click", run);
+  };
+  bind($("btnPlay"), () => startGame());
+  bind($("btnLounge"), () => startGame({ social: true }));
+  bind($("btnStarbase"), () => {
     if (typeof previewLevel2 === "function") previewLevel2();
     else startGame();
-  });
-  const trClose = $("trClose");
-  const tr = $("tweetReader");
-  if (trClose) trClose.addEventListener("click", (ev) => { ev.stopPropagation(); closeTweetReader(); });
-  if (tr) tr.addEventListener("click", (ev) => {
-    if (ev.target === tr) closeTweetReader();
   });
 })();
 
