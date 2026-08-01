@@ -791,14 +791,14 @@
     bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     transform: translateX(-50%);
     z-index: 70; pointer-events: auto;
-    width: auto; max-width: min(640px, calc(100vw - 24px));
+    width: auto; max-width: min(700px, calc(100vw - 22px));
     flex-direction: column;
     align-items: stretch;
-    gap: 5px;
-    padding: 7px 8px 8px;
+    gap: 6px;
+    padding: 8px 9px 9px;
     background: rgba(6, 10, 18, 0.78);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 16px;
+    border-radius: 17px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -811,10 +811,10 @@
     transform: none;
     max-width: none;
     margin: 0;
-    padding: 5px 10px;
-    border-radius: 10px;
+    padding: 6px 11px;
+    border-radius: 11px;
     text-align: center;
-    font: 800 12px/1.2 system-ui, sans-serif;
+    font: 800 13px/1.2 system-ui, sans-serif;
     color: #7CFFB0;
     background: rgba(8, 20, 16, 0.65);
     border: 1px solid rgba(124,255,176,0.35);
@@ -827,7 +827,7 @@
   #loungeMobBar .lounge-focus.show { display: block; }
   #loungeMobBar .lounge-btns {
     display: flex;
-    gap: 6px;
+    gap: 7px;
     justify-content: center;
     flex-wrap: nowrap;
     width: 100%;
@@ -835,13 +835,13 @@
   #loungeMobBar .lmbtn {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 49px;
-    padding: 9px 10px;
-    border-radius: 12px;
+    min-height: 54px;
+    padding: 10px 11px;
+    border-radius: 13px;
     border: 1.5px solid rgba(255,255,255,0.35);
     background: rgba(16, 22, 34, 0.92);
     color: #e8eef8;
-    font: 800 11px/1.1 system-ui, sans-serif;
+    font: 800 12px/1.1 system-ui, sans-serif;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
     white-space: nowrap;
@@ -852,7 +852,7 @@
   #loungeMobBar .lmbtn.next,
   #loungeMobBar .lmbtn.nope {
     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
-    font-size: 10px; line-height: 1.05;
+    font-size: 12px; line-height: 1.1;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
   #loungeMobBar .lmbtn.addg {
@@ -861,7 +861,7 @@
   body.lounge-ui #loungeMobBar.show {
     display: flex;
     bottom: 24px;
-    max-width: min(600px, calc(100vw - 28px));
+    max-width: min(660px, calc(100vw - 26px));
     z-index: 70;
   }
   @media (max-width: 900px), (pointer: coarse) {
@@ -996,8 +996,8 @@
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
       #loungeMobBar { bottom: 72px; padding: 5px 6px; }
-      #loungeMobBar .lmbtn { min-height: 44px; font-size: 10px; padding: 8px 9px; }
-      #loungeMobBar #guestChip { font-size: 11px; }
+      #loungeMobBar .lmbtn { min-height: 48px; font-size: 11px; padding: 9px 10px; }
+      #loungeMobBar #guestChip { font-size: 12px; }
     }
   }
   #overlay .modeRow {
@@ -1103,7 +1103,7 @@
     <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
     <div class="lounge-btns">
       <button type="button" class="lmbtn read" id="mRead">READ</button>
-      <button type="button" class="lmbtn nope" id="mNext">NOT<br>INTERESTED</button>
+      <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
       <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
       <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
     </div>
@@ -5104,7 +5104,7 @@ const LOUNGE_INVITE_ROSTER = [
     tweets: [
       "You missed your Spanish lesson. The owl is in the lounge.",
       "Streak saved by a pig with a helmet. Iconic.",
-      "Translate this: 'Not interested' 💥",
+      "Translate this: 'Remove' 💥",
     ]},
   { handle: "GordonRamsay", name: "Gordon Ramsay", color: "#c41e3a",
     tweets: [
@@ -5935,7 +5935,7 @@ function activateSocialLounge() {
   const wv = $("waveV"); if (wv) wv.textContent = "LOUNGE";
   const qv = $("quotaV"); if (qv) qv.textContent = "—";
   showMsg(isMobile()
-    ? "LOUNGE — READ · NOT INTERESTED · LIKE · ADD"
+    ? "LOUNGE — READ · REMOVE · LIKE · ADD"
     : "LOUNGE — use menu below · rifle = enemy VCs only");
   const mS = $("mSwap");
   if (mS) mS.innerHTML = "READ<br>THREAD";
@@ -6090,7 +6090,7 @@ function openTweetReader(e) {
   const hint = root.querySelector(".tr-hint");
   if (hint) hint.textContent = isMobile()
     ? "♡ like · Reply · ✕ close · NOT INTERESTED explodes"
-    : "♡ like · Reply · Esc / ✕ close · Not Interested explodes guest";
+    : "♡ like · Reply · Esc / ✕ close · REMOVE guest guest";
 }
 
 function closeTweetReader(silent = false) {
@@ -11484,7 +11484,7 @@ function bindMobileControls() {
     if (!socialActive) return;
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (socialNear) notInterestedGuest(socialNear);
-    else showMsg("Face a guest to mark Not Interested");
+    else showMsg("Face a guest to REMOVE");
   });
   tap("mAdd", () => {
     if (!socialActive) return;
