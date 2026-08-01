@@ -1094,7 +1094,7 @@
 <div id="artEngageBar" aria-hidden="true">
   <button type="button" class="artbtn" id="mArtView">VIEW ARTWORK</button>
 </div>
-<div id="socialHint">LMB read · RMB rifle · ♡ like · Reply</div>
+<div id="socialHint">Drag look · click read · RMB rifle</div>
 <div id="tweetReader" class="hidden" aria-hidden="true">
   <div class="tr-card">
     <button type="button" id="trClose" aria-label="Close">✕</button>
@@ -4582,6 +4582,8 @@ let socialReading = false;
 let socialNear = null;
 let lastPigXZ = { x: 0, z: 0 };
 let pigMoving = false;
+/* free-cursor look: drag on canvas re-engages after menus/readers steal focus */
+let loungePtr = { down: false, dragged: false, x: 0, y: 0, button: -1 };
 let socialQueue = [];
 let socialPool = [];
 const SOCIAL_VISIBLE = 15; /* bigger room, more mingling guests */
@@ -5916,7 +5918,7 @@ function syncLoungeMobileUI() {
   if (on) {
     if ($("weaponV")) $("weaponV").textContent = "RIFLE · VCs";
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    if ($("weaponTip")) $("weaponTip").textContent = "LMB read · RMB rifle (VCs) · menu below";
+    if ($("weaponTip")) $("weaponTip").textContent = "Drag look · click read · RMB rifle";
     try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
     try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
     try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
@@ -5929,6 +5931,9 @@ function activateSocialLounge() {
   try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
   try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
   try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
+  try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = "grab"; } catch (_) {}
+  loungePtr.down = false;
+  loungePtr.dragged = false;
   try { syncLoungeMobileUI(); } catch (_) {}
   ammo = 999;
   const am0 = $("ammoV"); if (am0) am0.textContent = "∞";
@@ -5959,7 +5964,7 @@ function activateSocialLounge() {
   const qv = $("quotaV"); if (qv) qv.textContent = "—";
   showMsg(isMobile()
     ? "LOUNGE — READ · REMOVE · LIKE · ADD"
-    : "LOUNGE — use menu below · rifle = enemy VCs only");
+    : "LOUNGE — drag to look · click to read · menu below");
   const mS = $("mSwap");
   if (mS) mS.innerHTML = "READ<br>THREAD";
   loadSocialFeed().then(users => {
@@ -5983,6 +5988,8 @@ function deactivateSocialLounge() {
   } catch (_) {}
 
   socialActive = false;
+  try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = ""; } catch (_) {}
+  loungePtr.down = false;
   try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
   try { closeGuestInvite(); } catch (_) {}
   try { stopRedAlert(); } catch (_) {}
@@ -6007,9 +6014,12 @@ function openTweetReader(e) {
   const root = $("tweetReader");
   if (!root) return;
   socialReading = true;
+  loungePtr.down = false;
+  loungePtr.dragged = false;
   try { showMsg("PAUSED — reading posts (Esc closes)"); } catch (_) {}
   socialNear = e;
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = "default"; } catch (_) {}
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try { const bar = $("loungeMobBar"); if (bar) bar.classList.remove("show"); } catch (_) {}
   const head = $("trHead");
@@ -6115,7 +6125,7 @@ function openTweetReader(e) {
   const hint = root.querySelector(".tr-hint");
   if (hint) hint.textContent = isMobile()
     ? "♡ like · Reply · ✕ close · REMOVE"
-    : "♡ like · Reply · Esc / ✕ close · REMOVE guest guest";
+    : "♡ like · Reply · Esc / ✕ close · then drag game to look";
 }
 
 function closeTweetReader(silent = false) {
@@ -6127,9 +6137,11 @@ function closeTweetReader(silent = false) {
   const was = socialReading;
   socialReading = false;
   if (!silent && was && mode === "play" && socialActive) {
-    try { showMsg("Back in the lounge"); } catch (_) {}
-    /* keep free cursor so lounge menu stays usable on PC */
+    try { showMsg("Drag on the game to look · click guest to read"); } catch (_) {}
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = "grab"; } catch (_) {}
+    loungePtr.down = false;
+    loungePtr.dragged = false;
     if (isMobile()) {
       try { showMobileUI(true); } catch (_) {}
     }
@@ -7936,6 +7948,37 @@ function aimArcadeFromClient(clientX, clientY) {
   arcadeGame.mx = Math.max(0.04, Math.min(0.96, mx));
   arcadeGame.my = Math.max(0.04, Math.min(0.96, my));
 }
+function loungePickGuest() {
+  let guest = socialNear;
+  if (!guest) {
+    const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+    const dir = aimDir();
+    let best = 0.65, cand = null;
+    for (const en of enemies) {
+      if (en.type !== "xuser") continue;
+      const to = en.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0)).sub(origin);
+      const dist = to.length();
+      if (dist > 12 || dist < 0.3) continue;
+      const ang = to.normalize().angleTo(dir);
+      if (ang < best) { best = ang; cand = en; }
+    }
+    guest = cand;
+  }
+  return guest;
+}
+
+function applyMouseLook(dx, dy, sens = 0.0028) {
+  yaw -= dx * sens;
+  pitch = Math.max(0.05, Math.min(1.1, pitch + dy * sens * 0.85));
+}
+
+/* After menus/readers: click+drag on the game view always re-engages camera look */
+function loungeLookActive() {
+  return !!(typeof socialActive !== "undefined" && socialActive && mode === "play"
+    && !socialReading && !(typeof rocketReading !== "undefined" && rocketReading)
+    && !miniGameActive());
+}
+
 document.addEventListener("mousemove", e => {
   /* mini-games work WITHOUT pointer lock (we exit lock on start) */
   if (dartGame.active) {
@@ -7949,60 +7992,56 @@ document.addEventListener("mousemove", e => {
     return;
   }
   if (arcadeGame.active) {
-    /* absolute aim = reliable for whack + invaders steer */
     aimArcadeFromClient(e.clientX, e.clientY);
     return;
   }
   if (strikerGame.active) return;
+
+  /* pointer-lock mouselook (any mode) */
   if (document.pointerLockElement === renderer.domElement) {
-    yaw -= e.movementX * 0.0026;
-    pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
-  } else if (typeof socialActive !== "undefined" && socialActive && ((e.buttons & 4) || (e.buttons & 1 && e.altKey))) {
-    /* lounge free-cursor: hold MMB (or Alt+LMB) to look — LMB is read, RMB is rifle */
-    yaw -= e.movementX * 0.0032;
-    pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.0024));
+    applyMouseLook(e.movementX, e.movementY, 0.0026);
+    return;
+  }
+
+  /* lounge free-cursor: drag on canvas to look (re-engages after UI) */
+  if (loungeLookActive() && loungePtr.down) {
+    const dx = e.clientX - loungePtr.x;
+    const dy = e.clientY - loungePtr.y;
+    if (!loungePtr.dragged && Math.hypot(dx, dy) > 5) loungePtr.dragged = true;
+    if (loungePtr.dragged) {
+      applyMouseLook(e.movementX || dx * 0.15, e.movementY || dy * 0.15, 0.0034);
+      loungePtr.x = e.clientX;
+      loungePtr.y = e.clientY;
+      try { renderer.domElement.style.cursor = "grabbing"; } catch (_) {}
+    }
   }
 });
+
 renderer.domElement.addEventListener("mousedown", e => {
   if (mode !== "play") return;
   if (dartGame.active) { if (e.button === 0) throwDart(); return; }
   if (strikerGame.active) { if (e.button === 0) resolveStriker(); return; }
   if (arcadeGame.active) { if (e.button === 0) arcadeClick(); return; }
   if (socialReading) return;
+
   if (socialActive) {
-    /* lounge PC: LMB = read thread · RMB = rifle (VCs only) */
-    const pickGuest = () => {
-      let guest = socialNear;
-      if (!guest) {
-        const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-        const dir = aimDir();
-        let best = 0.65, cand = null;
-        for (const en of enemies) {
-          if (en.type !== "xuser") continue;
-          const to = en.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0)).sub(origin);
-          const dist = to.length();
-          if (dist > 12 || dist < 0.3) continue;
-          const ang = to.normalize().angleTo(dir);
-          if (ang < best) { best = ang; cand = en; }
-        }
-        guest = cand;
-      }
-      return guest;
-    };
-    if (e.button === 0) {
-      /* left click = open posts */
-      const guest = pickGuest();
-      if (guest) openTweetReader(guest);
-      else showMsg("Aim at a guest · left-click to read");
+    /* start potential look-drag on LMB or RMB; click-without-drag fires action on mouseup */
+    if (e.button === 0 || e.button === 2) {
+      loungePtr.down = true;
+      loungePtr.dragged = false;
+      loungePtr.x = e.clientX;
+      loungePtr.y = e.clientY;
+      loungePtr.button = e.button;
+      try { renderer.domElement.setPointerCapture(e.pointerId); } catch (_) {}
+      try { renderer.domElement.style.cursor = "grab"; } catch (_) {}
     }
-    if (e.button === 2) {
-      /* right click = rifle (VCs); optional pointer lock for aim */
-      if (!isMobile() && document.pointerLockElement !== renderer.domElement) {
-        try { renderer.domElement.requestPointerLock(); } catch (_) {}
-      }
-      fireRifle();
-    }
+    e.preventDefault();
     return;
+  }
+
+  /* combat modes: click canvas re-locks pointer for mouselook */
+  if (!isMobile() && document.pointerLockElement !== renderer.domElement) {
+    try { renderer.domElement.requestPointerLock(); } catch (_) {}
   }
   if (e.button === 0) {
     if (weaponIdx === 0) { charging = true; chargeT = 0; }
@@ -8013,6 +8052,37 @@ renderer.domElement.addEventListener("mousedown", e => {
     if (weaponIdx === 2) flameFiring = true;
     else fireRifle();
   }
+});
+
+function endLoungePointer(e) {
+  if (!socialActive || !loungePtr.down) return;
+  const btn = loungePtr.button;
+  const dragged = loungePtr.dragged;
+  loungePtr.down = false;
+  loungePtr.button = -1;
+  try { renderer.domElement.style.cursor = socialActive ? "grab" : ""; } catch (_) {}
+  try { if (e && e.pointerId != null) renderer.domElement.releasePointerCapture(e.pointerId); } catch (_) {}
+  if (socialReading || !loungeLookActive()) return;
+  if (dragged) return; /* was a camera drag — don't also fire action */
+  if (btn === 0) {
+    const guest = loungePickGuest();
+    if (guest) openTweetReader(guest);
+    else showMsg("Drag to look · click a guest to read");
+  } else if (btn === 2) {
+    fireRifle();
+  }
+}
+
+renderer.domElement.addEventListener("mouseup", endLoungePointer);
+renderer.domElement.addEventListener("pointerup", endLoungePointer);
+renderer.domElement.addEventListener("pointercancel", () => {
+  loungePtr.down = false;
+  loungePtr.dragged = false;
+  loungePtr.button = -1;
+});
+addEventListener("blur", () => {
+  loungePtr.down = false;
+  loungePtr.dragged = false;
 });
 addEventListener("contextmenu", e => e.preventDefault());
 /* mouse wheel: boom/rifle bank ↔ flamethrower-only (Starbase after pickup) */
@@ -9582,7 +9652,7 @@ function applyWeaponHud() {
   const tip = $("weaponTip");
   if (tip) {
     if (typeof socialActive !== "undefined" && socialActive) {
-      tip.textContent = "LMB read · RMB rifle (VCs) · ∞ ammo";
+      tip.textContent = "Drag look · click read · RMB rifle · ∞";
     } else if (flameUnlocked) {
       tip.textContent = (flameOnlyMode || weaponIdx === 2)
         ? "🔥 FLAME · scroll/Q → boom+rifle · hold fire"
