@@ -946,6 +946,119 @@
   }
   #guestInvite .gi-actions #giCancel { color: #cfd6e0; }
 
+  /* —— Lounge Activated / Favorites panel —— */
+  #loungePanel {
+    position: fixed; inset: 0; z-index: 92;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4, 8, 14, 0.88);
+    padding: 14px;
+    pointer-events: auto;
+  }
+  #loungePanel.hidden { display: none !important; }
+  #loungePanel .lp-card {
+    width: min(440px, 96vw);
+    max-height: min(86vh, 700px);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    background: #0f141c;
+    border: 2px solid #2a3a4a;
+    border-radius: 16px;
+    color: #e8eef8;
+    font-family: system-ui, sans-serif;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+  }
+  #loungePanel .lp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 14px 14px 0;
+  }
+  #loungePanel .lp-title {
+    font: 800 18px/1.2 system-ui, sans-serif;
+    color: #7CFFB0; margin: 0;
+  }
+  #loungePanel #lpClose {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid #3a4558; background: #1a2230; color: #fff;
+    font-size: 18px; cursor: pointer; touch-action: manipulation;
+  }
+  #loungePanel .lp-sub {
+    font: 600 12px/1.35 system-ui, sans-serif;
+    color: #8b98a8; margin: 8px 14px 10px;
+  }
+  #loungePanel .lp-toolbar {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 0 14px 10px;
+  }
+  #loungePanel .lp-toolbar button {
+    min-height: 36px; padding: 7px 11px; border-radius: 10px;
+    border: 1px solid #3a4558; background: #1a2230; color: #e8eef8;
+    font: 800 11px/1 system-ui, sans-serif; cursor: pointer;
+    touch-action: manipulation;
+  }
+  #loungePanel .lp-toolbar button.hi {
+    border-color: #7CFFB0; color: #0a1a12; background: #7CFFB0;
+  }
+  #loungePanel .lp-toolbar button.danger {
+    border-color: #ff6a4a; color: #ffc8b8; background: rgba(48,16,12,0.85);
+  }
+  #loungePanel .lp-search {
+    padding: 0 14px 10px;
+  }
+  #loungePanel .lp-search.hidden { display: none !important; }
+  #loungePanel #lpSearch {
+    width: 100%; box-sizing: border-box;
+    min-height: 42px; padding: 10px 12px; border-radius: 12px;
+    border: 1px solid #3a4558; background: #141a24; color: #e8eef8;
+    font: 600 14px/1.2 system-ui, sans-serif;
+  }
+  #loungePanel #lpSearch:focus { outline: none; border-color: #1d9bf0; }
+  #loungePanel .lp-list {
+    flex: 1 1 auto; overflow: auto;
+    padding: 0 10px 8px;
+    display: flex; flex-direction: column; gap: 6px;
+    min-height: 120px;
+  }
+  #loungePanel .lp-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 10px; border-radius: 12px;
+    border: 1px solid #2a3544; background: #141a24;
+    cursor: pointer; touch-action: manipulation; text-align: left;
+  }
+  #loungePanel .lp-row.on {
+    border-color: #7CFFB0; background: rgba(30, 60, 48, 0.55);
+  }
+  #loungePanel .lp-row input { width: 18px; height: 18px; accent-color: #7CFFB0; flex: 0 0 auto; }
+  #loungePanel .lp-av {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center;
+    font: 800 14px/1 system-ui, sans-serif; color: #fff; flex: 0 0 auto;
+  }
+  #loungePanel .lp-meta { flex: 1; min-width: 0; }
+  #loungePanel .lp-name { font: 800 14px/1.2 system-ui, sans-serif; }
+  #loungePanel .lp-handle { font: 600 12px/1.2 system-ui, sans-serif; color: #8b98a8; }
+  #loungePanel .lp-go {
+    flex: 0 0 auto; min-height: 32px; padding: 6px 10px; border-radius: 9px;
+    border: 1px solid #1d9bf0; background: rgba(29,155,240,0.15); color: #8fd1ff;
+    font: 800 11px/1 system-ui, sans-serif; cursor: pointer;
+  }
+  #loungePanel .lp-actions {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+    padding: 10px 14px 14px; border-top: 1px solid #2a3544;
+  }
+  #loungePanel .lp-actions button {
+    min-height: 44px; padding: 10px 14px; border-radius: 12px;
+    font: 800 12px/1 system-ui, sans-serif; cursor: pointer;
+    touch-action: manipulation; border: 2px solid #3a4558;
+    background: #1a2230; color: #e8eef8;
+  }
+  #loungePanel .lp-actions button.primary {
+    border-color: #7CFFB0; color: #0a1a12; background: #7CFFB0;
+  }
+  #loungePanel .lp-empty {
+    padding: 24px 12px; text-align: center; color: #6b7a8c;
+    font: 600 13px/1.4 system-ui, sans-serif;
+  }
+
+
   /* guestChip lives inside #loungeMobBar */
 
   body.lounge-ui #mobileUI.lounge-mode #btnCol {
@@ -1125,20 +1238,26 @@
     <button type="button" class="lmbtn read" id="mRead">READ</button>
     <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
     <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
-    <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
+    <button type="button" class="lmbtn addg" id="mAddBar">LIST</button>
   </div>
 </div>
-<div id="guestInvite" class="hidden" aria-hidden="true">
-  <div class="gi-card" role="dialog" aria-labelledby="giTitle">
-    <h2 class="gi-title" id="giTitle">Add to lounge</h2>
-    <p class="gi-sub">Demo roster — popular non-political accounts. Pick one or many, then OK.</p>
-    <div class="gi-list" id="giList"></div>
-    <div class="gi-actions">
-      <button type="button" id="giCancel">Cancel</button>
-      <button type="button" id="giOk">OK · Bring in</button>
+<div id="loungePanel" class="hidden" aria-hidden="true">
+  <div class="lp-card" role="dialog" aria-labelledby="lpTitle">
+    <div class="lp-head">
+      <h2 class="lp-title" id="lpTitle">Activated</h2>
+      <button type="button" id="lpClose" aria-label="Close">✕</button>
     </div>
+    <p class="lp-sub" id="lpSub">People in the room right now. Tap to bring them near you. Multi-select to remove or save to favorites.</p>
+    <div class="lp-toolbar" id="lpToolbar"></div>
+    <div class="lp-search hidden" id="lpSearchWrap">
+      <input type="search" id="lpSearch" placeholder="Search accounts you follow…" autocomplete="off" />
+    </div>
+    <div class="lp-list" id="lpList"></div>
+    <div class="lp-actions" id="lpActions"></div>
   </div>
 </div>
+<!-- legacy id alias for freeze checks -->
+<div id="guestInvite" class="hidden" aria-hidden="true" style="display:none!important"></div>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
@@ -5172,107 +5291,443 @@ function notInterestedGuest(e) {
   try { syncLoungeMobileUI(); } catch (_) {}
 }
 
-function openGuestInvite() {
-  if (!socialActive || mode !== "play") return;
-  const root = $("guestInvite");
-  const list = $("giList");
-  if (!root || !list) return;
-  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
-  const present = new Set(
-    enemies.filter(e => e.type === "xuser" && e.user).map(e => String(e.user.handle || "").toLowerCase())
-  );
-  list.innerHTML = LOUNGE_INVITE_ROSTER.map((u, i) => {
-    const h = String(u.handle).toLowerCase();
-    const already = present.has(h);
-    return `<label class="gi-row ${already ? "on" : ""}" data-i="${i}">
-      <input type="checkbox" data-i="${i}" ${already ? "disabled" : ""} />
-      <div class="gi-av" style="background:${u.color || "#1d9bf0"}">${(u.name || u.handle).slice(0, 1)}</div>
-      <div class="gi-meta">
-        <div class="gi-name">${escapeHtml(u.name)}</div>
-        <div class="gi-handle">@${escapeHtml(u.handle)}${already ? " · already here" : ""}</div>
-      </div>
-    </label>`;
-  }).join("");
-  list.querySelectorAll(".gi-row").forEach(row => {
-    row.addEventListener("click", (ev) => {
-      if (ev.target && ev.target.tagName === "INPUT") return;
-      const cb = row.querySelector("input[type=checkbox]");
-      if (!cb || cb.disabled) return;
-      cb.checked = !cb.checked;
-      row.classList.toggle("on", cb.checked);
+
+/* —— Favorites bank + Activated room list (demo follows) —— */
+const FAV_KEY = "fatidiot_lounge_favorites_v1";
+let loungeFavorites = [];
+let loungePanelMode = "activated"; /* activated | favorites | followAdd */
+let loungeFollowQuery = "";
+
+function loadLoungeFavorites() {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) loungeFavorites = arr.filter(u => u && u.handle && !isVCHandle(u.handle));
+    }
+  } catch (_) { loungeFavorites = []; }
+  if (!loungeFavorites.length) {
+    loungeFavorites = filterOutEnemyVCs([
+      ...DEMO_X_FEED.map(u => ({ ...u, tweets: (u.tweets || []).slice() })),
+      ...LOUNGE_INVITE_ROSTER.map(makeInviteUser),
+    ]);
+    const seen = new Set();
+    loungeFavorites = loungeFavorites.filter(u => {
+      const h = String(u.handle).toLowerCase();
+      if (seen.has(h)) return false;
+      seen.add(h);
+      return true;
     });
-    const cb = row.querySelector("input[type=checkbox]");
-    if (cb) cb.addEventListener("change", () => row.classList.toggle("on", cb.checked && !cb.disabled));
+    saveLoungeFavorites();
+  }
+}
+function saveLoungeFavorites() {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(loungeFavorites)); } catch (_) {}
+}
+loadLoungeFavorites();
+
+function buildDemoFollowList() {
+  const extra = [
+    ["Bill Gates", "BillGates", "#00a4ef"], ["Tim Cook", "tim_cook", "#a2aaad"],
+    ["Satya Nadella", "satyanadella", "#00a4ef"], ["Sundar Pichai", "sundarpichai", "#4285f4"],
+    ["Jensen Huang", "nvidia", "#76b900"], ["Mark Zuckerberg", "finkd", "#1877f2"],
+    ["Jack Dorsey", "jack", "#000000"], ["Brian Chesky", "bchesky", "#ff5a5f"],
+    ["Drew Houston", "drewhouston", "#0061ff"], ["Daniel Ek", "eldsjal", "#1db954"],
+    ["Casey Neistat", "CaseyNeistat", "#ff0000"], ["Marques Brownlee", "MKBHD", "#111111"],
+    ["Linus Tech Tips", "LinusTech", "#f70d1a"], ["TechCrunch", "TechCrunch", "#0a9e01"],
+    ["The Onion", "TheOnion", "#006600"], ["xkcd", "xkcd", "#96a8c8"],
+    ["TED Talks", "TEDTalks", "#e62b1e"], ["ESA", "esa", "#0033a0"],
+    ["JPL", "NASAJPL", "#0b3d91"], ["SpaceX", "SpaceX", "#005288"],
+    ["Tesla", "Tesla", "#cc0000"], ["OpenAI", "OpenAI", "#10a37f"],
+    ["Anthropic", "AnthropicAI", "#d4a27f"], ["Figma", "figma", "#a259ff"],
+    ["Notion", "NotionHQ", "#000000"], ["Stripe", "stripe", "#635bff"],
+    ["Shopify", "Shopify", "#96bf48"], ["Airbnb", "Airbnb", "#ff5a5f"],
+    ["Uber", "Uber", "#000000"], ["Wordle", "Wordle", "#6aaa64"],
+    ["Pokemon", "Pokemon", "#ffcb05"], ["Nintendo America", "NintendoAmerica", "#e60012"],
+    ["Verge", "verge", "#e51235"], ["Wikipedia", "Wikipedia", "#000000"],
+    ["Duolingo", "duolingo", "#58cc02"], ["Netflix", "Netflix", "#e50914"],
+  ].map(([name, handle, color]) => ({
+    id: "follow-" + handle.toLowerCase(),
+    handle, name, color,
+    interacted: "following",
+    tweets: [
+      "Demo follow — in a live build this would be someone you follow on X.",
+      "Add me to Activated to put me in the lounge.",
+      "Search works across the full follow bank.",
+    ],
+  }));
+  const base = [
+    ...DEMO_X_FEED.map(u => ({ ...u, tweets: (u.tweets || []).slice() })),
+    ...LOUNGE_INVITE_ROSTER.map(makeInviteUser),
+    ...extra,
+  ];
+  const seen = new Set();
+  return filterOutEnemyVCs(base).filter(u => {
+    const h = String(u.handle).toLowerCase();
+    if (seen.has(h)) return false;
+    seen.add(h);
+    return true;
   });
-  root.classList.remove("hidden");
-  root.setAttribute("aria-hidden", "false");
+}
+const DEMO_FOLLOW_LIST = buildDemoFollowList();
+
+function loungePanelOpen() {
+  const root = document.getElementById("loungePanel");
+  return !!(root && !root.classList.contains("hidden"));
 }
 
-function closeGuestInvite() {
-  const root = $("guestInvite");
+function closeLoungePanel() {
+  const root = document.getElementById("loungePanel");
   if (root) {
     root.classList.add("hidden");
     root.setAttribute("aria-hidden", "true");
   }
+  loungeFollowQuery = "";
   if (mode === "play" && socialActive) {
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = "grab"; } catch (_) {}
     if (isMobile()) {
       try { showMobileUI(true); } catch (_) {}
     }
     try { syncLoungeMobileUI(); } catch (_) {}
   }
 }
+function closeGuestInvite() { closeLoungePanel(); }
 
-function confirmGuestInvite() {
-  const list = $("giList");
+function bringGuestNearPlayer(e) {
+  if (!e || !e.mesh) return;
+  const ang = yaw + Math.PI;
+  const dist = 2.6;
+  const x = pig.position.x + Math.sin(ang) * dist;
+  const z = pig.position.z + Math.cos(ang) * dist;
+  e.mesh.position.set(x, 0, z);
+  e.home = e.mesh.position.clone();
+  e.target = null;
+  e.state = "idle";
+  e.stateT = 8;
+  e.mesh.rotation.y = Math.atan2(pig.position.x - x, pig.position.z - z);
+  socialNear = e;
+  lockTarget = e;
+  lockT = 0.2;
+  locked = true;
+  if (e.chunks) {
+    try { setXUserBubble(e, e.chunks[e.chunkIdx % e.chunks.length]); } catch (_) {}
+  }
+  try { beep(720, 0.05, "sine", 0.05); } catch (_) {}
+  showMsg("@" + (e.user && e.user.handle ? e.user.handle : "guest") + " is right in front of you");
+}
+
+function spawnUserNearPlayer(u) {
+  if (!u || isVCHandle(u.handle)) return null;
+  const h = String(u.handle).toLowerCase();
+  const existing = enemies.find(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === h);
+  if (existing) { bringGuestNearPlayer(existing); return existing; }
+  const ang = yaw + Math.PI;
+  const dist = 2.8 + rand(0, 0.8);
+  const pos = new THREE.Vector3(
+    pig.position.x + Math.sin(ang) * dist + rand(-0.4, 0.4),
+    0,
+    pig.position.z + Math.cos(ang) * dist + rand(-0.4, 0.4)
+  );
+  const ne = spawnXUser(u, pos);
+  if (ne) {
+    bringGuestNearPlayer(ne);
+    if (!socialPool.some(p => String(p.handle).toLowerCase() === h)) socialPool.push(u);
+  }
+  return ne;
+}
+
+function removeActivatedGuests(handles) {
+  const set = new Set((handles || []).map(h => String(h).toLowerCase()));
+  let n = 0;
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    if (e.type !== "xuser" || !e.user) continue;
+    if (!set.has(String(e.user.handle).toLowerCase())) continue;
+    if (socialNear === e) socialNear = null;
+    if (lockTarget === e) { lockTarget = null; locked = false; }
+    try { scene.remove(e.mesh); } catch (_) {}
+    enemies.splice(i, 1);
+    n++;
+  }
+  return n;
+}
+
+function addToFavorites(users) {
+  let n = 0;
+  for (const u of users) {
+    if (!u || !u.handle || isVCHandle(u.handle)) continue;
+    const h = String(u.handle).toLowerCase();
+    if (loungeFavorites.some(f => String(f.handle).toLowerCase() === h)) continue;
+    loungeFavorites.push({
+      id: u.id || ("fav-" + h),
+      handle: u.handle,
+      name: u.name || u.handle,
+      color: u.color || "#1d9bf0",
+      interacted: u.interacted || "favorite",
+      tweets: (u.tweets || ["Saved to favorites."]).slice(0, 3).map(String),
+    });
+    n++;
+  }
+  if (n) saveLoungeFavorites();
+  return n;
+}
+
+function removeFromFavorites(handles) {
+  const set = new Set((handles || []).map(h => String(h).toLowerCase()));
+  const before = loungeFavorites.length;
+  loungeFavorites = loungeFavorites.filter(u => !set.has(String(u.handle).toLowerCase()));
+  if (loungeFavorites.length !== before) saveLoungeFavorites();
+  return before - loungeFavorites.length;
+}
+
+function selectedLoungeHandles() {
+  const list = document.getElementById("lpList");
+  if (!list) return [];
+  return [...list.querySelectorAll("input[type=checkbox]:checked")].map(cb => cb.getAttribute("data-handle")).filter(Boolean);
+}
+
+function openLoungePanel(panelMode = "activated") {
+  if (!socialActive || mode !== "play") return;
+  loungePanelMode = panelMode || "activated";
+  const root = document.getElementById("loungePanel");
+  if (!root) return;
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+  try { if (typeof closeTweetReader === "function") closeTweetReader(true); } catch (_) {}
+  root.classList.remove("hidden");
+  root.setAttribute("aria-hidden", "false");
+  renderLoungePanel();
+  try { syncLoungeMobileUI(); } catch (_) {}
+}
+
+function openGuestInvite() { openLoungePanel("followAdd"); }
+
+function renderLoungePanel() {
+  const root = document.getElementById("loungePanel");
+  if (!root || root.classList.contains("hidden")) return;
+  const title = document.getElementById("lpTitle");
+  const sub = document.getElementById("lpSub");
+  const toolbar = document.getElementById("lpToolbar");
+  const searchWrap = document.getElementById("lpSearchWrap");
+  const list = document.getElementById("lpList");
+  const actions = document.getElementById("lpActions");
   if (!list) return;
-  const picked = [];
-  list.querySelectorAll("input[type=checkbox]:checked:not(:disabled)").forEach(cb => {
-    const i = Number(cb.getAttribute("data-i"));
-    if (LOUNGE_INVITE_ROSTER[i]) picked.push(LOUNGE_INVITE_ROSTER[i]);
+
+  if (loungePanelMode === "activated") {
+    if (title) title.textContent = "Activated";
+    if (sub) sub.textContent = "People in the room. One tap brings them near you. Multi-select to remove or save to Favorite Accounts.";
+    if (toolbar) toolbar.innerHTML = `
+      <button type="button" class="hi" data-act="favs">Favorite Accounts</button>
+      <button type="button" data-act="add">Add</button>
+      <button type="button" class="danger" data-act="remove">Remove selected</button>
+      <button type="button" data-act="tofav">Save selected → Favorites</button>`;
+    if (searchWrap) searchWrap.classList.add("hidden");
+    const guests = enemies.filter(e => e.type === "xuser" && e.user);
+    if (!guests.length) {
+      list.innerHTML = `<div class="lp-empty">Nobody Activated yet.<br>Tap <b>Add</b> or open Favorite Accounts.</div>`;
+    } else {
+      list.innerHTML = guests.map(e => {
+        const u = e.user;
+        const h = u.handle;
+        return `<div class="lp-row" data-handle="${escapeHtml(h)}">
+          <input type="checkbox" data-handle="${escapeHtml(h)}" />
+          <div class="lp-av" style="background:${u.color || "#1d9bf0"}">${(u.name || h).slice(0, 1).toUpperCase()}</div>
+          <div class="lp-meta">
+            <div class="lp-name">${escapeHtml(u.name || h)}</div>
+            <div class="lp-handle">@${escapeHtml(h)}</div>
+          </div>
+          <button type="button" class="lp-go" data-go="${escapeHtml(h)}">Go to</button>
+        </div>`;
+      }).join("");
+    }
+    if (actions) actions.innerHTML = `
+      <button type="button" data-act="close">Close</button>
+      <button type="button" class="primary" data-act="add">Add accounts</button>`;
+  } else if (loungePanelMode === "favorites") {
+    if (title) title.textContent = "Favorite Accounts";
+    if (sub) sub.textContent = "Master bank. Push people into Activated, or remove from favorites. Activated pulls from here.";
+    if (toolbar) toolbar.innerHTML = `
+      <button type="button" data-act="activated">← Activated</button>
+      <button type="button" class="hi" data-act="activate">Activate selected</button>
+      <button type="button" class="danger" data-act="unfav">Remove from favorites</button>
+      <button type="button" data-act="add">Add from follows</button>`;
+    if (searchWrap) searchWrap.classList.add("hidden");
+    if (!loungeFavorites.length) {
+      list.innerHTML = `<div class="lp-empty">Favorites empty. Add from accounts you follow.</div>`;
+    } else {
+      list.innerHTML = loungeFavorites.map(u => {
+        const h = u.handle;
+        const inRoom = enemies.some(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === String(h).toLowerCase());
+        return `<div class="lp-row" data-handle="${escapeHtml(h)}">
+          <input type="checkbox" data-handle="${escapeHtml(h)}" />
+          <div class="lp-av" style="background:${u.color || "#1d9bf0"}">${(u.name || h).slice(0, 1).toUpperCase()}</div>
+          <div class="lp-meta">
+            <div class="lp-name">${escapeHtml(u.name || h)}</div>
+            <div class="lp-handle">@${escapeHtml(h)}${inRoom ? " · in room" : ""}</div>
+          </div>
+          <button type="button" class="lp-go" data-activate="${escapeHtml(h)}">Activate</button>
+        </div>`;
+      }).join("");
+    }
+    if (actions) actions.innerHTML = `
+      <button type="button" data-act="activated">Back</button>
+      <button type="button" class="primary" data-act="activate">Activate selected</button>`;
+  } else {
+    /* followAdd */
+    if (title) title.textContent = "Add accounts";
+    if (sub) sub.textContent = "Demo follow list — 20 on screen. Search to find anyone in the bank. Select → Activate and/or save to Favorites.";
+    if (toolbar) toolbar.innerHTML = `
+      <button type="button" data-act="activated">← Activated</button>
+      <button type="button" data-act="favs">Favorite Accounts</button>`;
+    if (searchWrap) {
+      searchWrap.classList.remove("hidden");
+      const inp = document.getElementById("lpSearch");
+      if (inp && inp.value !== loungeFollowQuery) inp.value = loungeFollowQuery;
+    }
+    const q = loungeFollowQuery.trim().toLowerCase();
+    let pool = DEMO_FOLLOW_LIST.slice();
+    if (q) {
+      pool = pool.filter(u =>
+        String(u.handle).toLowerCase().includes(q) ||
+        String(u.name || "").toLowerCase().includes(q)
+      );
+    }
+    const page = pool.slice(0, 20);
+    if (!page.length) {
+      list.innerHTML = `<div class="lp-empty">No matches. Try another search.</div>`;
+    } else {
+      list.innerHTML = page.map(u => {
+        const h = u.handle;
+        const inRoom = enemies.some(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === String(h).toLowerCase());
+        const fav = loungeFavorites.some(f => String(f.handle).toLowerCase() === String(h).toLowerCase());
+        return `<div class="lp-row" data-handle="${escapeHtml(h)}">
+          <input type="checkbox" data-handle="${escapeHtml(h)}" ${inRoom ? "disabled" : ""} />
+          <div class="lp-av" style="background:${u.color || "#1d9bf0"}">${(u.name || h).slice(0, 1).toUpperCase()}</div>
+          <div class="lp-meta">
+            <div class="lp-name">${escapeHtml(u.name || h)}</div>
+            <div class="lp-handle">@${escapeHtml(h)}${inRoom ? " · activated" : ""}${fav ? " · favorite" : ""}</div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+    if (actions) actions.innerHTML = `
+      <button type="button" data-act="activated">Cancel</button>
+      <button type="button" data-act="tofav">Save → Favorites</button>
+      <button type="button" class="primary" data-act="activate">Activate selected</button>`;
+  }
+
+  /* wire rows */
+  list.querySelectorAll(".lp-row").forEach(row => {
+    const cb = row.querySelector("input[type=checkbox]");
+    row.addEventListener("click", (ev) => {
+      if (ev.target.closest("button")) return;
+      if (ev.target.tagName === "INPUT") {
+        row.classList.toggle("on", cb && cb.checked);
+        return;
+      }
+      if (cb && !cb.disabled) {
+        cb.checked = !cb.checked;
+        row.classList.toggle("on", cb.checked);
+      }
+    });
   });
-  if (!picked.length) {
-    showMsg("Pick at least one account");
+  list.querySelectorAll("[data-go]").forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const h = btn.getAttribute("data-go");
+      const e = enemies.find(x => x.type === "xuser" && x.user && String(x.user.handle).toLowerCase() === String(h).toLowerCase());
+      if (e) {
+        bringGuestNearPlayer(e);
+        closeLoungePanel();
+      }
+    });
+  });
+  list.querySelectorAll("[data-activate]").forEach(btn => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      const h = btn.getAttribute("data-activate");
+      const u = loungeFavorites.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase())
+        || DEMO_FOLLOW_LIST.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase());
+      if (u) {
+        spawnUserNearPlayer(u);
+        renderLoungePanel();
+      }
+    });
+  });
+
+  const wireAct = (el) => {
+    if (!el) return;
+    el.querySelectorAll("[data-act]").forEach(btn => {
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const act = btn.getAttribute("data-act");
+        handleLoungePanelAction(act);
+      };
+    });
+  };
+  wireAct(toolbar);
+  wireAct(actions);
+}
+
+function handleLoungePanelAction(act) {
+  if (act === "close") { closeLoungePanel(); return; }
+  if (act === "activated") { openLoungePanel("activated"); return; }
+  if (act === "favs") { openLoungePanel("favorites"); return; }
+  if (act === "add") { loungeFollowQuery = ""; openLoungePanel("followAdd"); return; }
+  if (act === "remove") {
+    const hs = selectedLoungeHandles();
+    if (!hs.length) { showMsg("Select people to remove"); return; }
+    const n = removeActivatedGuests(hs);
+    showMsg(n ? ("Removed " + n) : "Nobody removed");
+    renderLoungePanel();
     return;
   }
-  const slots = loungeSlots().sort(() => Math.random() - 0.5);
-  const bubble = SOCIAL_BUBBLE;
-  let added = 0;
-  for (const entry of picked) {
-    const u = makeInviteUser(entry);
-    if (isVCHandle(u.handle)) continue;
-    if (enemies.some(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === u.handle.toLowerCase())) continue;
-    /* find open slot */
-    let pos = null;
-    for (const s of slots) {
-      let clear = true;
-      for (const o of enemies) {
-        if (o.type !== "xuser" && o.type !== "vc") continue;
-        if (Math.hypot(s.x - o.mesh.position.x, s.z - o.mesh.position.z) < bubble) { clear = false; break; }
-      }
-      if (clear) { pos = new THREE.Vector3(s.x + rand(-0.3, 0.3), 0, s.z + rand(-0.3, 0.3)); break; }
-    }
-    if (!pos) {
-      pos = new THREE.Vector3(rand(-8, 8) * LOUNGE_SCALE, 0, rand(0, 18) * LOUNGE_SCALE);
-    }
-    const ne = spawnXUser(u, pos);
-    if (ne) {
-      added++;
-      floatText(ne.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), "@" + u.handle + " joined", {
-        size: 32, color: "#7CFFB0", strokeW: 5
-      }, 0.95);
-      /* also stash in pool so dismiss can recycle */
-      if (!socialPool.some(p => String(p.handle).toLowerCase() === u.handle.toLowerCase())) {
-        socialPool.push(u);
+  if (act === "tofav") {
+    const hs = selectedLoungeHandles();
+    if (!hs.length) { showMsg("Select accounts first"); return; }
+    const users = [];
+    for (const h of hs) {
+      const e = enemies.find(x => x.type === "xuser" && x.user && String(x.user.handle).toLowerCase() === String(h).toLowerCase());
+      if (e && e.user) users.push(e.user);
+      else {
+        const f = loungeFavorites.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase())
+          || DEMO_FOLLOW_LIST.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase());
+        if (f) users.push(f);
       }
     }
+    const n = addToFavorites(users);
+    showMsg(n ? ("+" + n + " saved to Favorite Accounts") : "Already in favorites");
+    renderLoungePanel();
+    return;
   }
-  closeGuestInvite();
-  showMsg(added ? ("+" + added + " guest" + (added > 1 ? "s" : "") + " entered the lounge") : "Nobody new to add");
-  try { SFX.wave(); } catch (_) {}
-  try { beep(660, 0.06, "square", 0.06); setTimeout(() => beep(880, 0.08, "square", 0.06), 70); } catch (_) {}
+  if (act === "unfav") {
+    const hs = selectedLoungeHandles();
+    if (!hs.length) { showMsg("Select favorites to remove"); return; }
+    const n = removeFromFavorites(hs);
+    showMsg(n ? ("Removed " + n + " from favorites") : "Nothing removed");
+    renderLoungePanel();
+    return;
+  }
+  if (act === "activate") {
+    const hs = selectedLoungeHandles();
+    if (!hs.length) { showMsg("Select accounts to activate"); return; }
+    let n = 0;
+    for (const h of hs) {
+      const u = loungeFavorites.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase())
+        || DEMO_FOLLOW_LIST.find(x => String(x.handle).toLowerCase() === String(h).toLowerCase())
+        || (enemies.find(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === String(h).toLowerCase()) || {}).user;
+      if (u && spawnUserNearPlayer(u)) n++;
+    }
+    showMsg(n ? ("Activated " + n) : "Already in the room");
+    openLoungePanel("activated");
+    return;
+  }
 }
+
+function openActivatedPanel() { openLoungePanel("activated"); }
+
 
 function placeSocialGuests(users) {
   clearSocialGuests();
@@ -5878,8 +6333,8 @@ function syncLoungeMobileUI() {
   document.body.classList.toggle("lounge-ui", on);
   /* same action menu on PC + mobile so options are obvious */
   if (bar) {
-    const inv = document.getElementById("guestInvite");
-    const inviteOpen = !!(inv && !inv.classList.contains("hidden"));
+    const panel = document.getElementById("loungePanel");
+    const inviteOpen = !!(panel && !panel.classList.contains("hidden"));
     const showBar = on && !socialReading && !inviteOpen;
     bar.classList.toggle("show", showBar);
     bar.setAttribute("aria-hidden", showBar ? "false" : "true");
@@ -5918,7 +6373,7 @@ function syncLoungeMobileUI() {
   if (on) {
     if ($("weaponV")) $("weaponV").textContent = "RIFLE · VCs";
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    if ($("weaponTip")) $("weaponTip").textContent = "Drag look · click read · RMB rifle";
+    if ($("weaponTip")) $("weaponTip").textContent = "Drag look · click read · RMB Activated";
     try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
     try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
     try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
@@ -6813,11 +7268,11 @@ function miniGameActive() {
 }
 /* true while reading art, tweets, or playing mini-games — combat must pause */
 function gameplayFrozen() {
-  const inviteOpen = !!(typeof $ === "function" && $("guestInvite") && !$("guestInvite").classList.contains("hidden"));
+  const panelOpen = !!(document.getElementById("loungePanel") && !document.getElementById("loungePanel").classList.contains("hidden"));
   return !!(
     (typeof socialReading !== "undefined" && socialReading) ||
     (typeof rocketReading !== "undefined" && rocketReading) ||
-    inviteOpen ||
+    panelOpen ||
     miniGameActive()
   );
 }
@@ -7847,24 +8302,26 @@ const $ = id => document.getElementById(id);
   root.addEventListener("click", (ev) => { if (ev.target === root) doClose(ev); });
   root.addEventListener("pointerup", (ev) => { if (ev.target === root) doClose(ev); });
 })();
-(function wireGuestInvite() {
-  const root = $("guestInvite");
+(function wireLoungePanel() {
+  const root = document.getElementById("loungePanel");
   if (!root || root.dataset.wired === "1") return;
   root.dataset.wired = "1";
-  const ok = $("giOk"), cancel = $("giCancel");
-  if (ok) {
-    ok.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); confirmGuestInvite(); });
-    ok.addEventListener("pointerup", (e) => { e.preventDefault(); e.stopPropagation(); confirmGuestInvite(); });
+  const closeBtn = document.getElementById("lpClose");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", (e) => { e.preventDefault(); closeLoungePanel(); });
   }
-  if (cancel) {
-    cancel.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeGuestInvite(); });
-    cancel.addEventListener("pointerup", (e) => { e.preventDefault(); e.stopPropagation(); closeGuestInvite(); });
+  root.addEventListener("click", (e) => { if (e.target === root) closeLoungePanel(); });
+  const search = document.getElementById("lpSearch");
+  if (search) {
+    search.addEventListener("input", () => {
+      loungeFollowQuery = search.value || "";
+      if (loungePanelMode === "followAdd") renderLoungePanel();
+    });
   }
-  root.addEventListener("click", (e) => { if (e.target === root) closeGuestInvite(); });
   addEventListener("keydown", (e) => {
     if (e.code === "Escape" && root && !root.classList.contains("hidden")) {
       e.preventDefault();
-      closeGuestInvite();
+      closeLoungePanel();
     }
   });
 })();
@@ -8069,7 +8526,7 @@ function endLoungePointer(e) {
     if (guest) openTweetReader(guest);
     else showMsg("Drag to look · click a guest to read");
   } else if (btn === 2) {
-    fireRifle();
+    openActivatedPanel();
   }
 }
 
@@ -9652,7 +10109,7 @@ function applyWeaponHud() {
   const tip = $("weaponTip");
   if (tip) {
     if (typeof socialActive !== "undefined" && socialActive) {
-      tip.textContent = "Drag look · click read · RMB rifle · ∞";
+      tip.textContent = "Drag look · click read · RMB Activated";
     } else if (flameUnlocked) {
       tip.textContent = (flameOnlyMode || weaponIdx === 2)
         ? "🔥 FLAME · scroll/Q → boom+rifle · hold fire"
@@ -11589,12 +12046,12 @@ function bindMobileControls() {
   });
   tap("mAdd", () => {
     if (!socialActive) return;
-    openGuestInvite();
+    openLoungePanel("followAdd");
   });
   tap("mAddBar", () => {
     if (!socialActive) return;
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-    openGuestInvite();
+    openLoungePanel("activated");
   });
   tap("mLike", () => {
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
