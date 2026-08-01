@@ -1056,7 +1056,10 @@
     color: #e8eef8; font: 800 13px system-ui; padding: 10px 14px; border-radius: 12px;
   }
   body.live-lounge #sitHint.show, body.lounge-ui #sitHint.show { display: block; }
-  body.live-lounge #quota, body.live-lounge #chargeWrap, body.live-lounge #bossBarWrap { display: none !important; }
+  body.live-lounge #quota, body.live-lounge #chargeWrap, body.live-lounge #bossBarWrap,
+  body.live-lounge #weapon, body.live-lounge #portalHint { display: none !important; }
+  body.live-lounge #wave { opacity: 0.95; }
+  body.live-lounge #score { opacity: 0.9; }
 
   /* —— Lounge Activated / Favorites panel —— */
   #loungePanel {
@@ -5233,12 +5236,34 @@ function setXUserBubble(e, chunk) {
 }
 
 function loungeSlots() {
-  /* spots across every zone — world coords (already × LOUNGE_SCALE), spread out */
+  /* Independent lounge uses real-world units inside the new room bounds */
+  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.independent) {
+    const slots = [];
+    const pts = [
+      /* bar rail */
+      [-16, -10.5], [-13.5, -10.5], [-11, -10.5], [-8.5, -10.5], [-6, -10.5], [-3.5, -10.5],
+      /* pockets */
+      [-14, 2], [-16, 4], [-12, 5.5], [-14, 6],
+      [12, 2], [10, 4], [14, 5.5], [12, 6],
+      /* VIP */
+      [-14, 15], [-12, 15], [-10, 15], [-12, 17],
+      [10, 15], [12, 15], [14, 15], [12, 17],
+      /* game arena */
+      [10, -2], [14, -6], [18, -2], [14, 2], [8, 2],
+      /* library */
+      [-18, 10], [-17, 12], [-16, 8],
+      /* dance */
+      [-4, 16], [0, 18], [2, 16], [-2, 20],
+      /* lobby */
+      [-3, 19], [3, 19], [0, 18],
+    ];
+    for (const [x, z] of pts) slots.push({ x, z });
+    return slots;
+  }
   const S = LOUNGE_SCALE;
   const slots = [];
   for (const [px0, pz0, rr0] of LOUNGE_POCKETS) {
     const px = px0 * S, pz = pz0 * S, rr = rr0 * S * 1.15;
-    /* 5 seats around each pocket (was 4), larger radius */
     for (let i = 0; i < 5; i++) {
       const a = (i / 5) * Math.PI * 2 + px0 * 0.3;
       slots.push({ x: px + Math.sin(a) * (rr + 0.6), z: pz + Math.cos(a) * (rr + 0.6) });
@@ -5246,16 +5271,9 @@ function loungeSlots() {
   }
   const raw = [
     [-18, -4.5], [-12, -4.5], [-6, -4.5], [0, -4.2],
-    [-18, -3.0], [-14, -3.0], [-10, -3.0],                     /* bar chairs */
+    [-18, -3.0], [-14, -3.0], [-10, -3.0],
     [16, 18], [20, 21], [23, 19], [18, 24], [14, 21],
-    [14, 16], [20, 16], [16, 18.5],                            /* dance seating */
-    [-28, 12], [-30, 16], [-26, 18], [-26, 14], [-24, 16],
-    [-18, 20], [-22, 23], [-14, 24], [-18, 21],
-    [24, -3], [28, -3.5], [26, 0], [30, 2], [24, -1], [26, 1],
-    [0, 8], [8, 10], [-8, 10], [4, 14], [-4, 14],
-    [-4, 8], [-2, 9], [4, 9], [5.5, 10],                       /* center chairs */
-    [-24, 2], [-24, 8], [24, 4], [24, 10],                      /* wall sofas */
-    [0, 22], [-6, 22], [6, 22], [-10, 20], [10, 20],            /* entrance benches */
+    [0, 8], [8, 10], [-8, 10], [0, 22],
   ];
   for (const [x, z] of raw) slots.push({ x: x * S, z: z * S });
   return slots;
@@ -5921,26 +5939,93 @@ let seated = null; /* { seat, mesh, standPos } */
 let loungeZoneName = "Lobby";
 
 function setCombatWorldVisible(vis) {
+  /* Bulletproof: hide entire Level-1 office so lounge is a true alternate world */
+  const isLoungeTree = (obj) => {
+    let o = obj;
+    while (o) {
+      if (o === loungeDecor || (o.userData && o.userData.liveLounge)) return true;
+      if (o === pig || (o.userData && o.userData.keepInLounge)) return true;
+      o = o.parent;
+    }
+    return false;
+  };
+  const isEnemyMesh = (obj) => {
+    try {
+      return enemies.some(e => e && e.mesh && (obj === e.mesh || (e.mesh.isObject3D && e.mesh.getObjectById && e.mesh.getObjectById(obj.id))));
+    } catch (_) { return false; }
+  };
   try { setOfficePodsVisible(vis); } catch (_) {}
   try { if (officeFloor) officeFloor.visible = vis; } catch (_) {}
   try { if (bossOfficeGroup) bossOfficeGroup.visible = vis; } catch (_) {}
   try { if (typeof lobbyDecor !== "undefined" && lobbyDecor) lobbyDecor.visible = vis; } catch (_) {}
   try { if (typeof elon !== "undefined" && elon) elon.visible = vis; } catch (_) {}
   try { if (typeof grok !== "undefined" && grok) grok.visible = vis; } catch (_) {}
+  try { if (typeof wallTimerMesh !== "undefined" && wallTimerMesh) wallTimerMesh.visible = vis; } catch (_) {}
   try {
-    for (const o of obstacles) {
-      if (o.tag === "bossOffice" || o.tag === "officeDesk" || o.tag === "vending" || o.tag === "server") {
-        if (vis) { o.hw = o._hw; o.hd = o._hd; }
-        else { if (o._hw == null) { o._hw = o.hw; o._hd = o.hd; } o.hw = 0; o.hd = 0; }
+    if (typeof officeShell !== "undefined" && officeShell) {
+      for (const k of ["northWall", "southWall", "westWall", "eastWall", "ceiling"]) {
+        if (officeShell[k]) officeShell[k].visible = vis;
+      }
+      for (const w of (officeShell.southWindows || [])) if (w) w.visible = vis;
+      for (const w of (officeShell.wallWindows || [])) {
+        if (!w) continue;
+        w.visible = vis;
+        if (w.traverse) w.traverse(c => { c.visible = vis; });
       }
     }
   } catch (_) {}
-  /* hide random combat props tagged on scene children if present */
+  try {
+    for (const o of obstacles) {
+      if (!o) continue;
+      if (o.tag === "lounge") continue;
+      if (vis) {
+        if (o._hw != null) { o.hw = o._hw; o.hd = o._hd; }
+      } else {
+        if (o._hw == null) { o._hw = o.hw; o._hd = o.hd; }
+        o.hw = 0; o.hd = 0;
+      }
+    }
+  } catch (_) {}
+  /* Traverse entire scene graph — hide every mesh not part of lounge/pig/enemies/FX */
   try {
     scene.traverse(obj => {
-      if (obj.userData && obj.userData.combatOnly) obj.visible = vis;
+      if (!obj || obj === scene) return;
+      if (obj.isLight || obj.isCamera) return;
+      if (isLoungeTree(obj)) {
+        /* force lounge branch visible when hiding office */
+        if (!vis) obj.visible = true;
+        return;
+      }
+      if (obj === pig || (pig && pig.children && pig.getObjectById && pig.getObjectById(obj.id))) {
+        if (!vis) obj.visible = true;
+        return;
+      }
+      /* enemies (guests) stay */
+      try {
+        for (const e of enemies) {
+          if (!e || !e.mesh) continue;
+          if (obj === e.mesh || (e.mesh.children && e.mesh.getObjectById && e.mesh.getObjectById(obj.id))) {
+            if (!vis) obj.visible = true;
+            return;
+          }
+        }
+      } catch (_) {}
+      if (obj.userData && obj.userData.keepInLounge) {
+        if (!vis) obj.visible = true;
+        return;
+      }
+      if (!vis) {
+        if (obj.userData._lvVis == null) obj.userData._lvVis = obj.visible;
+        obj.visible = false;
+      } else if (obj.userData && obj.userData._lvVis != null) {
+        obj.visible = obj.userData._lvVis;
+        delete obj.userData._lvVis;
+      }
     });
-  } catch (_) {}
+  } catch (err) { console.warn("setCombatWorldVisible", err); }
+  /* ensure lounge root on and pig on */
+  try { if (loungeDecor) { loungeDecor.visible = true; loungeDecor.traverse(c => { c.visible = true; }); } } catch (_) {}
+  try { if (pig) pig.visible = true; } catch (_) {}
 }
 
 function zoneLabelSprite(text, color = "#7CFFB0") {
@@ -6144,12 +6229,11 @@ function enhanceLiveLoungeDetail(g) {
 
 function nearestSeat(maxDist = 1.85) {
   if (!loungeDecor || !loungeDecor.userData.seats) return null;
+  const sc = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
   let best = null, bd = maxDist;
   for (const s of loungeDecor.userData.seats) {
     if (s.occupied && seated && seated.seat !== s) continue;
-    const d = Math.hypot(pig.position.x - s.x * (loungeDecor.scale?.x || LOUNGE_SCALE), pig.position.z - s.z * (loungeDecor.scale?.z || LOUNGE_SCALE));
-    /* seats stored in local decor space; decor is scaled */
-    const wx = s.x * LOUNGE_SCALE, wz = s.z * LOUNGE_SCALE;
+    const wx = s.x * sc, wz = s.z * sc;
     const d2 = Math.hypot(pig.position.x - wx, pig.position.z - wz);
     if (d2 < bd) { bd = d2; best = s; }
   }
@@ -6157,7 +6241,9 @@ function nearestSeat(maxDist = 1.85) {
 }
 
 function seatWorld(s) {
-  return { x: s.x * LOUNGE_SCALE, y: s.y, z: s.z * LOUNGE_SCALE, ry: s.ry };
+  /* independent lounge is built in world units (no group scale) */
+  const sc = (loungeDecor && loungeDecor.userData && loungeDecor.userData.independent) ? 1 : LOUNGE_SCALE;
+  return { x: s.x * sc, y: s.y, z: s.z * sc, ry: s.ry };
 }
 
 function sitOnSeat(s) {
@@ -6210,8 +6296,9 @@ function updateLoungeZoneHUD() {
   const el = document.getElementById("zoneTag");
   if (!el || !loungeDecor || !socialActive) return;
   let best = "Lobby", bd = 12;
+  const sc = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
   for (const z of (loungeDecor.userData.zones || [])) {
-    const d = Math.hypot(pig.position.x - z.x * LOUNGE_SCALE, pig.position.z - z.z * LOUNGE_SCALE);
+    const d = Math.hypot(pig.position.x - z.x * sc, pig.position.z - z.z * sc);
     if (d < bd) { bd = d; best = z.name; }
   }
   loungeZoneName = best;
@@ -6332,7 +6419,8 @@ function startRaceGame() {
   socialReading = true;
   setHeroForMiniGame(true);
   const rc = loungeDecor.userData.raceCenter;
-  const c = new THREE.Vector3(rc.x * LOUNGE_SCALE, 0, rc.z * LOUNGE_SCALE);
+  const sc = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
+  const c = new THREE.Vector3(rc.x * sc, 0, rc.z * sc);
   if (!raceGame.car) {
     raceGame.car = new THREE.Group();
     raceGame.car.add(box(0.7, 0.28, 1.1, 0x1d9bf0, 0, 0.2, 0));
@@ -6375,7 +6463,8 @@ function updateRaceGame(dt) {
   if (!raceGame.active || !loungeDecor || !loungeDecor.userData.raceCenter) return;
   raceGame.tLeft -= dt;
   const rc = loungeDecor.userData.raceCenter;
-  const c = new THREE.Vector3(rc.x * LOUNGE_SCALE, 0, rc.z * LOUNGE_SCALE);
+  const scR = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
+  const c = new THREE.Vector3(rc.x * scR, 0, rc.z * scR);
   const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
   const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
   const throttle = keys["KeyW"] || keys["ArrowUp"] || stickY < -0.25;
@@ -6507,544 +6596,394 @@ function addLoungeObstacles() {
   clearObstaclesByTag("lounge");
   for (const [x, z, hw, hd, h] of LOUNGE_BLOCKS) blockArea(x, z, hw, hd, h, "lounge");
 }
-function buildLoungeDecor() {
-  /* rebuild if missing seating (hot reload / prior lounge without chairs) */
-  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.liveLoungeV === 4) return loungeDecor;
+
+/* ============================================================
+   INDEPENDENT LIVE LOUNGE WORLD (from scratch — no office shell)
+   ============================================================ */
+function buildIndependentLoungeWorld() {
   if (loungeDecor) {
     try { scene.remove(loungeDecor); } catch (_) {}
     loungeDecor = null;
-    LOUNGE_BLOCKS.length = 0;
   }
+  LOUNGE_BLOCKS.length = 0;
   const g = new THREE.Group();
-  g.userData.hasExtraSeating = 3;
-  g.userData.liveLoungeV = 4;
+  g.name = "LiveLoungeWorld";
+  g.userData.liveLounge = true;
+  g.userData.independent = true;
+  g.userData.liveLoungeV = 5;
   g.userData.seats = [];
   g.userData.zones = [];
   g.userData.gameSpots = [];
-  const WALNUT = 0x4a3020, WALNUT_D = 0x352214, VELVET = 0x6e1f35, VELVET2 = 0x1f4a3a,
-        BRASS = 0xc8a24a, PLUM = 0x4a2440, CREAM = 0xe8d8b8;
-  /* herringbone-ish parquet floor */
-  const parquet = canvasTex(256, 256, (c2, w, h) => {
-    c2.fillStyle = "#3a2818"; c2.fillRect(0, 0, w, h);
-    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-      c2.fillStyle = pick(["#46301c", "#3e2a18", "#503722", "#422d1a"]);
-      c2.fillRect(x * 32 + (y % 2) * 16, y * 32, 30, 30);
+  g.userData.hasExtraSeating = 3;
+
+  const W = 48, D = 36, H = 5.2; /* life-scale room */
+  const WALNUT = 0x3d2818, WALNUT2 = 0x2a1a10, BRASS = 0xc9a24a;
+  const VELVET = 0x6b1f38, TEAL = 0x1a4a44, CREAM = 0xf0e6d4, INK = 0x12141c;
+
+  /* —— shell: floor, walls, vaulted soft ceiling (NOT office drop-ceiling) —— */
+  const woodTex = canvasTex(512, 512, (c, w, h) => {
+    c.fillStyle = "#2c1c12"; c.fillRect(0, 0, w, h);
+    for (let y = 0; y < h; y += 28) {
+      for (let x = 0; x < w; x += 64) {
+        const ox = (Math.floor(y / 28) % 2) * 32;
+        c.fillStyle = pick(["#352214", "#3c2818", "#2a1a10", "#402818"]);
+        c.fillRect(x + ox, y, 62, 26);
+        c.strokeStyle = "rgba(0,0,0,0.18)"; c.strokeRect(x + ox, y, 62, 26);
+      }
     }
   });
-  parquet.wrapS = parquet.wrapT = THREE.RepeatWrapping;
-  parquet.repeat.set(10, 6.5);
-  const floor2 = new THREE.Mesh(new THREE.PlaneGeometry(60.4, 36),
-    new THREE.MeshLambertMaterial({ map: parquet }));
-  floor2.rotation.x = -Math.PI / 2;
-  floor2.position.set(0, 0.04, 10);
-  floor2.receiveShadow = true;
-  g.add(floor2);
-  /* enclosing walls: aubergine over walnut wainscot, brass rail line */
-  const mkWall = (w2, x, z, ry) => {
-    const wallG = new THREE.Group();
-    wallG.add(box(w2, 4.6, 0.3, PLUM, 0, 2.3, 0));
-    wallG.add(box(w2, 1.35, 0.34, WALNUT, 0, 0.68, 0));
-    wallG.add(box(w2, 0.08, 0.36, BRASS, 0, 1.4, 0));
-    wallG.position.set(x, 0, z); wallG.rotation.y = ry;
-    g.add(wallG);
+  woodTex.wrapS = woodTex.wrapT = THREE.RepeatWrapping;
+  woodTex.repeat.set(8, 6);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(W + 0.4, D + 0.4),
+    new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.72, metalness: 0.05 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set(0, 0.01, D * 0.08);
+  floor.receiveShadow = true;
+  g.add(floor);
+
+  /* dark cove ceiling with recessed soft panels — club, not office */
+  const ceil = new THREE.Mesh(
+    new THREE.PlaneGeometry(W + 0.6, D + 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x1a1520, roughness: 0.9 })
+  );
+  ceil.rotation.x = Math.PI / 2;
+  ceil.position.set(0, H, D * 0.08);
+  g.add(ceil);
+  for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(6.5, 0.08, 5.5),
+      new THREE.MeshStandardMaterial({ color: 0x2a2233, roughness: 0.8, emissive: 0x1a1020, emissiveIntensity: 0.15 })
+    );
+    panel.position.set(-16 + i * 8, H - 0.12, -4 + j * 10);
+    g.add(panel);
+    const glow = new THREE.PointLight(0xffc8a0, 4.5, 14);
+    glow.position.set(panel.position.x, H - 0.4, panel.position.z);
+    g.add(glow);
+  }
+
+  /* perimeter walls — plaster + wainscot + brass rail */
+  const mkWall = (len, x, z, ry) => {
+    const wg = new THREE.Group();
+    const plaster = new THREE.Mesh(
+      new THREE.BoxGeometry(len, H * 0.72, 0.28),
+      new THREE.MeshStandardMaterial({ color: 0x2b2030, roughness: 0.88 })
+    );
+    plaster.position.y = H * 0.36 + H * 0.14;
+    wg.add(plaster);
+    const wain = new THREE.Mesh(
+      new THREE.BoxGeometry(len, H * 0.28, 0.34),
+      new THREE.MeshStandardMaterial({ color: WALNUT, roughness: 0.65 })
+    );
+    wain.position.y = H * 0.14;
+    wg.add(wain);
+    const rail = new THREE.Mesh(
+      new THREE.BoxGeometry(len, 0.06, 0.38),
+      new THREE.MeshStandardMaterial({ color: BRASS, metalness: 0.7, roughness: 0.35 })
+    );
+    rail.position.y = H * 0.28;
+    wg.add(rail);
+    wg.position.set(x, 0, z);
+    wg.rotation.y = ry;
+    g.add(wg);
   };
-  mkWall(60.4, 0, -8, 0);
-  mkWall(36.4, -30.2, 10, Math.PI / 2); mkWall(36.4, 30.2, 10, Math.PI / 2);
-  /* south side is a LOW brass railing so the follow-camera sees over it */
-  g.add(box(60.4, 0.9, 0.24, WALNUT, 0, 0.45, 28));
-  g.add(box(60.4, 0.07, 0.3, BRASS, 0, 0.95, 28));
-  lb(0, -8, 30.2, 0.3, 10); lb(0, 28, 30.2, 0.3, 10);
-  lb(-30.2, 10, 0.3, 18.2, 10); lb(30.2, 10, 0.3, 18.2, 10);
-  /* wall sconces (warm glow strips) */
-  for (const [sx, sz, sry] of [[-30, 0, Math.PI / 2], [-30, 8, Math.PI / 2], [-30, 20, Math.PI / 2],
-      [30, 8, -Math.PI / 2], [30, 16, -Math.PI / 2], [-14, -7.8, 0], [0, -7.8, 0], [14, -7.8, 0]]) {
-    const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 1.1), new THREE.MeshBasicMaterial({ color: 0xffd9a0 }));
-    sc.position.set(sx, 2.6, sz); sc.rotation.y = sry;
-    g.add(sc);
-  }
-  for (const [wx, wz] of [[-14, 4], [14, 4], [0, 16], [18, 22], [-20, 22]]) {
-    const warm = new THREE.PointLight(0xffc890, 8, 18);
-    warm.position.set(wx, 3.4, wz);
-    g.add(warm);
-  }
-  /* conversation pockets: plum rug, velvet couches facing IN, candle table */
-  LOUNGE_POCKETS.forEach(([rx, rz, rr], i) => {
-    const rug = new THREE.Mesh(new THREE.CircleGeometry(rr + 0.7, 26),
-      new THREE.MeshLambertMaterial({ color: i === 1 ? 0x3a1f2e : 0x55182b }));
-    rug.rotation.x = -Math.PI / 2;
-    rug.position.set(rx, 0.06, rz);
-    g.add(rug);
-    const trim = new THREE.Mesh(new THREE.RingGeometry(rr + 0.45, rr + 0.7, 26),
-      new THREE.MeshLambertMaterial({ color: BRASS }));
-    trim.rotation.x = -Math.PI / 2;
-    trim.position.set(rx, 0.065, rz);
-    g.add(trim);
-    const couch = (a, colr) => {
-      const cg = new THREE.Group();
-      cg.add(box(2.2, 0.48, 0.95, colr, 0, 0.34, 0));
-      cg.add(box(2.2, 0.72, 0.2, colr, 0, 0.84, -0.38));
-      cg.add(box(0.22, 0.6, 0.95, colr, -1.05, 0.52, 0));
-      cg.add(box(0.22, 0.6, 0.95, colr, 1.05, 0.52, 0));
-      cg.add(box(2.2, 0.1, 0.95, WALNUT_D, 0, 0.08, 0));
-      cg.add(box(0.42, 0.28, 0.15, BRASS, -0.6, 0.7, -0.22));
-      cg.add(box(0.42, 0.28, 0.15, CREAM, 0.6, 0.7, -0.22));
-      cg.position.set(rx + Math.sin(a) * (rr + 1.15), 0, rz + Math.cos(a) * (rr + 1.15));
-      cg.rotation.y = a + Math.PI;
-      g.add(cg);
-      lb(cg.position.x, cg.position.z, 1.15, 0.55, 1.1);
-    };
-    couch(0.5 + i * 0.7, VELVET); couch(2.6 + i * 0.7, VELVET2); couch(4.5 + i * 0.7, VELVET);
-    g.add(cyl(0.65, 0.65, 0.09, WALNUT, rx, 0.46, rz, 14), cyl(0.1, 0.14, 0.44, WALNUT_D, rx, 0.22, rz));
-    g.add(cyl(0.045, 0.05, 0.16, CREAM, rx + 0.2, 0.58, rz));
-    const flame = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
-    flame.position.set(rx + 0.2, 0.7, rz);
-    g.add(flame);
-    lb(rx, rz, 0.75, 0.75, 0.55);
+  mkWall(W + 0.5, 0, -D / 2 + 2, 0);           /* north / bar wall */
+  mkWall(W + 0.5, 0, D / 2 + 4.5, Math.PI);     /* south */
+  mkWall(D + 2.5, -W / 2, D * 0.08, Math.PI / 2);
+  mkWall(D + 2.5, W / 2, D * 0.08, -Math.PI / 2);
+  lb(0, -D / 2 + 2, W / 2, 0.3, H);
+  lb(0, D / 2 + 4.5, W / 2, 0.3, H);
+  lb(-W / 2, D * 0.08, 0.3, D / 2, H);
+  lb(W / 2, D * 0.08, 0.3, D / 2, H);
+
+  /* city night windows (decorative only — not office exit windows) */
+  const nightTex = canvasTex(512, 256, (c, w, h) => {
+    const g2 = c.createLinearGradient(0, 0, 0, h);
+    g2.addColorStop(0, "#050814"); g2.addColorStop(0.6, "#121a38"); g2.addColorStop(1, "#1a2448");
+    c.fillStyle = g2; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 40; i++) {
+      const bw = 12 + Math.random() * 40, bh = 40 + Math.random() * 140;
+      const bx = Math.random() * w, by = h - bh;
+      c.fillStyle = pick(["#0a1020", "#101828"]); c.fillRect(bx, by, bw, bh);
+      for (let yy = by + 6; yy < h - 8; yy += 10)
+        for (let xx = bx + 4; xx < bx + bw - 4; xx += 8)
+          if (Math.random() < 0.4) {
+            c.fillStyle = pick(["#ffd27a", "#9ec8ff", "#ff9a6a"]);
+            c.fillRect(xx, yy, 4, 5);
+          }
+    }
   });
-  /* THE ALGORITHM bar along the north wall */
+  for (let i = 0; i < 4; i++) {
+    const pane = new THREE.Mesh(
+      new THREE.PlaneGeometry(8.5, 3.4),
+      new THREE.MeshBasicMaterial({ map: nightTex, toneMapped: false })
+    );
+    pane.position.set(-15 + i * 10, 2.9, -D / 2 + 2.2);
+    g.add(pane);
+    const frame = box(8.7, 3.6, 0.12, BRASS, -15 + i * 10, 2.9, -D / 2 + 2.15);
+    g.add(frame);
+  }
+
+  /* —— ZONES —— */
+  const addZone = (name, x, z, color) => {
+    g.userData.zones.push({ name, x, z, color });
+    const lab = textSprite("▸ " + name, { size: 40, color, strokeW: 7, maxWidth: 0 });
+    lab.scale.multiplyScalar(0.7);
+    lab.position.set(x, 3.3, z);
+    g.add(lab);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.3, 1.5, 32),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.set(x, 0.03, z);
+    g.add(ring);
+  };
+
+  /* —— detailed bar —— */
   {
-    const bx = -12, bz = -6.6;
-    g.add(box(13, 1.15, 1.2, WALNUT, bx, 0.58, bz));
-    g.add(box(13.2, 0.1, 1.4, 0x1c1410, bx, 1.18, bz));
-    const rail = cyl(0.035, 0.035, 13, BRASS, bx, 0.35, bz + 0.75, 8);
+    const bx = -10, bz = -12;
+    addZone("The Algorithm Bar", bx, bz + 2.2, "#c9a24a");
+    /* bar body */
+    g.add(box(16, 1.15, 1.35, WALNUT, bx, 0.58, bz));
+    g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 1.2, bz)); /* top */
+    g.add(box(16, 0.08, 0.12, BRASS, bx, 1.28, bz + 0.7));
+    /* back bar + bottles */
+    g.add(box(15, 2.4, 0.4, WALNUT2, bx, 2.0, bz - 0.95));
+    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 2.6, bz - 0.95));
+    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 3.2, bz - 0.95));
+    for (let i = 0; i < 18; i++) {
+      const col = pick([0x40c8a0, 0xd44a90, 0xe8b040, 0x5a8ad4, 0xffffff, 0xff6a4a]);
+      g.add(cyl(0.07, 0.09, 0.28 + (i % 4) * 0.07, col, bx - 7.5 + i * 0.85, 2.85 + (i % 2) * 0.55, bz - 0.95, 8));
+    }
+    /* foot rail */
+    const rail = cyl(0.04, 0.04, 15.5, BRASS, bx, 0.28, bz + 0.85, 8);
     rail.rotation.z = Math.PI / 2;
     g.add(rail);
-    g.add(box(12.4, 0.08, 0.4, WALNUT_D, bx, 2.3, bz - 0.95));
-    for (let i = 0; i < 13; i++) {
-      const bot = box(0.16, rand(0.32, 0.5), 0.16, 0xffffff, bx - 5.7 + i * 0.95, 2.55, bz - 0.95);
-      bot.material = new THREE.MeshBasicMaterial({ color: pick([0x40c8a0, 0xd44a90, 0x5a8ad4, 0xe8b040, 0x9a5ad4]) });
-      g.add(bot);
-    }
+    lb(bx, bz, 8.2, 0.9, 1.4);
+    /* 6 life-scale bar stools */
     for (let i = 0; i < 6; i++) {
-      g.add(cyl(0.3, 0.3, 0.07, VELVET, bx - 5 + i * 2, 0.88, bz + 1.4, 10));
-      g.add(cyl(0.05, 0.08, 0.82, BRASS, bx - 5 + i * 2, 0.42, bz + 1.4, 8));
+      const sx = bx - 6 + i * 2.4, sz = bz + 1.55;
+      g.add(cyl(0.28, 0.3, 0.08, VELVET, sx, 0.92, sz, 14));
+      g.add(cyl(0.05, 0.07, 0.9, BRASS, sx, 0.45, sz, 8));
+      g.add(cyl(0.22, 0.22, 0.05, 0x222, sx, 0.04, sz, 12));
+      registerSeat(g, sx, 0.95, sz, 0, "Bar stool " + (i + 1), "The Algorithm Bar");
     }
-    lb(bx, bz, 6.6, 0.85, 1.3);
-    const barTag = textSprite("🥃 THE ALGORITHM", { size: 36, color: "#c8a24a", strokeW: 6, maxWidth: 0 });
-    barTag.scale.multiplyScalar(0.8);
-    barTag.position.set(bx, 3.3, bz);
-    g.add(barTag);
-    /* FREE ESPRESSO machine at the bar's end — walk up for a speed boost */
-    g.add(box(0.7, 0.6, 0.5, 0x1c1e24, bx + 5.8, 1.5, bz));
-    g.add(box(0.72, 0.08, 0.52, BRASS, bx + 5.8, 1.82, bz));
-    const espTag = textSprite("FREE ESPRESSO — WALK UP", { size: 26, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
-    espTag.scale.multiplyScalar(0.62);
-    espTag.position.set(bx + 5.8, 2.5, bz + 0.4);
-    g.add(espTag);
-    g.userData.espPos = new THREE.Vector3(bx + 5.8, 0, bz + 1);
+    /* espresso station */
+    g.add(box(0.9, 0.75, 0.65, 0x1c1e24, bx + 7.2, 1.6, bz));
+    g.add(box(0.92, 0.08, 0.67, BRASS, bx + 7.2, 2.0, bz));
+    const esp = textSprite("FREE ESPRESSO", { size: 28, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
+    esp.scale.multiplyScalar(0.5);
+    esp.position.set(bx + 7.2, 2.45, bz + 0.5);
+    g.add(esp);
+    g.userData.espPos = new THREE.Vector3(bx + 7.2, 0, bz + 1.2);
   }
-  /* FIREPLACE LIBRARY nook on the west wall: shelves + armchairs + reading rug */
-  {
-    const fx = -29.9, fz = 14;
-    g.add(box(0.6, 2.2, 3.0, 0x2a2226, fx, 1.1, fz));
-    g.add(box(0.65, 0.15, 3.2, BRASS, fx, 2.25, fz));
-    g.add(box(0.3, 1.0, 1.6, 0x0c0806, fx + 0.2, 0.75, fz));
-    const fireP = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8),
-      new THREE.MeshBasicMaterial({ color: 0xff7a20, transparent: true, opacity: 0.9 }));
-    fireP.position.set(fx + 0.38, 0.7, fz);
-    fireP.rotation.y = Math.PI / 2;
-    g.add(fireP);
-    const fire = new THREE.PointLight(0xff8c30, 6, 12);
-    fire.position.set(fx + 0.8, 1.0, fz);
-    g.add(fire);
-    g.userData.fire = fire;
-    g.userData.firePlane = fireP;
-    lb(fx, fz, 0.5, 1.6, 3);
-    /* bookshelves flanking the fireplace, spines in warm colors */
-    for (const sz of [fz - 4.2, fz + 4.2]) {
-      g.add(box(0.7, 3.2, 2.6, WALNUT_D, fx + 0.2, 1.6, sz));
-      for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
-        g.add(box(0.12, rand(0.3, 0.45), 0.26, pick([0x8a3a2a, 0x2a5a4a, 0xb08a30, 0x4a3a6a, 0x7a2a3a]),
-          fx + 0.5, 0.55 + r * 0.72, sz - 1.05 + c * 0.34));
-      }
-      lb(fx + 0.2, sz, 0.6, 1.4, 3.4);
-    }
-    /* leather armchairs facing the fire */
-    for (const az of [fz - 1.9, fz + 1.9]) {
-      const ch = new THREE.Group();
-      ch.add(box(1.1, 0.5, 1.0, 0x5a3a22, 0, 0.36, 0));
-      ch.add(box(1.1, 0.85, 0.24, 0x5a3a22, 0, 0.85, -0.4));
-      ch.add(box(0.24, 0.62, 1.0, 0x5a3a22, -0.55, 0.55, 0));
-      ch.add(box(0.24, 0.62, 1.0, 0x5a3a22, 0.55, 0.55, 0));
-      ch.position.set(fx + 2.6, 0, az);
-      ch.rotation.y = -Math.PI / 2 + (az < fz ? 0.4 : -0.4);
-      g.add(ch);
-      lb(ch.position.x, ch.position.z, 0.7, 0.6, 1.2);
-    }
-    const rug2 = new THREE.Mesh(new THREE.CircleGeometry(2.4, 20),
-      new THREE.MeshLambertMaterial({ color: 0x5a2a1a }));
-    rug2.rotation.x = -Math.PI / 2;
-    rug2.position.set(fx + 2.4, 0.06, fz);
-    g.add(rug2);
-    const libTag = textSprite("📚 QUIET REPLIES", { size: 28, color: "#e8b040", strokeW: 5, maxWidth: 0 });
-    libTag.scale.multiplyScalar(0.65);
-    libTag.position.set(fx + 2, 3.6, fz);
-    g.add(libTag);
+
+  /* —— conversation lounges with detailed sofas —— */
+  const mkSofa = (x, z, ry, col) => {
+    const s = new THREE.Group();
+    s.add(box(2.6, 0.45, 1.05, col, 0, 0.4, 0));
+    s.add(box(2.6, 0.85, 0.28, col, 0, 0.85, -0.4));
+    s.add(box(0.28, 0.7, 1.05, col, -1.2, 0.65, 0));
+    s.add(box(0.28, 0.7, 1.05, col, 1.2, 0.65, 0));
+    s.add(box(2.6, 0.12, 1.05, WALNUT2, 0, 0.12, 0));
+    s.add(box(0.5, 0.22, 0.35, CREAM, -0.55, 0.72, -0.1));
+    s.add(box(0.5, 0.22, 0.35, 0xd4c4a8, 0.55, 0.72, -0.1));
+    s.position.set(x, 0, z);
+    s.rotation.y = ry;
+    g.add(s);
+    lb(x, z, 1.4, 0.7, 1.1);
+  };
+  for (const [zx, zz, name, col] of [
+    [-14, 4, "Conversation Pocket A", "#ff8ab0"],
+    [12, 4, "Conversation Pocket B", "#8fd1ff"],
+  ]) {
+    addZone(name, zx, zz, col);
+    const rug = new THREE.Mesh(
+      new THREE.CircleGeometry(3.2, 32),
+      new THREE.MeshStandardMaterial({ color: 0x3a1528, roughness: 0.9 })
+    );
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(zx, 0.02, zz);
+    g.add(rug);
+    mkSofa(zx, zz - 2.2, 0, VELVET);
+    mkSofa(zx - 2.4, zz + 0.6, Math.PI / 2, TEAL);
+    mkSofa(zx + 2.4, zz + 0.6, -Math.PI / 2, VELVET);
+    g.add(cyl(0.7, 0.7, 0.12, WALNUT, zx, 0.45, zz, 16));
+    g.add(cyl(0.12, 0.16, 0.4, WALNUT2, zx, 0.2, zz));
+    registerSeat(g, zx, 0.55, zz - 1.9, 0, name + " sofa C", name);
+    registerSeat(g, zx - 2.0, 0.55, zz + 0.6, Math.PI / 2, name + " sofa L", name);
+    registerSeat(g, zx + 2.0, 0.55, zz + 0.6, -Math.PI / 2, name + " sofa R", name);
   }
-  /* DANCE FLOOR (SE): glowing checker — local coords (group scales later) */
-  {
-    /* keep clear of furniture: tiles only + disco; seating sits outside radius */
-    const dx = 18, dz = 20;
-    const danceTex = canvasTex(128, 128, (c2, w, h) => {
-      for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
-        c2.fillStyle = pick(["#d44a90", "#5a8ad4", "#40c8a0", "#e8b040", "#9a5ad4", "#ff6a5a"]);
-        c2.fillRect(x * 32, y * 32, 32, 32);
-      }
-      c2.strokeStyle = "#1a1018"; c2.lineWidth = 4;
-      for (let i = 0; i <= 4; i++) { c2.beginPath(); c2.moveTo(i * 32, 0); c2.lineTo(i * 32, h); c2.stroke();
-        c2.beginPath(); c2.moveTo(0, i * 32); c2.lineTo(w, i * 32); c2.stroke(); }
-    });
-    const danceFloor = new THREE.Mesh(new THREE.PlaneGeometry(9, 9),
-      new THREE.MeshBasicMaterial({ map: danceTex }));
-    danceFloor.rotation.x = -Math.PI / 2;
-    danceFloor.position.set(dx, 0.055, dz);
-    g.add(danceFloor);
-    g.userData.danceTex = danceTex;
-    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.6, 10, 8),
-      new THREE.MeshPhongMaterial({ color: 0xb8c4d0, specular: 0xffffff, shininess: 200, flatShading: true }));
-    ball.position.set(dx, 4.7, dz);
-    g.add(ball, cyl(0.02, 0.02, 1.7, 0x22262c, dx, 5.8, dz, 6));
-    g.userData.disco = ball;
-    const discoL = new THREE.PointLight(0xd44aff, 7, 14);
-    discoL.position.set(dx, 3.6, dz);
-    g.add(discoL);
-    g.userData.discoL = discoL;
-    /* jukebox INSIDE lounge border, just west of dance tiles (not past walls) */
-    const jx = dx - 5.6, jz = dz - 0.2;
-    const jg = new THREE.Group();
-    jg.add(box(1.5, 1.9, 0.9, 0x7a1f2e, 0, 0.95, 0));
-    const arch = cyl(0.75, 0.75, 0.9, 0x9a2f3e, 0, 1.9, 0, 14);
-    arch.rotation.x = Math.PI / 2;
-    jg.add(arch);
-    const jglow = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.2), new THREE.MeshBasicMaterial({ color: 0xffb347 }));
-    jglow.position.set(0, 1.15, 0.47);
-    jg.add(jglow);
-    jg.add(box(1.54, 0.08, 0.94, BRASS, 0, 0.06, 0));
-    jg.position.set(jx, 0, jz);
-    jg.rotation.y = Math.PI / 2; /* face onto the dance floor */
-    g.add(jg);
-    g.userData.jukeGlow = jglow;
-    g.userData.jukePos = new THREE.Vector3(jx, 1.2, jz);
-    lb(jx, jz, 1.0, 0.8, 2.4);
-    const jTag = textSprite("JUKEBOX — HIT IT 🎵", { size: 28, color: "#ff90e0", strokeW: 5, maxWidth: 0 });
-    jTag.scale.multiplyScalar(0.65);
-    jTag.position.set(jx, 3.0, jz);
-    g.add(jTag);
-    const dTag2 = textSprite("💃 DANCE FLOOR", { size: 30, color: "#d44aff", strokeW: 6, maxWidth: 0 });
-    dTag2.scale.multiplyScalar(0.7);
-    dTag2.position.set(dx, 4.0, dz - 5.2);
-    g.add(dTag2);
+
+  /* —— VIP booths —— */
+  for (const [bx, bz, name] of [[-12, 16, "VIP Booth 1"], [12, 16, "VIP Booth 2"]]) {
+    addZone(name, bx, bz, "#ffd94a");
+    g.add(box(6.2, 0.06, 5.2, 0x241018, bx, 0.03, bz));
+    g.add(box(6.2, 1.25, 0.22, 0x4a2030, bx, 0.7, bz - 2.4));
+    g.add(box(0.22, 1.25, 5.0, 0x4a2030, bx - 3.0, 0.7, bz));
+    g.add(box(0.22, 1.25, 5.0, 0x4a2030, bx + 3.0, 0.7, bz));
+    g.add(box(1.8, 0.5, 1.8, WALNUT, bx, 0.45, bz));
+    /* banquette seats */
+    g.add(box(5.4, 0.4, 0.9, VELVET, bx, 0.35, bz + 1.7));
+    g.add(box(5.4, 0.75, 0.25, VELVET, bx, 0.75, bz + 2.05));
+    for (let i = 0; i < 4; i++) {
+      registerSeat(g, bx - 1.8 + i * 1.2, 0.55, bz + 1.55, Math.PI, name + " seat " + (i + 1), name);
+    }
+    const neon = textSprite(name + " · INVITE", { size: 30, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
+    neon.scale.multiplyScalar(0.55);
+    neon.position.set(bx, 2.15, bz - 2.2);
+    g.add(neon);
+    lb(bx, bz, 3.2, 2.7, 1.3);
   }
-  /* ARCADE + DARTS corner (NE): playable cabinets + dartboard + dart table */
+
+  /* —— Game Arena —— */
   {
-    const ax = 24, az = -5.5;
-    const CAB_NAMES = ["BOT INVADERS", "WHACK-A-SPAM"];
-    g.userData.arcades = [];
-    for (let i = 0; i < 2; i++) {
-      const cab = new THREE.Group();
-      cab.add(box(1.1, 2.1, 0.9, i ? 0x2a3a6a : 0x5a2a5a, 0, 1.05, 0));
-      /* live canvas screen — mini-game renders here */
-      const cnv = document.createElement("canvas");
-      cnv.width = 192; cnv.height = 144;
-      const cctx = cnv.getContext("2d");
-      cctx.fillStyle = "#050a10"; cctx.fillRect(0, 0, 192, 144);
-      cctx.fillStyle = i ? "#7CFFB0" : "#5ad1ff";
-      cctx.font = "bold 18px monospace"; cctx.textAlign = "center";
-      cctx.fillText(CAB_NAMES[i], 96, 60);
-      cctx.font = "bold 11px monospace";
-      cctx.fillText("WALK UP TO PLAY", 96, 90);
-      const ctex = new THREE.CanvasTexture(cnv);
-      ctex.colorSpace = THREE.SRGBColorSpace;
-      ctex.magFilter = THREE.NearestFilter;
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.6), new THREE.MeshBasicMaterial({ map: ctex }));
-      scr.position.set(0, 1.5, 0.46);
-      scr.rotation.x = -0.15;
-      cab.add(scr);
-      cab.add(box(1.1, 0.16, 0.5, 0x14161a, 0, 0.95, 0.55));
-      cab.add(cyl(0.03, 0.03, 0.18, 0x22262c, -0.2, 1.1, 0.55, 6), sph(0.05, 0xd02020, -0.2, 1.2, 0.55, 8, 6));
-      cab.add(cyl(0.04, 0.04, 0.03, 0xffd200, 0.12, 1.04, 0.55, 8), cyl(0.04, 0.04, 0.03, 0x40c8a0, 0.26, 1.04, 0.55, 8));
-      cab.position.set(ax - 2 + i * 2.2, 0, az);
-      g.add(cab);
-      lb(cab.position.x, cab.position.z, 0.7, 0.6, 2.2);
-      /* engage pad in front of cab; camera uses live screen world pos in update */
-      g.userData.arcades.push({
-        name: CAB_NAMES[i], cnv, ctx: cctx, tex: ctex, cab, scr,
-        pos: new THREE.Vector3(cab.position.x, 0, cab.position.z + 1.35),
-        camPos: new THREE.Vector3(cab.position.x, 1.55, cab.position.z + 1.35),
-        lookAt: new THREE.Vector3(cab.position.x, 1.5, cab.position.z + 0.46),
-      });
-      const cTag = textSprite("🕹 " + CAB_NAMES[i], { size: 24, color: i ? "#7CFFB0" : "#5ad1ff", strokeW: 5, maxWidth: 0 });
-      cTag.scale.multiplyScalar(0.55);
-      cTag.position.set(cab.position.x, 2.7, az);
-      g.add(cTag);
-    }
-    /* TEST YOUR CLOUT high-striker — open floor near lounge entrance (clear camera lane) */
-    {
-      /* south of center seating, facing +Z so players walk up from the entrance */
-      const sx2 = 0.0, sz2 = 15.5;
-      const base = new THREE.Group();
-      base.add(box(1.6, 0.18, 1.4, 0x5a1820, 0, 0.1, 0));
-      base.add(box(1.4, 0.12, 1.2, 0x8a2430, 0, 0.22, 0));
-      base.add(box(0.55, 0.4, 0.55, 0x9a2f3e, 0, 0.45, 0.15));
-      /* tower post */
-      base.add(box(0.18, 3.8, 0.18, 0x2a1c14, 0, 2.2, 0));
-      /* backboard so meter reads clearly */
-      base.add(box(0.55, 3.5, 0.08, 0x1a1014, 0, 2.15, -0.14));
-      const segCols = [0x40c8a0, 0x7CFFB0, 0xffd94a, 0xff8c40, 0xff4030];
-      for (let sI = 0; sI < 5; sI++) {
-        const seg = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.58),
-          new THREE.MeshBasicMaterial({ color: segCols[sI], side: THREE.DoubleSide }));
-        /* face +Z (toward entrance / camera) */
-        seg.position.set(0, 0.95 + sI * 0.62, 0.12);
-        base.add(seg);
-      }
-      /* gold target bands */
-      for (let sI = 0; sI < 5; sI++) {
-        base.add(box(0.48, 0.04, 0.06, 0xc8a24a, 0, 0.66 + sI * 0.62, 0.1));
-      }
-      const bell = sph(0.28, 0xc8a24a, 0, 4.2, 0, 12, 10);
-      base.add(bell);
-      g.userData.strikerBell = bell;
-      /* glowing puck that rides the post */
-      const marker = new THREE.Mesh(
-        new THREE.BoxGeometry(0.48, 0.14, 0.48),
-        new THREE.MeshBasicMaterial({ color: 0xfff0a0 })
-      );
-      marker.position.set(0, 0.7, 0.05);
-      base.add(marker);
-      g.userData.strikerMarker = marker;
-      /* soft pad in front for the player */
-      base.add(box(1.8, 0.05, 1.4, 0x2a3a5a, 0, 0.03, 1.1));
-      base.position.set(sx2, 0, sz2);
-      g.add(base);
-      g.userData.strikerRoot = base;
-      g.userData.strikerPos = new THREE.Vector3(sx2, 0, sz2);
-      /* camera sits south of tower looking north at full meter */
-      g.userData.strikerCam = new THREE.Vector3(sx2, 2.35, sz2 + 4.6);
-      g.userData.strikerLook = new THREE.Vector3(sx2, 2.4, sz2);
-      lb(sx2, sz2 + 1.0, 1.0, 1.2, 4.2);
-      const sTag = textSprite("TEST YOUR CLOUT — WALK UP", { size: 28, color: "#ff8c40", strokeW: 6, maxWidth: 0 });
-      sTag.scale.multiplyScalar(0.55);
-      sTag.position.set(sx2, 4.9, sz2);
-      sTag.userData.maxDist = 40;
-      g.add(sTag);
-      g.userData.strikerTag = sTag;
-    }
-    /* dartboard on the east wall */
-    const bz2 = 2;
-    const board = new THREE.Group();
-    board.add(cyl(0.62, 0.62, 0.1, 0x2a1c14, 0, 0, 0, 18));
-    board.add(cyl(0.5, 0.5, 0.11, 0xd8d0b8, 0, 0, 0, 18));
-    board.add(cyl(0.34, 0.34, 0.12, 0x9a2f3e, 0, 0, 0, 18));
-    board.add(cyl(0.18, 0.18, 0.13, 0xd8d0b8, 0, 0, 0, 18));
-    board.add(cyl(0.06, 0.06, 0.14, 0x9a2f3e, 0, 0, 0, 18));
+    const tx = 14, tz = -2;
+    addZone("Game Arena", tx, tz, "#7CFFB0");
+    /* race oval */
+    const track = new THREE.Mesh(
+      new THREE.RingGeometry(3.4, 5.0, 64),
+      new THREE.MeshStandardMaterial({ color: 0x1a1e28, roughness: 0.85 })
+    );
+    track.rotation.x = -Math.PI / 2;
+    track.position.set(tx, 0.03, tz);
+    g.add(track);
+    const lane = new THREE.Mesh(
+      new THREE.RingGeometry(4.1, 4.22, 64),
+      new THREE.MeshBasicMaterial({ color: 0xffd94a })
+    );
+    lane.rotation.x = -Math.PI / 2;
+    lane.position.set(tx, 0.04, tz);
+    g.add(lane);
+    g.userData.raceCenter = new THREE.Vector3(tx, 0, tz);
+    const rt = textSprite("🏎️ TIMELINE GP · 4 racers", { size: 34, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
+    rt.scale.multiplyScalar(0.62);
+    rt.position.set(tx, 2.3, tz - 5.6);
+    g.add(rt);
+    g.userData.gameSpots.push({ kind: "race", pos: new THREE.Vector3(tx, 0, tz - 5.4), seats: 4 });
+
+    /* darts */
+    const dx = tx - 9, dz = tz + 6;
+    g.add(box(0.15, 1.4, 1.4, 0x1a120c, dx, 1.5, dz));
+    const board = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.55, 0.55, 0.08, 32),
+      new THREE.MeshStandardMaterial({ color: 0x1a3020 })
+    );
     board.rotation.z = Math.PI / 2;
-    board.position.set(29.85, 2.3, bz2);
+    board.position.set(dx + 0.12, 1.5, dz);
     g.add(board);
-    g.userData.dartBoardPos = new THREE.Vector3(29.85, 2.3, bz2);
-    /* dart table with three darts — walk up to PLAY */
-    const tx = 26.5, tz = 2;
-    g.add(box(0.9, 0.95, 0.6, WALNUT, tx, 0.48, tz));
-    g.add(box(1.0, 0.06, 0.7, BRASS, tx, 0.98, tz));
+    g.userData.dartBoardPos = new THREE.Vector3(dx + 0.12, 1.5, dz);
+    g.userData.dartTablePos = new THREE.Vector3(dx + 1.8, 0, dz);
+    g.add(box(1.2, 0.85, 1.2, WALNUT, dx + 1.8, 0.45, dz));
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + 0.4;
+      registerSeat(g, dx + 1.8 + Math.cos(a) * 1.5, 0.55, dz + Math.sin(a) * 1.5, a + Math.PI, "Darts seat " + (i + 1), "Game Arena");
+    }
+    const dt = textSprite("🎯 DARTS LEAGUE · 4", { size: 30, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    dt.scale.multiplyScalar(0.55);
+    dt.position.set(dx + 1.8, 2.1, dz);
+    g.add(dt);
+    g.userData.gameSpots.push({ kind: "darts", pos: g.userData.dartTablePos.clone(), seats: 4 });
+
+    /* trivia */
+    const qx = tx - 9, qz = tz - 5;
+    g.add(box(1.6, 1.5, 0.9, 0x152030, qx, 0.85, qz));
+    g.add(box(1.35, 0.8, 0.08, 0x7CFFB0, qx, 1.55, qz + 0.5));
+    g.userData.triviaPos = new THREE.Vector3(qx, 0, qz + 1.2);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      registerSeat(g, qx + Math.cos(a) * 1.7, 0.55, qz + Math.sin(a) * 1.7, a + Math.PI, "Trivia seat " + (i + 1), "Game Arena");
+    }
+    const qt = textSprite("🧠 TRIVIA · 4 players", { size: 30, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    qt.scale.multiplyScalar(0.55);
+    qt.position.set(qx, 2.25, qz);
+    g.add(qt);
+    g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
+  }
+
+  /* dance floor */
+  {
+    const dx = -2, dz = 18;
+    addZone("Dance Floor", dx, dz, "#d48cff");
+    const tile = canvasTex(128, 128, (c, w, h) => {
+      c.fillStyle = "#1a1030"; c.fillRect(0, 0, w, h);
+      c.fillStyle = "#2a1848"; c.fillRect(0, 0, w / 2, h / 2);
+      c.fillRect(w / 2, h / 2, w / 2, h / 2);
+    });
+    tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(6, 6);
+    const df = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 10),
+      new THREE.MeshStandardMaterial({ map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4 })
+    );
+    df.rotation.x = -Math.PI / 2;
+    df.position.set(dx, 0.04, dz);
+    g.add(df);
+    const dj = textSprite("♪ DANCE · OPEN FLOOR", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
+    dj.scale.multiplyScalar(0.6);
+    dj.position.set(dx, 2.5, dz - 4.5);
+    g.add(dj);
+  }
+
+  /* fireplace library */
+  {
+    const fx = -20, fz = 10;
+    addZone("Fireside Library", fx, fz, "#ffb347");
+    g.add(box(0.5, 2.4, 4.5, 0x2a2220, fx, 1.2, fz));
+    g.add(box(0.35, 1.1, 1.8, 0x0c0806, fx + 0.25, 0.8, fz));
+    const fire = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 1.0),
+      new THREE.MeshBasicMaterial({ color: 0xff7a20, transparent: true, opacity: 0.9 })
+    );
+    fire.position.set(fx + 0.4, 0.85, fz);
+    fire.rotation.y = Math.PI / 2;
+    g.add(fire);
+    const fl = new THREE.PointLight(0xff8020, 12, 12);
+    fl.position.set(fx + 1.2, 1.2, fz);
+    g.add(fl);
+    mkSofa(fx + 3.5, fz, -Math.PI / 2, 0x4a3028);
+    registerSeat(g, fx + 3.2, 0.55, fz, -Math.PI / 2, "Fireside chair", "Fireside Library");
+    /* bookshelves */
     for (let i = 0; i < 3; i++) {
-      const dart = new THREE.Group();
-      const shaft = cyl(0.02, 0.02, 0.3, 0xd8d0b8, 0, 0, 0, 6);
-      shaft.rotation.z = 0.5;
-      dart.add(shaft);
-      dart.add(sph(0.035, pick([0xd44a90, 0x40c8a0, 0x5a8ad4]), 0.1, 0.12, 0));
-      dart.position.set(tx - 0.25 + i * 0.25, 1.05, tz);
-      g.add(dart);
-    }
-    g.userData.dartTablePos = new THREE.Vector3(tx, 0, tz);
-    lb(tx, tz, 0.55, 0.45, 1.1);
-    const dTag = textSprite("🎯 DARTS — WALK UP TO PLAY", { size: 26, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    dTag.scale.multiplyScalar(0.62);
-    dTag.position.set(27.5, 3.4, tz);
-    g.add(dTag);
-  }
-  /* GARDEN PATIO (SW): stone circle, fountain, planters */
-  {
-    const px2 = -20, pz2 = 21;
-    const stone = new THREE.Mesh(new THREE.CircleGeometry(5, 22),
-      new THREE.MeshLambertMaterial({ color: 0x6a6258 }));
-    stone.rotation.x = -Math.PI / 2;
-    stone.position.set(px2, 0.05, pz2);
-    g.add(stone);
-    /* fountain */
-    g.add(cyl(1.5, 1.7, 0.5, 0x8a8278, px2, 0.25, pz2, 16));
-    const water = new THREE.Mesh(new THREE.CircleGeometry(1.35, 16),
-      new THREE.MeshBasicMaterial({ color: 0x5ad1ff, transparent: true, opacity: 0.75 }));
-    water.rotation.x = -Math.PI / 2;
-    water.position.set(px2, 0.48, pz2);
-    g.add(water);
-    g.userData.fountainWater = water;
-    g.add(cyl(0.12, 0.16, 1.0, 0x8a8278, px2, 0.9, pz2, 10));
-    g.add(sph(0.2, 0x9ae0ff, px2, 1.5, pz2, 8, 6));
-    lb(px2, pz2, 1.8, 1.8, 1.2);
-    /* planters ringing the patio */
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 + 0.4;
-      const gx = px2 + Math.cos(a) * 4.2, gz = pz2 + Math.sin(a) * 4.2;
-      g.add(box(0.9, 0.5, 0.9, 0x4a4038, gx, 0.25, gz));
-      g.add(sph(0.55, pick([0x2f6a34, 0x3f7a3f, 0x2a5a2f]), gx, 0.95, gz, 8, 6));
-      lb(gx, gz, 0.55, 0.55, 1.0);
-    }
-    const gTag = textSprite("🌿 TOUCH GRASS GARDEN", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    gTag.scale.multiplyScalar(0.68);
-    gTag.position.set(px2, 3.4, pz2);
-    g.add(gTag);
-  }
-  /* —— EXTRA SEATING: chairs, sofas, benches filling open floor (no cubicles) —— */
-  {
-    const mkChair = (x, z, ry, col = VELVET) => {
-      const cg = new THREE.Group();
-      cg.add(box(0.72, 0.12, 0.72, col, 0, 0.42, 0));
-      cg.add(box(0.72, 0.55, 0.12, col, 0, 0.72, -0.3));
-      cg.add(box(0.1, 0.4, 0.1, WALNUT, -0.28, 0.2, -0.28));
-      cg.add(box(0.1, 0.4, 0.1, WALNUT, 0.28, 0.2, -0.28));
-      cg.add(box(0.1, 0.4, 0.1, WALNUT, -0.28, 0.2, 0.28));
-      cg.add(box(0.1, 0.4, 0.1, WALNUT, 0.28, 0.2, 0.28));
-      cg.add(box(0.55, 0.08, 0.14, CREAM, 0, 0.5, 0.05)); /* cushion stripe */
-      cg.position.set(x, 0, z);
-      cg.rotation.y = ry;
-      g.add(cg);
-      lb(x, z, 0.4, 0.4, 0.95);
-    };
-    const mkSofa2 = (x, z, ry, col = VELVET2) => {
-      const cg = new THREE.Group();
-      cg.add(box(2.4, 0.45, 0.95, col, 0, 0.32, 0));
-      cg.add(box(2.4, 0.7, 0.18, col, 0, 0.8, -0.38));
-      cg.add(box(0.2, 0.55, 0.95, col, -1.15, 0.5, 0));
-      cg.add(box(0.2, 0.55, 0.95, col, 1.15, 0.5, 0));
-      cg.add(box(2.4, 0.1, 0.95, WALNUT_D, 0, 0.08, 0));
-      cg.add(box(0.5, 0.22, 0.35, CREAM, -0.55, 0.58, 0.05));
-      cg.add(box(0.5, 0.22, 0.35, CREAM, 0.55, 0.58, 0.05));
-      cg.position.set(x, 0, z);
-      cg.rotation.y = ry;
-      g.add(cg);
-      lb(x, z, 1.25, 0.55, 1.05);
-    };
-    const mkBench = (x, z, ry) => {
-      const cg = new THREE.Group();
-      cg.add(box(1.8, 0.12, 0.5, WALNUT, 0, 0.4, 0));
-      cg.add(box(0.12, 0.38, 0.45, WALNUT_D, -0.75, 0.19, 0));
-      cg.add(box(0.12, 0.38, 0.45, WALNUT_D, 0.75, 0.19, 0));
-      cg.add(box(1.7, 0.06, 0.42, CREAM, 0, 0.48, 0));
-      cg.position.set(x, 0, z);
-      cg.rotation.y = ry;
-      g.add(cg);
-      lb(x, z, 0.95, 0.3, 0.55);
-    };
-    const mkOttoman = (x, z, col = 0x3a2440) => {
-      g.add(cyl(0.38, 0.4, 0.38, col, x, 0.22, z, 12));
-      g.add(cyl(0.36, 0.36, 0.06, CREAM, x, 0.42, z, 12));
-      lb(x, z, 0.4, 0.4, 0.45);
-    };
-    const mkSideTable = (x, z) => {
-      g.add(cyl(0.28, 0.3, 0.08, WALNUT, x, 0.48, z, 12));
-      g.add(cyl(0.06, 0.08, 0.44, BRASS, x, 0.24, z, 8));
-      lb(x, z, 0.35, 0.35, 0.55);
-    };
-    /* wall sofas along east / west interiors */
-    mkSofa2(-24, 2, Math.PI / 2, VELVET);
-    mkSofa2(-24, 8, Math.PI / 2, VELVET2);
-    mkSofa2(24, 4, -Math.PI / 2, VELVET);
-    mkSofa2(24, 10, -Math.PI / 2, VELVET2);
-    mkSofa2(0, 24, Math.PI, VELVET);
-    mkSofa2(8, 24, Math.PI, VELVET2);
-    mkSofa2(-8, 24, Math.PI, VELVET);
-    /* center conversation seating clusters */
-    mkChair(-4, 8, 0.4, VELVET);
-    mkChair(-2.2, 9.2, -1.1, VELVET2);
-    mkChair(-5.2, 9.5, 2.0, VELVET);
-    mkSideTable(-3.6, 9.0);
-    mkOttoman(-3.8, 7.2, PLUM);
-    mkChair(4, 9, -0.5, VELVET2);
-    mkChair(5.8, 10, 1.8, VELVET);
-    mkChair(3.2, 10.5, 2.8, VELVET2);
-    mkSideTable(4.5, 9.8);
-    mkOttoman(4.2, 8.0, 0x1f4a3a);
-    /* south entrance lounge row */
-    mkBench(-6, 22, 0);
-    mkBench(0, 22, 0);
-    mkBench(6, 22, 0);
-    mkChair(-10, 20, 0.3, VELVET);
-    mkChair(10, 20, -0.3, VELVET2);
-    /* bar overflow seating (extra stools already exist — add chairs facing bar) */
-    mkChair(-18, -3.2, Math.PI, VELVET);
-    mkChair(-14, -3.2, Math.PI, VELVET2);
-    mkChair(-10, -3.2, Math.PI, VELVET);
-    mkChair(-6, -3.2, Math.PI, VELVET2);
-    mkOttoman(-16, -2.0, PLUM);
-    mkOttoman(-12, -2.0, 0x1f4a3a);
-    /* library reading chairs */
-    mkChair(-26, 14, 0.8, VELVET);
-    mkChair(-24, 16, -1.2, VELVET2);
-    mkChair(-27, 17.5, 2.4, VELVET);
-    mkSideTable(-25.5, 15.5);
-    /* patio picnic benches */
-    mkBench(-18, 20, 0.4);
-    mkBench(-21, 22, -0.6);
-    mkChair(-15, 21, 1.0, VELVET2);
-    /* dance floor perimeter seating — OUTSIDE the 9×9 tiles (center 18,20 ±4.5) */
-    mkSofa2(12.2, 14.0, 0.2, VELVET);          /* SW of floor */
-    mkSofa2(23.8, 14.0, -0.2, VELVET2);         /* SE of floor */
-    mkSofa2(12.2, 26.0, Math.PI - 0.2, VELVET); /* NW of floor */
-    mkBench(23.5, 26.0, Math.PI + 0.1);         /* NE of floor */
-    mkOttoman(12.5, 20.0, PLUM);                /* west edge, not on tiles */
-    mkOttoman(23.5, 20.0, 0x1f4a3a);             /* east edge */
-    mkChair(11.5, 17.0, 0.5, VELVET2);
-    mkChair(24.0, 17.0, -0.5, VELVET);
-    /* arcade waiting chairs */
-    mkChair(24, -1, Math.PI / 2, VELVET);
-    mkChair(26, 1, Math.PI / 2, VELVET2);
-    mkBench(22, 2, Math.PI / 2);
-    /* scatter ottomans in open lanes */
-    for (const [ox, oz, col] of [
-      [0, 4, PLUM], [2, 14, 0x1f4a3a], [-2, 14, PLUM],
-      [10, 6, 0x1f4a3a], [-10, 6, PLUM], [12, 12, PLUM], [-12, 12, 0x1f4a3a],
-    ]) mkOttoman(ox, oz, col);
-    const seatTag = textSprite("EXTRA SEATING · MINGLE FREELY", { size: 28, color: "#c8a24a", strokeW: 5, maxWidth: 0 });
-    seatTag.scale.multiplyScalar(0.7);
-    seatTag.position.set(0, 3.6, 10);
-    g.add(seatTag);
-  }
-  /* neon sign over the bar */
-  const neon = textSprite("TIMELINE LOUNGE", { size: 60, color: "#ff90e0", strokeW: 9, maxWidth: 0 });
-  neon.scale.multiplyScalar(1.15);
-  neon.position.set(-12, 5.1, -7.2);
-  neon.userData.maxDist = 70;
-  g.add(neon);
-  /* palms in leftover corners */
-  /* palms only in far corners — none in striker camera lane */
-  for (const [px, pz] of [[28, 26], [-28, -6.5], [-28, 26]]) {
-    g.add(cyl(0.28, 0.36, 0.55, 0xb06a3a, px, 0.28, pz), sph(0.6, 0x2f6a34, px, 1.25, pz, 8, 6));
-  }
-  /* expand lounge footprint 30% — geometry + interactive anchors */
-  try { enhanceLiveLoungeDetail(g); } catch (err) { console.warn('enhanceLiveLoungeDetail', err); }
-  g.scale.set(LOUNGE_SCALE, 1, LOUNGE_SCALE);
-  const _S = LOUNGE_SCALE;
-  for (const k of ["espPos", "jukePos", "dartBoardPos", "dartTablePos", "strikerPos", "strikerCam", "strikerLook"]) {
-    if (g.userData[k] && g.userData[k].isVector3) {
-      g.userData[k].x *= _S;
-      g.userData[k].z *= _S;
+      g.add(box(0.4, 2.8, 1.6, WALNUT, fx + 0.3, 1.5, fz - 2.8 + i * 2.8));
+      for (let r = 0; r < 4; r++)
+        for (let b = 0; b < 5; b++)
+          g.add(box(0.18, 0.28, 0.12, pick([0x8a3030, 0x305080, 0x308050, 0xc8a24a]), fx + 0.45, 0.5 + r * 0.6, fz - 3.3 + i * 2.8 + b * 0.28));
     }
   }
-  /* arcade engage pads → world space (camera is derived live from screen mesh) */
-  if (g.userData.arcades) {
-    for (const A of g.userData.arcades) {
-      A.pos.x *= _S; A.pos.z *= _S;
-      A.camPos.x *= _S; A.camPos.z *= _S;
-      A.lookAt.x *= _S; A.lookAt.z *= _S;
-      /* slightly larger screen so pixel game is readable up close */
-      if (A.scr) A.scr.scale.set(1.35, 1.35, 1);
-    }
-  }
-  g.visible = false;
+
+  /* ambient fill lights */
+  const amb = new THREE.PointLight(0xffe0c0, 8, 40);
+  amb.position.set(0, 3.5, 6);
+  g.add(amb);
+  const amb2 = new THREE.PointLight(0xa0c8ff, 5, 30);
+  amb2.position.set(12, 3.2, 12);
+  g.add(amb2);
+
+  /* entrance mat */
+  addZone("Lobby", 0, 20, "#7CFFB0");
+  g.add(box(4, 0.04, 3, 0x1a2030, 0, 0.03, 20));
+  const welcome = textSprite("LIVE LOUNGE · YOUR GRAPH AS A ROOM", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
+  welcome.scale.multiplyScalar(0.75);
+  welcome.position.set(0, 2.8, 20);
+  g.add(welcome);
+
+  g.userData.liveLounge = true;
+  g.layers.set(1);
+  g.traverse(o => o.layers.set(1));
   scene.add(g);
   loungeDecor = g;
   return g;
 }
+
+function buildLoungeDecor() {
+  /* always use independent world — never the office overlay */
+  return buildIndependentLoungeWorld();
+}
+/* legacy builder retained below but unused when independent path active */
+/* old office-overlay lounge builder removed — use buildIndependentLoungeWorld */
+
 /* jukebox riffs: quick chiptune licks */
 function playJukeRiff() {
   const riffs = [
@@ -7146,11 +7085,20 @@ function activateSocialLounge() {
     loungeDecor = null;
     LOUNGE_BLOCKS.length = 0;
   }
-  buildLoungeDecor().visible = true;
+  /* build from-scratch world AFTER office is hidden */
+  setCombatWorldVisible(false);
+  const world = buildIndependentLoungeWorld();
+  world.visible = true;
+  world.userData.liveLounge = true;
+  try { window.__loungeDecor = world; window.__setCombat = setCombatWorldVisible; } catch(_){}
   addLoungeObstacles();
-  vcTimer = 99999; /* no VC raids in pure live lounge unless we want later */
-  pig.position.set(0, 0, 22 * LOUNGE_SCALE);
+  /* second pass hide in case office meshes were re-shown */
+  setCombatWorldVisible(false);
+  if (loungeDecor) loungeDecor.visible = true;
+  vcTimer = 99999;
+  pig.position.set(0, 0, 20);
   pigY = 0; pigVy = 0;
+  try { pig.userData.keepInLounge = true; pig.visible = true; } catch (_) {}
   const wv = $("waveV"); if (wv) wv.textContent = "LIVE LOUNGE";
   const ql = $("quotaLabel"); if (ql) ql.textContent = "ZONE";
   const qv = $("quotaV"); if (qv) qv.textContent = "Lobby";
@@ -7224,6 +7172,7 @@ function deactivateSocialLounge() {
   if (mS) mS.innerHTML = "SWAP<br>WPN";
   scene.background = new THREE.Color(0xdfe4ea);
   scene.fog = new THREE.Fog(0xdfe4ea, 70, 150);
+  try { camera.layers.enableAll(); } catch (_) {}
   const sh = document.getElementById("sitHint");
   if (sh) sh.classList.remove("show");
 }
@@ -9156,13 +9105,14 @@ addEventListener("keydown", e => {
       /* game spots */
       const L = loungeDecor && loungeDecor.userData;
       if (L) {
-        if (L.triviaPos && pig.position.distanceTo(new THREE.Vector3(L.triviaPos.x * LOUNGE_SCALE, 0, L.triviaPos.z * LOUNGE_SCALE)) < 3.2) {
+        const sc = L.independent ? 1 : LOUNGE_SCALE;
+        if (L.triviaPos && pig.position.distanceTo(new THREE.Vector3(L.triviaPos.x * sc, 0, L.triviaPos.z * sc)) < 3.2) {
           startTriviaGame(); return;
         }
-        if (L.raceCenter && pig.position.distanceTo(L.raceCenter) < 6.5) {
+        if (L.raceCenter && pig.position.distanceTo(new THREE.Vector3(L.raceCenter.x * sc, 0, L.raceCenter.z * sc)) < 6.5) {
           startRaceGame(); return;
         }
-        if (L.dartTablePos && pig.position.distanceTo(L.dartTablePos) < 2.8) {
+        if (L.dartTablePos && pig.position.distanceTo(new THREE.Vector3(L.dartTablePos.x * sc, 0, L.dartTablePos.z * sc)) < 2.8) {
           startDartLeague(); return;
         }
       }
@@ -12496,9 +12446,35 @@ renderer.setAnimationLoop(() => {
   safeStep("trivia", () => updateTriviaGame(dt));
   safeStep("race", () => updateRaceGame(dt));
   safeStep("loungeHUD", () => { if (socialActive) { updateSitHint(); updateLoungeZoneHUD(); } });
+  /* keep office suppressed — some systems re-show shell meshes */
+  if (socialActive && liveLoungeMode) {
+    try {
+      if (officeShell) {
+        for (const k of ["northWall","southWall","westWall","eastWall","ceiling"])
+          if (officeShell[k] && officeShell[k].visible) officeShell[k].visible = false;
+      }
+      if (officeFloor && officeFloor.visible) officeFloor.visible = false;
+      if (wallTimerMesh && wallTimerMesh.visible) wallTimerMesh.visible = false;
+      if (bossOfficeGroup && bossOfficeGroup.visible) bossOfficeGroup.visible = false;
+      if (loungeDecor && !loungeDecor.visible) loungeDecor.visible = true;
+    } catch (_) {}
+  }
   safeStep("trivia", () => updateTriviaGame(dt));
   safeStep("race", () => updateRaceGame(dt));
   safeStep("loungeHUD", () => { if (socialActive) { updateSitHint(); updateLoungeZoneHUD(); } });
+  /* keep office suppressed — some systems re-show shell meshes */
+  if (socialActive && liveLoungeMode) {
+    try {
+      if (officeShell) {
+        for (const k of ["northWall","southWall","westWall","eastWall","ceiling"])
+          if (officeShell[k] && officeShell[k].visible) officeShell[k].visible = false;
+      }
+      if (officeFloor && officeFloor.visible) officeFloor.visible = false;
+      if (wallTimerMesh && wallTimerMesh.visible) wallTimerMesh.visible = false;
+      if (bossOfficeGroup && bossOfficeGroup.visible) bossOfficeGroup.visible = false;
+      if (loungeDecor && !loungeDecor.visible) loungeDecor.visible = true;
+    } catch (_) {}
+  }
   safeStep("arcade", () => updateArcadeGame(dt));
   safeStep("rocket", () => { if (typeof updateRocketLift === "function") updateRocketLift(dt); });
   /* lock bracket follows target */
@@ -12511,8 +12487,44 @@ renderer.setAnimationLoop(() => {
       lockBracket.material.color.setHex(locked ? 0xff5040 : 0xffd200);
     } else lockBracket.visible = false;
   } catch (_) {}
-  try { renderer.render(scene, camera); }
-  catch (err) { console.error("[frame:render]", err); }
+  try {
+    if (typeof socialActive !== "undefined" && socialActive && loungeDecor) {
+      /* Layer 1 = live lounge only. Camera sees ONLY layer 1. Office stays on layer 0. */
+      const L = 1;
+      camera.layers.set(L);
+      loungeDecor.layers.set(L);
+      loungeDecor.traverse(o => { o.layers.set(L); o.visible = true; });
+      if (pig) { pig.layers.set(L); pig.traverse(o => o.layers.set(L)); pig.visible = true; }
+      try {
+        for (const e of enemies) {
+          if (e && e.mesh) { e.mesh.layers.set(L); e.mesh.traverse(o => o.layers.set(L)); e.mesh.visible = true; }
+        }
+      } catch (_) {}
+      try {
+        for (const p of particles) {
+          const m = p && (p.mesh || p.sprite);
+          if (m) { m.layers.set(L); m.visible = true; }
+        }
+      } catch (_) {}
+      try {
+        for (const f of floatTexts) {
+          const m = f && (f.mesh || f.sprite);
+          if (m) { m.layers.set(L); m.visible = true; }
+        }
+      } catch (_) {}
+      /* lights need layer 1 too or lounge is black */
+      scene.traverse(o => {
+        if (o.isLight) o.layers.enable(L);
+      });
+      if (lockBracket) { lockBracket.layers.set(L); lockBracket.visible = false; }
+      scene.background = new THREE.Color(0x0c0a12);
+      if (scene.fog) { scene.fog.color.setHex(0x0c0a12); scene.fog.near = 18; scene.fog.far = 65; }
+    } else {
+      /* restore full visibility layers for combat levels */
+      camera.layers.enableAll();
+    }
+    renderer.render(scene, camera);
+  } catch (err) { console.error("[frame:render]", err); }
 });
 
 /* full frame step used by automated checks */
@@ -12525,6 +12537,19 @@ function runFrameSystems(dt = 1 / 60) {
   safeStep("trivia", () => updateTriviaGame(dt));
   safeStep("race", () => updateRaceGame(dt));
   safeStep("loungeHUD", () => { if (socialActive) { updateSitHint(); updateLoungeZoneHUD(); } });
+  /* keep office suppressed — some systems re-show shell meshes */
+  if (socialActive && liveLoungeMode) {
+    try {
+      if (officeShell) {
+        for (const k of ["northWall","southWall","westWall","eastWall","ceiling"])
+          if (officeShell[k] && officeShell[k].visible) officeShell[k].visible = false;
+      }
+      if (officeFloor && officeFloor.visible) officeFloor.visible = false;
+      if (wallTimerMesh && wallTimerMesh.visible) wallTimerMesh.visible = false;
+      if (bossOfficeGroup && bossOfficeGroup.visible) bossOfficeGroup.visible = false;
+      if (loungeDecor && !loungeDecor.visible) loungeDecor.visible = true;
+    } catch (_) {}
+  }
   safeStep("arcade", () => updateArcadeGame(dt));
   safeStep("rocket", () => { if (typeof updateRocketLift === "function") updateRocketLift(dt); });
 }
