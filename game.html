@@ -790,7 +790,7 @@
     display: none; position: fixed; left: 50%;
     bottom: max(112px, calc(env(safe-area-inset-bottom, 0px) + 96px));
     transform: translateX(-50%);
-    z-index: 70; pointer-events: auto;
+    z-index: 85; pointer-events: auto;
     width: auto; max-width: min(760px, calc(100vw - 16px));
     flex-direction: column;
     align-items: stretch;
@@ -802,7 +802,7 @@
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
-  #loungeMobBar.show { display: flex; }
+  #loungeMobBar.show { display: flex !important; }
   #loungeMobBar .lounge-focus,
   #loungeMobBar #guestChip {
     display: none;
@@ -868,10 +868,11 @@
     border-color: #7CFFB0; color: #b8ffe0; background: rgba(12, 40, 28, 0.92);
   }
   body.lounge-ui #loungeMobBar.show {
-    display: flex;
+    display: flex !important;
     bottom: 24px;
     max-width: min(720px, calc(100vw - 20px));
-    z-index: 70;
+    z-index: 85;
+    pointer-events: auto;
   }
   @media (max-width: 900px), (pointer: coarse) {
     body.lounge-ui #loungeMobBar.show {
@@ -1109,21 +1110,22 @@
     <div id="stickLockLabel" role="button" aria-pressed="false" tabindex="0">LOCK RUN</div>
   </div>
   <div id="lookZone"></div>
-  <div id="loungeMobBar" aria-hidden="true">
-    <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
-    <div class="lounge-btns">
-      <button type="button" class="lmbtn read" id="mRead">READ</button>
-      <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
-      <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
-      <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
-    </div>
-  </div>
   <div id="btnCol">
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
     <button type="button" class="mbtn add" id="mAdd" style="display:none">ADD</button>
     <button type="button" class="mbtn jump" id="mJump">JUMP</button>
     <button type="button" class="mbtn boom" id="mBoom">X<br>BOOM</button>
     <button type="button" class="mbtn rifle" id="mRifle">FIRE</button>
+  </div>
+</div>
+<!-- Lounge action menu: OUTSIDE mobileUI so PC desktop sees it too -->
+<div id="loungeMobBar" aria-hidden="true">
+  <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
+  <div class="lounge-btns">
+    <button type="button" class="lmbtn read" id="mRead">READ</button>
+    <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
+    <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
+    <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
   </div>
 </div>
 <div id="guestInvite" class="hidden" aria-hidden="true">
@@ -5874,10 +5876,21 @@ function syncLoungeMobileUI() {
   document.body.classList.toggle("lounge-ui", on);
   /* same action menu on PC + mobile so options are obvious */
   if (bar) {
-    const inviteOpen = !!( $("guestInvite") && !$("guestInvite").classList.contains("hidden") );
+    const inv = document.getElementById("guestInvite");
+    const inviteOpen = !!(inv && !inv.classList.contains("hidden"));
     const showBar = on && !socialReading && !inviteOpen;
     bar.classList.toggle("show", showBar);
     bar.setAttribute("aria-hidden", showBar ? "false" : "true");
+    /* hard-show so desktop (no #mobileUI) always gets the menu */
+    if (showBar) {
+      bar.style.display = "flex";
+      bar.style.visibility = "visible";
+      bar.style.opacity = "1";
+      bar.style.pointerEvents = "auto";
+      bar.style.zIndex = "85";
+    } else {
+      bar.style.display = "none";
+    }
   }
   if (hint) {
     if (on && mob) hint.style.display = "none";
@@ -5953,7 +5966,9 @@ function activateSocialLounge() {
     if (!socialActive) return;
     placeSocialGuests(users);
     showMsg(`${users.length} recent interactions · ${Math.min(SOCIAL_VISIBLE, users.length)} in the room`);
+    try { syncLoungeMobileUI(); } catch (_) {}
   });
+  try { syncLoungeMobileUI(); } catch (_) {}
 }
 
 function deactivateSocialLounge() {
