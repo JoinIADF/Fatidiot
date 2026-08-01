@@ -5107,26 +5107,18 @@ function notInterestedGuest(e) {
     return;
   }
   if (socialReading) closeTweetReader(true);
-  const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-  try { SFX.boom(); } catch (_) {}
-  try { SFX.purge(); } catch (_) {}
-  burst(p, 0xff6a20, 28, 9, 10);
-  burst(p, 0xffd200, 18, 7, 8);
-  burst(p, 0xff3030, 12, 6, 12);
-  try { shockRing(p, 0xff6a4a, 2.4); } catch (_) {}
-  shake = Math.max(shake, 0.55);
-  hitstop = Math.max(hitstop, 0.07);
-  floatText(p.clone().add(new THREE.Vector3(0, 0.8, 0)), "NOT INTERESTED 💥", {
-    size: 48, color: "#ff6a4a", strokeW: 9, life: 1.4, worldScale: 0.85, vy: 1.4
-  }, 1.1);
-  score += 60;
+  const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.1, 0));
+  /* light, friendly poof — no banner text, no heavy SFX */
+  try { beep(520, 0.05, "sine", 0.04); setTimeout(() => beep(640, 0.06, "sine", 0.035), 40); } catch (_) {}
+  try { burst(p, 0xa8d8ff, 8, 2.2, 3.5); } catch (_) {}
+  try { burst(p, 0xffd6ea, 6, 1.8, 3); } catch (_) {}
+  score += 15;
   updateHud();
   /* remove without auto-replace so ADD can refill the room */
   const i = enemies.indexOf(e);
   if (i >= 0) enemies.splice(i, 1);
   try { scene.remove(e.mesh); } catch (_) {}
   if (socialNear === e) socialNear = null;
-  showMsg("Not interested — guest exploded");
   try { syncLoungeMobileUI(); } catch (_) {}
 }
 
