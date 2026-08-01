@@ -785,72 +785,88 @@
     font-size: 14px; top: 10px; letter-spacing: 0.12em;
   }
   body.lounge-ui #crosshair { opacity: 0.55; font-size: 18px; }
+  /* lounge action menu — ~25% smaller, focus chip stacked above buttons */
   #loungeMobBar {
     display: none; position: fixed; left: 50%;
-    bottom: max(118px, calc(env(safe-area-inset-bottom, 0px) + 100px));
+    bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 84px));
     transform: translateX(-50%);
-    gap: 8px; z-index: 45; pointer-events: auto;
-    width: auto; max-width: calc(100vw - 24px);
-    justify-content: center; flex-wrap: nowrap;
-    padding: 6px 8px;
-    background: rgba(6, 10, 18, 0.72);
+    z-index: 70; pointer-events: auto;
+    width: auto; max-width: min(540px, calc(100vw - 28px));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 5px 6px 6px;
+    background: rgba(6, 10, 18, 0.78);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 18px;
+    border-radius: 14px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
   #loungeMobBar.show { display: flex; }
+  #loungeMobBar .lounge-focus,
+  #loungeMobBar #guestChip {
+    display: none;
+    position: static;
+    left: auto; bottom: auto;
+    transform: none;
+    max-width: none;
+    margin: 0;
+    padding: 4px 8px;
+    border-radius: 8px;
+    text-align: center;
+    font: 800 10px/1.2 system-ui, sans-serif;
+    color: #7CFFB0;
+    background: rgba(8, 20, 16, 0.65);
+    border: 1px solid rgba(124,255,176,0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  #loungeMobBar #guestChip.show,
+  #loungeMobBar .lounge-focus.show { display: block; }
+  #loungeMobBar .lounge-btns {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    width: 100%;
+  }
   #loungeMobBar .lmbtn {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     min-width: 0;
-    min-height: 52px;
-    padding: 10px 12px;
-    border-radius: 14px;
-    border: 2px solid rgba(255,255,255,0.35);
+    min-height: 39px;
+    padding: 7px 8px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255,255,255,0.35);
     background: rgba(16, 22, 34, 0.92);
     color: #e8eef8;
-    font: 800 11px/1.15 system-ui, sans-serif;
+    font: 800 9px/1.1 system-ui, sans-serif;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
     white-space: nowrap;
+    cursor: pointer;
   }
   #loungeMobBar .lmbtn:active { filter: brightness(1.18); }
   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
   #loungeMobBar .lmbtn.next,
   #loungeMobBar .lmbtn.nope {
     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
-    font-size: 10px; line-height: 1.1;
+    font-size: 8px; line-height: 1.05;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
   #loungeMobBar .lmbtn.addg {
     border-color: #7CFFB0; color: #b8ffe0; background: rgba(12, 40, 28, 0.92);
   }
-  /* desktop lounge menu — same bar as mobile, always visible */
   body.lounge-ui #loungeMobBar.show {
     display: flex;
-    bottom: 28px;
-    max-width: min(720px, calc(100vw - 32px));
-    gap: 10px;
-    padding: 10px 12px;
+    bottom: 22px;
+    max-width: min(480px, calc(100vw - 32px));
     z-index: 70;
-  }
-  body.lounge-ui #loungeMobBar .lmbtn {
-    min-height: 56px;
-    min-width: 110px;
-    font-size: 12px;
-    padding: 12px 14px;
-    cursor: pointer;
-  }
-  body.lounge-ui #guestChip.show {
-    display: block;
-    bottom: 100px;
   }
   @media (max-width: 900px), (pointer: coarse) {
     body.lounge-ui #loungeMobBar.show {
-      bottom: max(118px, calc(env(safe-area-inset-bottom, 0px) + 100px));
-    }
-    body.lounge-ui #guestChip.show {
-      bottom: max(178px, calc(env(safe-area-inset-bottom, 0px) + 160px));
+      bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 84px));
     }
   }
   .mbtn.add {
@@ -920,24 +936,8 @@
   }
   #guestInvite .gi-actions #giCancel { color: #cfd6e0; }
 
-  /* focused guest handle — sits ABOVE the action bar, never on the pig's face */
-  #guestChip {
-    display: none; position: fixed; left: 50%;
-    bottom: max(178px, calc(env(safe-area-inset-bottom, 0px) + 160px));
-    transform: translateX(-50%);
-    z-index: 44; pointer-events: none;
-    background: rgba(8,12,20,0.82);
-    border: 1px solid rgba(124,255,176,0.45);
-    color: #7CFFB0;
-    padding: 6px 14px; border-radius: 999px;
-    font: 800 12px/1 system-ui, sans-serif;
-    text-shadow: 0 1px 4px #000;
-    max-width: min(70vw, 280px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  #guestChip.show { display: block; }
-  @media (orientation: landscape) and (max-height: 480px) {
-    #guestChip { bottom: max(120px, calc(env(safe-area-inset-bottom, 0px) + 108px)); }
-  }
+  /* guestChip lives inside #loungeMobBar */
+
   body.lounge-ui #mobileUI.lounge-mode #btnCol {
     bottom: max(18px, env(safe-area-inset-bottom, 0px));
   }
@@ -995,9 +995,9 @@
       #btnCol { gap: 6px; }
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
-      #loungeMobBar { bottom: 72px; padding: 4px 6px; }
-      #loungeMobBar .lmbtn { min-height: 44px; font-size: 10px; padding: 8px 10px; }
-      #guestChip { font-size: 11px; }
+      #loungeMobBar { bottom: 68px; padding: 4px 5px; }
+      #loungeMobBar .lmbtn { min-height: 36px; font-size: 8px; padding: 6px 7px; }
+      #loungeMobBar #guestChip { font-size: 9px; }
     }
   }
   #overlay .modeRow {
@@ -1084,7 +1084,6 @@
   <button type="button" class="artbtn" id="mArtView">VIEW ARTWORK</button>
 </div>
 <div id="socialHint">LMB next post · RMB read · ♡ like · Reply</div>
-<div id="guestChip" aria-hidden="true"></div>
 <div id="tweetReader" class="hidden" aria-hidden="true">
   <div class="tr-card">
     <button type="button" id="trClose" aria-label="Close">✕</button>
@@ -1101,10 +1100,13 @@
   </div>
   <div id="lookZone"></div>
   <div id="loungeMobBar" aria-hidden="true">
-    <button type="button" class="lmbtn read" id="mRead">READ</button>
-    <button type="button" class="lmbtn nope" id="mNext">NOT<br>INTERESTED</button>
-    <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
-    <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
+    <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
+    <div class="lounge-btns">
+      <button type="button" class="lmbtn read" id="mRead">READ</button>
+      <button type="button" class="lmbtn nope" id="mNext">NOT<br>INTERESTED</button>
+      <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
+      <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
+    </div>
   </div>
   <div id="btnCol">
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
@@ -4566,6 +4568,8 @@ loadLikedPosts();
 
 let socialReading = false;
 let socialNear = null;
+let lastPigXZ = { x: 0, z: 0 };
+let pigMoving = false;
 let socialQueue = [];
 let socialPool = [];
 const SOCIAL_VISIBLE = 15; /* bigger room, more mingling guests */
@@ -6207,16 +6211,29 @@ function dismissXUser(e, reason = "scroll") {
 function updateSocialLounge(dt) {
   if (!socialActive || mode !== "play") return;
   spawnQueue = 0;
-  let nearest = null;
-  let nd = SOCIAL_PROX * (isMobile() ? 1.35 : 1); /* easier to lock guests on touch */
+  /* focus = rifle/target lock (same person for bubble, chip, menu actions) */
+  if (lockTarget && lockTarget.type === "xuser" && enemies.includes(lockTarget) && lockTarget.dying == null) {
+    if (socialNear !== lockTarget) {
+      socialNear = lockTarget;
+      if (socialNear.chunks) {
+        socialNear.chunkT = 0.12;
+        setXUserBubble(socialNear, socialNear.chunks[socialNear.chunkIdx % socialNear.chunks.length]);
+      }
+    }
+  } else if (socialNear && (socialNear.type !== "xuser" || !enemies.includes(socialNear) || socialNear.dying != null)) {
+    socialNear = null;
+  } else if (!lockTarget || lockTarget.type !== "xuser") {
+    /* no guest lock — clear focus so posts don't float on a random nearby person */
+    if (!socialReading) socialNear = null;
+  }
   const camF = new THREE.Vector3();
   camera.getWorldDirection(camF);
   camF.y = 0; camF.normalize();
   for (const e of enemies) {
     if (e.type === "vc") { updateVCIntruder(e, dt); continue; }
     if (e.type !== "xuser") continue;
-    /* when THIS guest is the focused conversation, freeze in place */
-    if (e === socialNear || (socialReading && socialNear === e)) {
+    /* targeted guest freezes in place */
+    if (e === socialNear || (socialReading && socialNear === e) || (lockTarget === e && e.type === "xuser")) {
       e.state = "idle";
       e.target = null;
       e.stateT = Math.max(2, e.stateT || 0);
@@ -6227,14 +6244,8 @@ function updateSocialLounge(dt) {
       while (dR < -Math.PI) dR += Math.PI * 2;
       e.mesh.rotation.y += dR * Math.min(1, dt * 5);
       const d = Math.hypot(pig.position.x - e.mesh.position.x, pig.position.z - e.mesh.position.z);
-      if (d < nd) { nd = d; nearest = e; }
       if (e.tag) {
-        const toU = new THREE.Vector3(e.mesh.position.x - pig.position.x, 0, e.mesh.position.z - pig.position.z);
-        const dl = toU.length();
-        const faceDot = isMobile() ? 0.35 : 0.55;
-        const faceDist = isMobile() ? 9.5 : 7.5;
-        const facing = dl > 0.01 && toU.clone().multiplyScalar(1 / dl).dot(camF) > faceDot;
-        e._bubbleCandidate = socialReading ? true : (facing && d < faceDist);
+        e._bubbleCandidate = true; /* targeted = posts visible */
         e._bubbleDist = d;
         e.tag.visible = false; /* resolved later for single bubble */
       }
@@ -6360,46 +6371,23 @@ function updateSocialLounge(dt) {
       e.mesh.position.y = Math.abs(Math.sin(t * 7 + e.walk)) * 0.22;
       e.mesh.rotation.y += Math.sin(t * 3.5 + e.walk) * dt * 2.2;
     }
-    const d = Math.hypot(pig.position.x - e.mesh.position.x, pig.position.z - e.mesh.position.z);
-    if (d < nd) { nd = d; nearest = e; }
-    /* tweet bubble: only the nearest guest you're facing — box UI, not a cloud of text */
+    /* non-focused guests never show tweet bubbles */
     if (e.tag) {
-      const toU = new THREE.Vector3(e.mesh.position.x - pig.position.x, 0, e.mesh.position.z - pig.position.z);
-      const dl = toU.length();
-      const faceDot = isMobile() ? 0.35 : 0.55; /* wider cone on phone */
-      const faceDist = isMobile() ? 9.5 : 7.5;
-      const facing = dl > 0.01 && toU.multiplyScalar(1 / dl).dot(camF) > faceDot;
-      e.tag.visible = false; /* set after nearest resolved */
-      e._bubbleCandidate = facing && d < faceDist;
-      e._bubbleDist = d;
-    }
-    /* only the nearest auto-advances chunks — keeps the room readable */
-    if (e !== socialNear) continue;
-    e.chunkT -= dt;
-    if (e.chunkT <= 0 && e.chunks && e.chunks.length) {
-      const nxt = e.chunks[(e.chunkIdx + 1) % e.chunks.length];
-      e.chunkT = (nxt && nxt.isLong) ? 5.2 : 3.6; /* longer posts stay readable */
-      e.chunkIdx = (e.chunkIdx + 1) % e.chunks.length;
-      setXUserBubble(e, e.chunks[e.chunkIdx]);
+      e.tag.visible = false;
+      e._bubbleCandidate = false;
+      e._bubbleDist = Math.hypot(pig.position.x - e.mesh.position.x, pig.position.z - e.mesh.position.z);
     }
   }
-  if (socialNear !== nearest) {
-    socialNear = nearest;
-    if (nearest && nearest.chunks) {
-      nearest.chunkT = 0.15;
-      setXUserBubble(nearest, nearest.chunks[nearest.chunkIdx % nearest.chunks.length]);
-    }
-  }
-  /* single focused bubble only */
+  /* only the targeted guest shows posts */
   for (const e of enemies) {
     if (e.type !== "xuser" || !e.tag) continue;
-    e.tag.visible = !!(e === socialNear && e._bubbleCandidate);
+    e.tag.visible = !!(e === socialNear && !socialReading);
   }
   const hint = $("socialHint");
   if (hint) {
-    if (nearest && !socialReading && !isMobile()) {
-      const h = nearest.user && nearest.user.handle ? nearest.user.handle : "user";
-      const long = nearest.currentChunk && nearest.currentChunk.isLong;
+    if (socialNear && !socialReading && !isMobile()) {
+      const h = socialNear.user && socialNear.user.handle ? socialNear.user.handle : "user";
+      const long = socialNear.currentChunk && socialNear.currentChunk.isLong;
       hint.textContent = long
         ? `E · full thread  ·  @${h}`
         : `E · posts  ·  @${h}`;
@@ -10615,11 +10603,34 @@ function update(dt) {
     for (const e of enemies) {
       if (e.type === "vc") consider(e, 1.4, 60, 1.05, 0.25);
     }
-    /* 2) lounge guests — sticky lock so rifle advances tweets reliably */
+    /* 2) lounge guests — targeting = social focus (posts + menu) */
     if (socialActive && !(cand && cand.type === "vc")) {
-      best = 1e9; cand = null;
-      for (const e of enemies) {
-        if (e.type === "xuser") consider(e, 1.25, 38, 0.85, 0.4);
+      /* track whether the pig is walking */
+      const pdx = pig.position.x - lastPigXZ.x;
+      const pdz = pig.position.z - lastPigXZ.z;
+      pigMoving = Math.hypot(pdx, pdz) > 0.012;
+      lastPigXZ.x = pig.position.x;
+      lastPigXZ.z = pig.position.z;
+      const sticky = !pigMoving && lockTarget && lockTarget.type === "xuser"
+        && enemies.includes(lockTarget) && lockTarget.dying == null;
+      if (sticky) {
+        /* standing still: keep the same target if still vaguely in front */
+        const to = lockTarget.mesh.position.clone().add(new THREE.Vector3(0, 1.25, 0)).sub(origin);
+        const dist = to.length();
+        const ang = dist > 0.01 ? to.normalize().angleTo(dir) : 0;
+        if (dist < 42 && ang < 1.25) {
+          cand = lockTarget;
+        } else {
+          best = 1e9; cand = null;
+          for (const e of enemies) {
+            if (e.type === "xuser") consider(e, 1.25, 34, 0.75, 0.4);
+          }
+        }
+      } else {
+        best = 1e9; cand = null;
+        for (const e of enemies) {
+          if (e.type === "xuser") consider(e, 1.25, 34, 0.7, 0.4);
+        }
       }
     }
     /* 3) combat targets: bots (priority) + spammers + reporters */
@@ -10642,12 +10653,20 @@ function update(dt) {
       $("crosshair").textContent = locked ? "[ ⚠ VC ]" : "[ VC ]";
       $("crosshair").style.color = locked ? "#ff2020" : "#ff8080";
     } else if (cand && cand.type === "xuser") {
-      if (cand !== lockTarget) { lockTarget = cand; lockT = 0; locked = false; }
+      if (cand !== lockTarget) {
+        lockTarget = cand; lockT = 0; locked = false;
+        socialNear = cand;
+        if (cand.chunks) {
+          cand.chunkT = 0.1;
+          try { setXUserBubble(cand, cand.chunks[cand.chunkIdx % cand.chunks.length]); } catch (_) {}
+        }
+      }
       lockT = Math.min(0.22, lockT + dt);
-      if (lockT >= 0.14 && !locked) { locked = true; try { SFX.lock(); } catch (_) {} }
+      if (lockT >= 0.12 && !locked) { locked = true; try { SFX.lock(); } catch (_) {} }
       $("crosshair").textContent = locked ? "[ ⊕ ]" : "[ + ]";
       $("crosshair").style.color = locked ? "#7CFFB0" : "#aef2b6";
       lockTarget = cand;
+      socialNear = cand;
     } else if (cand && (cand.type === "bot" || cand.type === "spammer" || cand.type === "reporter")) {
       if (cand !== lockTarget) { lockTarget = cand; lockT = 0; locked = false; }
       lockT = Math.min(0.35, lockT + dt);
@@ -10661,9 +10680,17 @@ function update(dt) {
       $("crosshair").textContent = locked ? "[ ⊕ ]" : "[ + ]";
       $("crosshair").style.color = locked ? "#ff5040" : "#4ff";
     } else {
-      lockTarget = cand; lockT = 0; locked = false;
-      $("crosshair").textContent = lockTarget ? "[ + ]" : "+";
-      $("crosshair").style.color = "#4ff";
+      if (socialActive && !pigMoving && lockTarget && lockTarget.type === "xuser" && enemies.includes(lockTarget) && lockTarget.dying == null) {
+        /* standing still: never drop guest focus just because aim drifted */
+        $("crosshair").textContent = locked ? "[ ⊕ ]" : "[ + ]";
+        $("crosshair").style.color = locked ? "#7CFFB0" : "#aef2b6";
+        socialNear = lockTarget;
+      } else {
+        if (socialActive && lockTarget && lockTarget.type === "xuser" && !socialReading) socialNear = null;
+        lockTarget = cand; lockT = 0; locked = false;
+        $("crosshair").textContent = "+";
+        $("crosshair").style.color = "#4ff";
+      }
     }
   }
 
@@ -11190,6 +11217,13 @@ window.__socialGotoNearest = () => {
   if (!e) return null;
   pig.position.set(e.mesh.position.x + 1.2, 0, e.mesh.position.z + 1.2);
   pigY = 0; pigVy = 0;
+  /* face the guest so aim/lock picks them */
+  yaw = Math.atan2(e.mesh.position.x - pig.position.x, e.mesh.position.z - pig.position.z);
+  lockTarget = e; lockT = 0.2; locked = true;
+  socialNear = e;
+  lastPigXZ.x = pig.position.x; lastPigXZ.z = pig.position.z;
+  pigMoving = false;
+  if (e.chunks) setXUserBubble(e, e.chunks[e.chunkIdx % e.chunks.length]);
   updateSocialLounge(0.05);
   return e.user.handle;
 };
