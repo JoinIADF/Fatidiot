@@ -816,8 +816,79 @@
   }
   #loungeMobBar .lmbtn:active { filter: brightness(1.18); }
   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
-  #loungeMobBar .lmbtn.next { border-color: #ffd94a; color: #ffe9a0; background: rgba(40, 32, 8, 0.9); }
+  #loungeMobBar .lmbtn.next,
+  #loungeMobBar .lmbtn.nope {
+    border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
+    font-size: 10px; line-height: 1.1;
+  }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
+  .mbtn.add {
+    border-color: #7CFFB0; color: #b8ffe0; background: rgba(12, 40, 28, 0.85);
+    width: 64px; height: 64px; font-size: 13px;
+  }
+  #mobileUI.lounge-mode #mAdd { display: grid !important; place-items: center; }
+  #mobileUI:not(.lounge-mode) #mAdd { display: none !important; }
+  #guestInvite {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4, 8, 14, 0.88);
+    padding: 16px;
+    pointer-events: auto;
+  }
+  #guestInvite.hidden { display: none !important; }
+  #guestInvite .gi-card {
+    width: min(420px, 94vw);
+    max-height: min(82vh, 640px);
+    overflow: auto;
+    background: #0f141c;
+    border: 2px solid #2a3a4a;
+    border-radius: 16px;
+    padding: 16px 16px 14px;
+    color: #e8eef8;
+    font-family: system-ui, sans-serif;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.55);
+  }
+  #guestInvite .gi-title {
+    font: 800 18px/1.2 system-ui, sans-serif;
+    color: #7CFFB0; margin: 0 0 4px;
+  }
+  #guestInvite .gi-sub {
+    font: 600 12px/1.35 system-ui, sans-serif;
+    color: #8b98a8; margin: 0 0 12px;
+  }
+  #guestInvite .gi-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  #guestInvite .gi-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px;
+    border: 1px solid #2a3544; background: #141a24;
+    cursor: pointer; touch-action: manipulation;
+  }
+  #guestInvite .gi-row.on {
+    border-color: #7CFFB0; background: rgba(30, 60, 48, 0.55);
+  }
+  #guestInvite .gi-row input { width: 18px; height: 18px; accent-color: #7CFFB0; }
+  #guestInvite .gi-av {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: grid; place-items: center;
+    font: 800 14px/1 system-ui, sans-serif; color: #fff;
+  }
+  #guestInvite .gi-meta { flex: 1; min-width: 0; text-align: left; }
+  #guestInvite .gi-name { font: 800 14px/1.2 system-ui, sans-serif; }
+  #guestInvite .gi-handle { font: 600 12px/1.2 system-ui, sans-serif; color: #8b98a8; }
+  #guestInvite .gi-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  #guestInvite .gi-actions button {
+    min-height: 44px; padding: 10px 16px; border-radius: 12px;
+    font: 800 13px/1 system-ui, sans-serif; cursor: pointer;
+    touch-action: manipulation; border: 2px solid #3a4558;
+    background: #1a2230; color: #e8eef8;
+  }
+  #guestInvite .gi-actions #giOk {
+    border-color: #7CFFB0; color: #0a1a12; background: #7CFFB0;
+  }
+  #guestInvite .gi-actions #giCancel { color: #cfd6e0; }
+
   /* focused guest handle — sits ABOVE the action bar, never on the pig's face */
   #guestChip {
     display: none; position: fixed; left: 50%;
@@ -1000,14 +1071,26 @@
   <div id="lookZone"></div>
   <div id="loungeMobBar" aria-hidden="true">
     <button type="button" class="lmbtn read" id="mRead">READ</button>
-    <button type="button" class="lmbtn next" id="mNext">NEXT</button>
+    <button type="button" class="lmbtn nope" id="mNext">NOT<br>INTERESTED</button>
     <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
   </div>
   <div id="btnCol">
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
+    <button type="button" class="mbtn add" id="mAdd" style="display:none">ADD</button>
     <button type="button" class="mbtn jump" id="mJump">JUMP</button>
     <button type="button" class="mbtn boom" id="mBoom">X<br>BOOM</button>
     <button type="button" class="mbtn rifle" id="mRifle">FIRE</button>
+  </div>
+</div>
+<div id="guestInvite" class="hidden" aria-hidden="true">
+  <div class="gi-card" role="dialog" aria-labelledby="giTitle">
+    <h2 class="gi-title" id="giTitle">Add to lounge</h2>
+    <p class="gi-sub">Demo roster — popular non-political accounts. Pick one or many, then OK.</p>
+    <div class="gi-list" id="giList"></div>
+    <div class="gi-actions">
+      <button type="button" id="giCancel">Cancel</button>
+      <button type="button" id="giOk">OK · Bring in</button>
+    </div>
   </div>
 </div>
 <script type="importmap">
@@ -4942,6 +5025,214 @@ const VC_PITCHES = ["Quick coffee sometime?", "What's your CAC?", "We lead, you 
   "I can intro you to everyone.", "Standard 2 and 20.", "Let's talk dilution.",
   "This is a lifestyle business unless we're in.", "Sign the SAFE. It's safe."];
 
+
+/* Demo invite list — popular non-political accounts (entertainment / science / sports / brands) */
+const LOUNGE_INVITE_ROSTER = [
+  { handle: "NASA", name: "NASA", color: "#0b3d91",
+    tweets: [
+      "Launch windows wait for no one. Neither do coffee runs.",
+      "Earth looks pretty good from up here. Timeline looks… busier.",
+      "We're not saying Grok is a thruster, but the thrust-to-weight ratio of good questions is solid.",
+    ]},
+  { handle: "NatGeo", name: "National Geographic", color: "#ffcc00",
+    tweets: [
+      "In the wild, attention is a scarce resource. On the timeline, it's an invasive species.",
+      "Photo of the day: a pig in a helmet. Nature is healing (sort of).",
+      "Reminder: the ocean is deep. Your group chat is deeper.",
+    ]},
+  { handle: "MrBeast", name: "MrBeast", color: "#00c2ff",
+    tweets: [
+      "I GAVE AWAY A LOUNGE FULL OF FOLLOWERS (not really, but the vibe is free)",
+      "Challenge: survive the Timeline Lounge without getting ratioed.",
+      "Subscribe for more chaos. Wait — wrong platform. Stay for the snacks.",
+    ]},
+  { handle: "Cristiano", name: "Cristiano Ronaldo", color: "#000000",
+    tweets: [
+      "SIUUU — but make it a product launch.",
+      "Training day. Also: hydrate. Algorithms hate dehydration.",
+      "Football is simple. Timelines are not.",
+    ]},
+  { handle: "Netflix", name: "Netflix", color: "#e50914",
+    tweets: [
+      "Are you still watching… the Timeline Lounge?",
+      "New drop: Fa'tidiot — one pig vs. the entire For You page.",
+      "Skip intro. Never skip the sushi vending machine.",
+    ]},
+  { handle: "Spotify", name: "Spotify", color: "#1db954",
+    tweets: [
+      "Your Discover Weekly just became Discover Weekend Overtime.",
+      "Playlist: Songs to explode people you are Not Interested in.",
+      "Wrapped early: 0 minutes of silence, 100% main character energy.",
+    ]},
+  { handle: "duolingo", name: "Duolingo", color: "#58cc02",
+    tweets: [
+      "You missed your Spanish lesson. The owl is in the lounge.",
+      "Streak saved by a pig with a helmet. Iconic.",
+      "Translate this: 'Not interested' 💥",
+    ]},
+  { handle: "GordonRamsay", name: "Gordon Ramsay", color: "#c41e3a",
+    tweets: [
+      "This timeline is RAW. Where's the seasoning? WHERE?",
+      "Finally, a kitchen metaphor for content moderation.",
+      "IT'S BURNT. Delete the draft. Start again.",
+    ]},
+  { handle: "veritasium", name: "Veritasium", color: "#ff6a00",
+    tweets: [
+      "The surprising science of personal space bubbles in a lounge.",
+      "What happens if you freeze bots for 30 seconds? Asking for a friend.",
+      "Misconception: more followers = more signal. Often: more noise.",
+    ]},
+  { handle: "Marvel", name: "Marvel Entertainment", color: "#ed1d24",
+    tweets: [
+      "Phase 9: Fa'tidiot vs. The Algorithm. In theaters never, in the lounge now.",
+      "Assemble… your guest list. Carefully.",
+      "With great posting power comes great reply-guy responsibility.",
+    ]},
+];
+
+function makeInviteUser(entry) {
+  return {
+    id: "invite-" + String(entry.handle).toLowerCase(),
+    handle: String(entry.handle).replace(/^@/, ""),
+    name: entry.name || entry.handle,
+    color: entry.color || pick(["#1d9bf0", "#7CFFB0", "#ffb6c6", "#ffd200", "#c9a0ff"]),
+    interacted: "added from invite list",
+    tweets: (entry.tweets || ["Hello from the lounge."]).slice(0, 3).map(String),
+  };
+}
+
+function notInterestedGuest(e) {
+  if (!e || e.type !== "xuser") {
+    showMsg("Face a guest first");
+    return;
+  }
+  if (socialReading) closeTweetReader(true);
+  const p = e.mesh.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+  try { SFX.boom(); } catch (_) {}
+  try { SFX.purge(); } catch (_) {}
+  burst(p, 0xff6a20, 28, 9, 10);
+  burst(p, 0xffd200, 18, 7, 8);
+  burst(p, 0xff3030, 12, 6, 12);
+  try { shockRing(p, 0xff6a4a, 2.4); } catch (_) {}
+  shake = Math.max(shake, 0.55);
+  hitstop = Math.max(hitstop, 0.07);
+  floatText(p.clone().add(new THREE.Vector3(0, 0.8, 0)), "NOT INTERESTED 💥", {
+    size: 48, color: "#ff6a4a", strokeW: 9, life: 1.4, worldScale: 0.85, vy: 1.4
+  }, 1.1);
+  score += 60;
+  updateHud();
+  /* remove without auto-replace so ADD can refill the room */
+  const i = enemies.indexOf(e);
+  if (i >= 0) enemies.splice(i, 1);
+  try { scene.remove(e.mesh); } catch (_) {}
+  if (socialNear === e) socialNear = null;
+  showMsg("Not interested — guest exploded");
+  try { syncLoungeMobileUI(); } catch (_) {}
+}
+
+function openGuestInvite() {
+  if (!socialActive || mode !== "play") return;
+  const root = $("guestInvite");
+  const list = $("giList");
+  if (!root || !list) return;
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+  const present = new Set(
+    enemies.filter(e => e.type === "xuser" && e.user).map(e => String(e.user.handle || "").toLowerCase())
+  );
+  list.innerHTML = LOUNGE_INVITE_ROSTER.map((u, i) => {
+    const h = String(u.handle).toLowerCase();
+    const already = present.has(h);
+    return `<label class="gi-row ${already ? "on" : ""}" data-i="${i}">
+      <input type="checkbox" data-i="${i}" ${already ? "disabled" : ""} />
+      <div class="gi-av" style="background:${u.color || "#1d9bf0"}">${(u.name || u.handle).slice(0, 1)}</div>
+      <div class="gi-meta">
+        <div class="gi-name">${escapeHtml(u.name)}</div>
+        <div class="gi-handle">@${escapeHtml(u.handle)}${already ? " · already here" : ""}</div>
+      </div>
+    </label>`;
+  }).join("");
+  list.querySelectorAll(".gi-row").forEach(row => {
+    row.addEventListener("click", (ev) => {
+      if (ev.target && ev.target.tagName === "INPUT") return;
+      const cb = row.querySelector("input[type=checkbox]");
+      if (!cb || cb.disabled) return;
+      cb.checked = !cb.checked;
+      row.classList.toggle("on", cb.checked);
+    });
+    const cb = row.querySelector("input[type=checkbox]");
+    if (cb) cb.addEventListener("change", () => row.classList.toggle("on", cb.checked && !cb.disabled));
+  });
+  root.classList.remove("hidden");
+  root.setAttribute("aria-hidden", "false");
+}
+
+function closeGuestInvite() {
+  const root = $("guestInvite");
+  if (root) {
+    root.classList.add("hidden");
+    root.setAttribute("aria-hidden", "true");
+  }
+  if (mode === "play" && socialActive) {
+    if (!isMobile()) {
+      try { renderer.domElement.requestPointerLock(); } catch (_) {}
+    } else {
+      try { showMobileUI(true); } catch (_) {}
+      try { syncLoungeMobileUI(); } catch (_) {}
+    }
+  }
+}
+
+function confirmGuestInvite() {
+  const list = $("giList");
+  if (!list) return;
+  const picked = [];
+  list.querySelectorAll("input[type=checkbox]:checked:not(:disabled)").forEach(cb => {
+    const i = Number(cb.getAttribute("data-i"));
+    if (LOUNGE_INVITE_ROSTER[i]) picked.push(LOUNGE_INVITE_ROSTER[i]);
+  });
+  if (!picked.length) {
+    showMsg("Pick at least one account");
+    return;
+  }
+  const slots = loungeSlots().sort(() => Math.random() - 0.5);
+  const bubble = SOCIAL_BUBBLE;
+  let added = 0;
+  for (const entry of picked) {
+    const u = makeInviteUser(entry);
+    if (isVCHandle(u.handle)) continue;
+    if (enemies.some(e => e.type === "xuser" && e.user && String(e.user.handle).toLowerCase() === u.handle.toLowerCase())) continue;
+    /* find open slot */
+    let pos = null;
+    for (const s of slots) {
+      let clear = true;
+      for (const o of enemies) {
+        if (o.type !== "xuser" && o.type !== "vc") continue;
+        if (Math.hypot(s.x - o.mesh.position.x, s.z - o.mesh.position.z) < bubble) { clear = false; break; }
+      }
+      if (clear) { pos = new THREE.Vector3(s.x + rand(-0.3, 0.3), 0, s.z + rand(-0.3, 0.3)); break; }
+    }
+    if (!pos) {
+      pos = new THREE.Vector3(rand(-8, 8) * LOUNGE_SCALE, 0, rand(0, 18) * LOUNGE_SCALE);
+    }
+    const ne = spawnXUser(u, pos);
+    if (ne) {
+      added++;
+      floatText(ne.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), "@" + u.handle + " joined", {
+        size: 32, color: "#7CFFB0", strokeW: 5
+      }, 0.95);
+      /* also stash in pool so dismiss can recycle */
+      if (!socialPool.some(p => String(p.handle).toLowerCase() === u.handle.toLowerCase())) {
+        socialPool.push(u);
+      }
+    }
+  }
+  closeGuestInvite();
+  showMsg(added ? ("+" + added + " guest" + (added > 1 ? "s" : "") + " entered the lounge") : "Nobody new to add");
+  try { SFX.wave(); } catch (_) {}
+  try { beep(660, 0.06, "square", 0.06); setTimeout(() => beep(880, 0.08, "square", 0.06), 70); } catch (_) {}
+}
+
 function placeSocialGuests(users) {
   clearSocialGuests();
   users = filterOutEnemyVCs(users);
@@ -5573,12 +5864,16 @@ function syncLoungeMobileUI() {
   if (on) {
     if ($("weaponV")) $("weaponV").textContent = "LOUNGE";
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    if ($("weaponTip")) $("weaponTip").textContent = mob ? "READ · NEXT · LIKE" : "LMB next · RMB read · ∞";
+    if ($("weaponTip")) $("weaponTip").textContent = mob ? "READ · NOT INTERESTED · ADD" : "E read · Not interested · ADD";
+    try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
   }
 }
 
 function activateSocialLounge() {
   socialActive = true;
+  try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
+  try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
+  try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
   try { syncLoungeMobileUI(); } catch (_) {}
   ammo = 999;
   const am0 = $("ammoV"); if (am0) am0.textContent = "∞";
@@ -5608,8 +5903,8 @@ function activateSocialLounge() {
   const wv = $("waveV"); if (wv) wv.textContent = "LOUNGE";
   const qv = $("quotaV"); if (qv) qv.textContent = "—";
   showMsg(isMobile()
-    ? "LOUNGE — walk up · READ · NEXT · LIKE"
-    : "TIMELINE LOUNGE — walk up · E read · shoot to rotate guests");
+    ? "LOUNGE — READ · NOT INTERESTED · LIKE · ADD guests"
+    : "TIMELINE LOUNGE — E read · Not Interested explodes · ADD invites");
   const mS = $("mSwap");
   if (mS) mS.innerHTML = "READ<br>THREAD";
   loadSocialFeed().then(users => {
@@ -5631,6 +5926,8 @@ function deactivateSocialLounge() {
   } catch (_) {}
 
   socialActive = false;
+  try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
+  try { closeGuestInvite(); } catch (_) {}
   try { stopRedAlert(); } catch (_) {}
   redAlertLights = [];
   if (loungeDecor) loungeDecor.visible = false;
@@ -5760,8 +6057,8 @@ function openTweetReader(e) {
   root.setAttribute("aria-hidden", "false");
   const hint = root.querySelector(".tr-hint");
   if (hint) hint.textContent = isMobile()
-    ? "♡ like · Reply · ✕ close · outside: FIRE = next post"
-    : "♡ optional like · Reply opens box · Esc / ✕ close · rifle = next post in world";
+    ? "♡ like · Reply · ✕ close · NOT INTERESTED explodes"
+    : "♡ like · Reply · Esc / ✕ close · Not Interested explodes guest";
 }
 
 function closeTweetReader(silent = false) {
@@ -6463,9 +6760,11 @@ function miniGameActive() {
 }
 /* true while reading art, tweets, or playing mini-games — combat must pause */
 function gameplayFrozen() {
+  const inviteOpen = !!(typeof $ === "function" && $("guestInvite") && !$("guestInvite").classList.contains("hidden"));
   return !!(
     (typeof socialReading !== "undefined" && socialReading) ||
     (typeof rocketReading !== "undefined" && rocketReading) ||
+    inviteOpen ||
     miniGameActive()
   );
 }
@@ -7494,6 +7793,27 @@ const $ = id => document.getElementById(id);
   bindClose($("trClose"));
   root.addEventListener("click", (ev) => { if (ev.target === root) doClose(ev); });
   root.addEventListener("pointerup", (ev) => { if (ev.target === root) doClose(ev); });
+})();
+(function wireGuestInvite() {
+  const root = $("guestInvite");
+  if (!root || root.dataset.wired === "1") return;
+  root.dataset.wired = "1";
+  const ok = $("giOk"), cancel = $("giCancel");
+  if (ok) {
+    ok.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); confirmGuestInvite(); });
+    ok.addEventListener("pointerup", (e) => { e.preventDefault(); e.stopPropagation(); confirmGuestInvite(); });
+  }
+  if (cancel) {
+    cancel.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeGuestInvite(); });
+    cancel.addEventListener("pointerup", (e) => { e.preventDefault(); e.stopPropagation(); closeGuestInvite(); });
+  }
+  root.addEventListener("click", (e) => { if (e.target === root) closeGuestInvite(); });
+  addEventListener("keydown", (e) => {
+    if (e.code === "Escape" && root && !root.classList.contains("hidden")) {
+      e.preventDefault();
+      closeGuestInvite();
+    }
+  });
 })();
 
 const overlay = $("overlay");
@@ -9394,22 +9714,28 @@ function fireFlamethrower(dt) {
 function fireRifle() {
   if (rifleCd > 0) return;
   if (socialActive) {
+    /* lounge: no rifle — soft "point" for VCs only; guests use Not Interested */
     ammo = 999;
     if ($("ammoV")) $("ammoV").textContent = "∞";
+    try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
+    try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
   } else {
     if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
     ammo--;
     if ($("ammoV")) $("ammoV").textContent = ammo;
   }
-  rifleCd = 0.38;
-  SFX.shoot();
-  rifleHeld.visible = false;
-  rifleSlung.visible = true;
-  /* kick the slung rifle slightly so the shot reads on the model */
-  rifleSlung.rotation.x = 0.35;
-  setTimeout(() => { rifleSlung.rotation.x = 0.12; }, 90);
-  shake = Math.max(shake, 0.28);
-  hitstop = Math.max(hitstop, 0.03);
+  rifleCd = socialActive ? 0.22 : 0.38;
+  if (!socialActive) {
+    SFX.shoot();
+    rifleHeld.visible = false;
+    rifleSlung.visible = true;
+    rifleSlung.rotation.x = 0.35;
+    setTimeout(() => { if (rifleSlung) rifleSlung.rotation.x = 0.12; }, 90);
+    shake = Math.max(shake, 0.28);
+    hitstop = Math.max(hitstop, 0.03);
+  } else {
+    try { beep(280, 0.04, "triangle", 0.04); } catch (_) {}
+  }
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const dir = aimDir();
   let target = null;
@@ -9450,7 +9776,7 @@ function fireRifle() {
       else shake = Math.max(shake, 0.2);
     }
     else if (target.type === "xuser") {
-      if (socialActive) advanceXUserTweet(target); /* rifle = next comment */
+      if (socialActive) notInterestedGuest(target); /* lounge: one-tap explode */
       else dismissXUser(target);
     }
     else if (target.type === "spammer") demonetize(target);
@@ -11023,8 +11349,8 @@ function bindMobileControls() {
   });
   hold($("mBoom"), () => {
     if (socialActive) {
-      /* boom disabled in lounge — treat as next post */
-      if (typeof fireRifle === "function") fireRifle();
+      if (socialNear) notInterestedGuest(socialNear);
+      else showMsg("Face a guest first");
       return;
     }
     weaponIdx = 0;
@@ -11075,7 +11401,12 @@ function bindMobileControls() {
   });
   tap("mNext", () => {
     if (!socialActive) return;
-    fireRifle();
+    if (socialNear) notInterestedGuest(socialNear);
+    else showMsg("Face a guest to mark Not Interested");
+  });
+  tap("mAdd", () => {
+    if (!socialActive) return;
+    openGuestInvite();
   });
   tap("mLike", () => {
     if (!socialActive || !socialNear || !socialNear.user) {
