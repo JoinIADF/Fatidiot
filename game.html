@@ -1094,7 +1094,7 @@
 <div id="artEngageBar" aria-hidden="true">
   <button type="button" class="artbtn" id="mArtView">VIEW ARTWORK</button>
 </div>
-<div id="socialHint">LMB next post · RMB read · ♡ like · Reply</div>
+<div id="socialHint">LMB read · RMB rifle · ♡ like · Reply</div>
 <div id="tweetReader" class="hidden" aria-hidden="true">
   <div class="tr-card">
     <button type="button" id="trClose" aria-label="Close">✕</button>
@@ -5916,7 +5916,7 @@ function syncLoungeMobileUI() {
   if (on) {
     if ($("weaponV")) $("weaponV").textContent = "RIFLE · VCs";
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    if ($("weaponTip")) $("weaponTip").textContent = "Menu below · rifle hurts VCs only";
+    if ($("weaponTip")) $("weaponTip").textContent = "LMB read · RMB rifle (VCs) · menu below";
     try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
     try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
     try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
@@ -7957,8 +7957,8 @@ document.addEventListener("mousemove", e => {
   if (document.pointerLockElement === renderer.domElement) {
     yaw -= e.movementX * 0.0026;
     pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
-  } else if (typeof socialActive !== "undefined" && socialActive && (e.buttons & 2)) {
-    /* lounge free-cursor: hold RMB to look so left hand can use the menu */
+  } else if (typeof socialActive !== "undefined" && socialActive && ((e.buttons & 4) || (e.buttons & 1 && e.altKey))) {
+    /* lounge free-cursor: hold MMB (or Alt+LMB) to look — LMB is read, RMB is rifle */
     yaw -= e.movementX * 0.0032;
     pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.0024));
   }
@@ -7970,16 +7970,10 @@ renderer.domElement.addEventListener("mousedown", e => {
   if (arcadeGame.active) { if (e.button === 0) arcadeClick(); return; }
   if (socialReading) return;
   if (socialActive) {
-    /* lounge PC: free-cursor menu; optional click-to-lock for aim. Rifle = VCs only. */
-    if (!isMobile() && document.pointerLockElement !== renderer.domElement && e.button === 0) {
-      /* allow click-to-lock for look, still fire this shot */
-      try { renderer.domElement.requestPointerLock(); } catch (_) {}
-    }
-    if (e.button === 0) fireRifle();
-    if (e.button === 2) {
+    /* lounge PC: LMB = read thread · RMB = rifle (VCs only) */
+    const pickGuest = () => {
       let guest = socialNear;
       if (!guest) {
-        /* soft-aim nearest guest in front */
         const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
         const dir = aimDir();
         let best = 0.65, cand = null;
@@ -7993,8 +7987,20 @@ renderer.domElement.addEventListener("mousedown", e => {
         }
         guest = cand;
       }
+      return guest;
+    };
+    if (e.button === 0) {
+      /* left click = open posts */
+      const guest = pickGuest();
       if (guest) openTweetReader(guest);
-      else showMsg("Aim at a guest · right-click to read");
+      else showMsg("Aim at a guest · left-click to read");
+    }
+    if (e.button === 2) {
+      /* right click = rifle (VCs); optional pointer lock for aim */
+      if (!isMobile() && document.pointerLockElement !== renderer.domElement) {
+        try { renderer.domElement.requestPointerLock(); } catch (_) {}
+      }
+      fireRifle();
     }
     return;
   }
@@ -9576,7 +9582,7 @@ function applyWeaponHud() {
   const tip = $("weaponTip");
   if (tip) {
     if (typeof socialActive !== "undefined" && socialActive) {
-      tip.textContent = "LMB next post · RMB read · ∞ ammo";
+      tip.textContent = "LMB read · RMB rifle (VCs) · ∞ ammo";
     } else if (flameUnlocked) {
       tip.textContent = (flameOnlyMode || weaponIdx === 2)
         ? "🔥 FLAME · scroll/Q → boom+rifle · hold fire"
