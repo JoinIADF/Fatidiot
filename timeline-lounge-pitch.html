@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Timeline Lounge — Pitch Visual</title>
+<style>
+  :root {
+    --bg: #070b12;
+    --panel: #0f1520;
+    --panel2: #141c2a;
+    --line: rgba(255,255,255,0.10);
+    --text: #e8eef8;
+    --muted: #8b98a8;
+    --xblue: #1d9bf0;
+    --mint: #7CFFB0;
+    --coral: #ff6a4a;
+    --pink: #ff2d55;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 500px at 15% 0%, rgba(29,155,240,0.12), transparent 60%),
+      radial-gradient(700px 400px at 90% 20%, rgba(124,255,176,0.10), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    padding: 28px 20px 40px;
+  }
+  .poster {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+    background: linear-gradient(180deg, rgba(20,28,42,0.95), rgba(10,14,22,0.98));
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .top {
+    padding: 36px 40px 20px;
+    text-align: center;
+  }
+  .eyebrow {
+    color: var(--mint);
+    font: 700 12px/1 system-ui, sans-serif;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font: 900 clamp(34px, 5vw, 56px)/1.02 system-ui, sans-serif;
+    letter-spacing: -0.03em;
+    margin-bottom: 12px;
+  }
+  .sub {
+    color: var(--muted);
+    font: 600 18px/1.4 system-ui, sans-serif;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 18px;
+    align-items: stretch;
+    padding: 18px 40px 8px;
+  }
+  @media (max-width: 820px) {
+    .compare { grid-template-columns: 1fr; }
+    .arrow { transform: rotate(90deg); margin: 4px auto; }
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 22px;
+    position: relative;
+  }
+  .card.bad { opacity: 0.92; }
+  .card.good {
+    border-color: rgba(124,255,176,0.35);
+    background: linear-gradient(180deg, rgba(18,36,28,0.55), var(--panel));
+    box-shadow: 0 0 0 1px rgba(124,255,176,0.08), 0 16px 40px rgba(0,0,0,0.25);
+  }
+  .label {
+    font: 800 11px/1 system-ui, sans-serif;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .card.good .label { color: var(--mint); }
+  .card h2 {
+    font: 800 22px/1.2 system-ui, sans-serif;
+    margin-bottom: 8px;
+  }
+  .card p {
+    color: var(--muted);
+    font: 500 15px/1.45 system-ui, sans-serif;
+  }
+  .phone {
+    margin-top: 16px;
+    height: 150px;
+    border-radius: 16px;
+    background: #0a0e16;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .bar {
+    height: 14px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.08);
+  }
+  .bar:nth-child(2) { width: 92%; }
+  .bar:nth-child(3) { width: 78%; opacity: 0.7; }
+  .bar:nth-child(4) { width: 88%; opacity: 0.55; }
+  .bar:nth-child(5) { width: 70%; opacity: 0.4; }
+  .lounge {
+    margin-top: 16px;
+    height: 150px;
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 30% 70%, rgba(29,155,240,0.18), transparent 40%),
+      radial-gradient(circle at 70% 40%, rgba(124,255,176,0.14), transparent 35%),
+      #121822;
+    border: 1px solid rgba(124,255,176,0.18);
+    position: relative;
+    overflow: hidden;
+  }
+  .person {
+    position: absolute;
+    width: 34px; height: 46px;
+    border-radius: 10px 10px 8px 8px;
+  }
+  .person::after {
+    content: "";
+    position: absolute;
+    left: 7px; top: -12px;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: #e8c4a8;
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+  .p1 { left: 18%; bottom: 28px; background: #1d9bf0; }
+  .p2 { left: 42%; bottom: 36px; background: #7CFFB0; }
+  .p3 { left: 66%; bottom: 30px; background: #c9a0ff; }
+  .bubble {
+    position: absolute;
+    background: rgba(8,12,20,0.88);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #dce6f5;
+    font: 700 10px/1.2 system-ui, sans-serif;
+    padding: 6px 8px;
+    border-radius: 10px;
+    max-width: 90px;
+  }
+  .b1 { left: 12%; top: 18px; }
+  .b2 { left: 40%; top: 10px; border-color: rgba(124,255,176,0.4); }
+  .b3 { left: 64%; top: 20px; }
+  .you {
+    position: absolute;
+    right: 14px; bottom: 14px;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffd6c8, #e8a090 55%, #c87868);
+    border: 2px solid var(--mint);
+    box-shadow: 0 0 0 4px rgba(124,255,176,0.15);
+    display: grid; place-items: center;
+    font: 900 9px/1 system-ui, sans-serif;
+    color: #0a1a12;
+  }
+  .you span {
+    position: absolute; bottom: -16px; white-space: nowrap;
+    color: var(--mint); font: 800 10px/1 system-ui, sans-serif;
+  }
+  .arrow {
+    align-self: center;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(29,155,240,0.12);
+    border: 1px solid rgba(29,155,240,0.35);
+    color: var(--xblue);
+    font-size: 26px;
+    font-weight: 900;
+  }
+  .diff {
+    margin: 18px 40px 8px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: rgba(29,155,240,0.08);
+    border: 1px solid rgba(29,155,240,0.28);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .diff .badge {
+    flex: 0 0 auto;
+    background: var(--xblue);
+    color: #041018;
+    font: 900 11px/1 system-ui, sans-serif;
+    letter-spacing: 0.08em;
+    padding: 8px 10px;
+    border-radius: 999px;
+  }
+  .diff p {
+    font: 600 15px/1.45 system-ui, sans-serif;
+    color: #d7e7f8;
+  }
+  .diff strong { color: var(--mint); }
+  .benefits {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    padding: 16px 40px 28px;
+  }
+  @media (max-width: 820px) {
+    .benefits { grid-template-columns: 1fr; }
+    .top, .compare, .diff, .benefits, .foot { padding-left: 20px; padding-right: 20px; }
+  }
+  .ben {
+    background: var(--panel2);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 18px;
+  }
+  .ben .ico {
+    width: 36px; height: 36px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    margin-bottom: 12px;
+    font-size: 18px;
+  }
+  .ben:nth-child(1) .ico { background: rgba(29,155,240,0.15); }
+  .ben:nth-child(2) .ico { background: rgba(124,255,176,0.12); }
+  .ben:nth-child(3) .ico { background: rgba(255,106,74,0.12); }
+  .ben h3 {
+    font: 800 17px/1.2 system-ui, sans-serif;
+    margin-bottom: 6px;
+  }
+  .ben p {
+    color: var(--muted);
+    font: 500 14px/1.45 system-ui, sans-serif;
+  }
+  .foot {
+    border-top: 1px solid var(--line);
+    padding: 18px 40px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font: 600 13px/1.4 system-ui, sans-serif;
+  }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.03);
+    border-radius: 999px;
+    padding: 7px 12px;
+    font: 700 12px/1 system-ui, sans-serif;
+    color: #c9d4e4;
+  }
+  .pill.hi { border-color: rgba(124,255,176,0.4); color: var(--mint); }
+  .actions {
+    width: min(1120px, 100%);
+    margin: 16px auto 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+  .actions a, .actions button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: #121926;
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font: 800 13px/1 system-ui, sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .actions a.primary {
+    background: var(--mint);
+    color: #06140e;
+    border-color: transparent;
+  }
+</style>
+</head>
+<body>
+  <article class="poster" id="poster">
+    <header class="top">
+      <div class="eyebrow">A Day in the Life of an X Employee · Fa'tidiot</div>
+      <h1>Timeline Lounge</h1>
+      <p class="sub">A fun, optional way to explore X — walk a room full of the accounts you actually care about, not endless strangers.</p>
+    </header>
+
+    <section class="compare" aria-label="Before and after">
+      <div class="card bad">
+        <div class="label">Today</div>
+        <h2>Endless scroll</h2>
+        <p>A flat feed of posts. Easy to miss the people you meant to keep up with.</p>
+        <div class="phone" aria-hidden="true">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+      </div>
+
+      <div class="arrow" aria-hidden="true">→</div>
+
+      <div class="card good">
+        <div class="label">Timeline Lounge</div>
+        <h2>Your graph, as a place</h2>
+        <p>Walk up to people, read their latest posts in the air, open a thread when you want depth.</p>
+        <div class="lounge" aria-hidden="true">
+          <div class="bubble b1">new post…</div>
+          <div class="bubble b2">@friend · just now</div>
+          <div class="bubble b3">thread →</div>
+          <div class="person p1"></div>
+          <div class="person p2"></div>
+          <div class="person p3"></div>
+          <div class="you"><span>YOU</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="diff">
+      <div class="badge">NOT META</div>
+      <p>
+        Meta-style worlds pack in <strong>random people</strong>.
+        Timeline Lounge is the opposite of that quality bar:
+        it’s filled with the <strong>top accounts you already interact with</strong> —
+        and it <strong>updates automatically</strong> as they post.
+      </p>
+    </div>
+
+    <section class="benefits" aria-label="Benefits">
+      <div class="ben">
+        <div class="ico">🎯</div>
+        <h3>Your people, not randos</h3>
+        <p>The room is curated from who you actually reply to, like, and quote — the accounts you already want to read.</p>
+      </div>
+      <div class="ben">
+        <div class="ico">⚡</div>
+        <h3>Always fresh</h3>
+        <p>As those accounts post, the lounge refreshes. Walk up and their latest thoughts appear like conversation bubbles.</p>
+      </div>
+      <div class="ben">
+        <div class="ico">🎮</div>
+        <h3>Fun alternative explore</h3>
+        <p>Target someone, READ the thread, LIKE what hits, REMOVE the noise. Timeline exploration that feels playful, not chore-like.</p>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div class="pills">
+        <span class="pill hi">Optional mode</span>
+        <span class="pill">Not a feed replacement</span>
+        <span class="pill">Engagement demo</span>
+        <span class="pill">Opt-in explore</span>
+      </div>
+      <div>Benefit to X: test whether spatial “explore your graph” increases intentional reading & time spent.</div>
+    </footer>
+  </article>
+
+  <div class="actions">
+    <a class="primary" href="https://joiniadf.github.io/Fatidiot" target="_blank" rel="noopener">Open live demo</a>
+    <a href="./index.html">Play Fa'tidiot</a>
+    <button type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+</body>
+</html>
