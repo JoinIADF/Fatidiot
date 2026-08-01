@@ -788,17 +788,17 @@
   /* lounge action menu — mid size (+25% from prior compact) */
   #loungeMobBar {
     display: none; position: fixed; left: 50%;
-    bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+    bottom: max(112px, calc(env(safe-area-inset-bottom, 0px) + 96px));
     transform: translateX(-50%);
     z-index: 70; pointer-events: auto;
-    width: auto; max-width: min(700px, calc(100vw - 22px));
+    width: auto; max-width: min(760px, calc(100vw - 16px));
     flex-direction: column;
     align-items: stretch;
-    gap: 6px;
-    padding: 8px 9px 9px;
+    gap: 7px;
+    padding: 9px 10px 10px;
     background: rgba(6, 10, 18, 0.78);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 17px;
+    border-radius: 18px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -811,8 +811,8 @@
     transform: none;
     max-width: none;
     margin: 0;
-    padding: 6px 11px;
-    border-radius: 11px;
+    padding: 6px 12px;
+    border-radius: 12px;
     text-align: center;
     font: 800 13px/1.2 system-ui, sans-serif;
     color: #7CFFB0;
@@ -827,25 +827,30 @@
   #loungeMobBar .lounge-focus.show { display: block; }
   #loungeMobBar .lounge-btns {
     display: flex;
-    gap: 7px;
+    gap: 8px;
     justify-content: center;
     flex-wrap: nowrap;
     width: 100%;
   }
   #loungeMobBar .lmbtn {
     flex: 1 1 0;
-    min-width: 0;
-    min-height: 54px;
-    padding: 10px 11px;
-    border-radius: 13px;
+    min-width: 72px;
+    min-height: 60px;
+    padding: 11px 12px;
+    border-radius: 14px;
     border: 1.5px solid rgba(255,255,255,0.35);
     background: rgba(16, 22, 34, 0.92);
     color: #e8eef8;
-    font: 800 12px/1.1 system-ui, sans-serif;
+    font: 800 12px/1.15 system-ui, sans-serif;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
     white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
     cursor: pointer;
+    display: grid;
+    place-items: center;
+    letter-spacing: 0.01em;
   }
   #loungeMobBar .lmbtn:active { filter: brightness(1.18); }
   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
@@ -853,6 +858,10 @@
   #loungeMobBar .lmbtn.nope {
     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
     font-size: 12px; line-height: 1.1;
+    flex: 1.15 1 0;
+    min-width: 88px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
   #loungeMobBar .lmbtn.addg {
@@ -861,7 +870,7 @@
   body.lounge-ui #loungeMobBar.show {
     display: flex;
     bottom: 24px;
-    max-width: min(660px, calc(100vw - 26px));
+    max-width: min(720px, calc(100vw - 20px));
     z-index: 70;
   }
   @media (max-width: 900px), (pointer: coarse) {
@@ -995,8 +1004,9 @@
       #btnCol { gap: 6px; }
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
-      #loungeMobBar { bottom: 72px; padding: 5px 6px; }
-      #loungeMobBar .lmbtn { min-height: 48px; font-size: 11px; padding: 9px 10px; }
+      #loungeMobBar { bottom: 74px; padding: 6px 7px; }
+      #loungeMobBar .lmbtn { min-height: 52px; font-size: 11px; padding: 10px 8px; min-width: 64px; }
+      #loungeMobBar .lmbtn.nope { min-width: 78px; font-size: 11px; }
       #loungeMobBar #guestChip { font-size: 12px; }
     }
   }
