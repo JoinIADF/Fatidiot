@@ -6089,7 +6089,7 @@ function openTweetReader(e) {
   root.setAttribute("aria-hidden", "false");
   const hint = root.querySelector(".tr-hint");
   if (hint) hint.textContent = isMobile()
-    ? "♡ like · Reply · ✕ close · NOT INTERESTED explodes"
+    ? "♡ like · Reply · ✕ close · REMOVE"
     : "♡ like · Reply · Esc / ✕ close · REMOVE guest guest";
 }
 
@@ -9809,7 +9809,7 @@ function fireRifle() {
     }
     else if (target.type === "xuser") {
       if (socialActive) {
-        /* rifle does no damage to lounge guests — use NOT INTERESTED */
+        /* rifle does no damage to lounge guests — use REMOVE */
         try { beep(180, 0.04, "sine", 0.03); } catch (_) {}
       } else dismissXUser(target);
     }
