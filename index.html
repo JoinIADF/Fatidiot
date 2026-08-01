@@ -785,20 +785,20 @@
     font-size: 14px; top: 10px; letter-spacing: 0.12em;
   }
   body.lounge-ui #crosshair { opacity: 0.55; font-size: 18px; }
-  /* lounge action menu — ~25% smaller, focus chip stacked above buttons */
+  /* lounge action menu — mid size (+25% from prior compact) */
   #loungeMobBar {
     display: none; position: fixed; left: 50%;
-    bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 84px));
+    bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     transform: translateX(-50%);
     z-index: 70; pointer-events: auto;
-    width: auto; max-width: min(540px, calc(100vw - 28px));
+    width: auto; max-width: min(640px, calc(100vw - 24px));
     flex-direction: column;
     align-items: stretch;
-    gap: 4px;
-    padding: 5px 6px 6px;
+    gap: 5px;
+    padding: 7px 8px 8px;
     background: rgba(6, 10, 18, 0.78);
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 14px;
+    border-radius: 16px;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -811,10 +811,10 @@
     transform: none;
     max-width: none;
     margin: 0;
-    padding: 4px 8px;
-    border-radius: 8px;
+    padding: 5px 10px;
+    border-radius: 10px;
     text-align: center;
-    font: 800 10px/1.2 system-ui, sans-serif;
+    font: 800 12px/1.2 system-ui, sans-serif;
     color: #7CFFB0;
     background: rgba(8, 20, 16, 0.65);
     border: 1px solid rgba(124,255,176,0.35);
@@ -827,7 +827,7 @@
   #loungeMobBar .lounge-focus.show { display: block; }
   #loungeMobBar .lounge-btns {
     display: flex;
-    gap: 5px;
+    gap: 6px;
     justify-content: center;
     flex-wrap: nowrap;
     width: 100%;
@@ -835,13 +835,13 @@
   #loungeMobBar .lmbtn {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 39px;
-    padding: 7px 8px;
-    border-radius: 10px;
+    min-height: 49px;
+    padding: 9px 10px;
+    border-radius: 12px;
     border: 1.5px solid rgba(255,255,255,0.35);
     background: rgba(16, 22, 34, 0.92);
     color: #e8eef8;
-    font: 800 9px/1.1 system-ui, sans-serif;
+    font: 800 11px/1.1 system-ui, sans-serif;
     touch-action: manipulation;
     -webkit-user-select: none; user-select: none;
     white-space: nowrap;
@@ -852,7 +852,7 @@
   #loungeMobBar .lmbtn.next,
   #loungeMobBar .lmbtn.nope {
     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
-    font-size: 8px; line-height: 1.05;
+    font-size: 10px; line-height: 1.05;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
   #loungeMobBar .lmbtn.addg {
@@ -860,13 +860,13 @@
   }
   body.lounge-ui #loungeMobBar.show {
     display: flex;
-    bottom: 22px;
-    max-width: min(480px, calc(100vw - 32px));
+    bottom: 24px;
+    max-width: min(600px, calc(100vw - 28px));
     z-index: 70;
   }
   @media (max-width: 900px), (pointer: coarse) {
     body.lounge-ui #loungeMobBar.show {
-      bottom: max(100px, calc(env(safe-area-inset-bottom, 0px) + 84px));
+      bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     }
   }
   .mbtn.add {
@@ -995,9 +995,9 @@
       #btnCol { gap: 6px; }
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
-      #loungeMobBar { bottom: 68px; padding: 4px 5px; }
-      #loungeMobBar .lmbtn { min-height: 36px; font-size: 8px; padding: 6px 7px; }
-      #loungeMobBar #guestChip { font-size: 9px; }
+      #loungeMobBar { bottom: 72px; padding: 5px 6px; }
+      #loungeMobBar .lmbtn { min-height: 44px; font-size: 10px; padding: 8px 9px; }
+      #loungeMobBar #guestChip { font-size: 11px; }
     }
   }
   #overlay .modeRow {
