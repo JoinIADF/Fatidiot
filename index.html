@@ -822,6 +822,37 @@
     font-size: 10px; line-height: 1.1;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
+  #loungeMobBar .lmbtn.addg {
+    border-color: #7CFFB0; color: #b8ffe0; background: rgba(12, 40, 28, 0.92);
+  }
+  /* desktop lounge menu — same bar as mobile, always visible */
+  body.lounge-ui #loungeMobBar.show {
+    display: flex;
+    bottom: 28px;
+    max-width: min(720px, calc(100vw - 32px));
+    gap: 10px;
+    padding: 10px 12px;
+    z-index: 70;
+  }
+  body.lounge-ui #loungeMobBar .lmbtn {
+    min-height: 56px;
+    min-width: 110px;
+    font-size: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+  body.lounge-ui #guestChip.show {
+    display: block;
+    bottom: 100px;
+  }
+  @media (max-width: 900px), (pointer: coarse) {
+    body.lounge-ui #loungeMobBar.show {
+      bottom: max(118px, calc(env(safe-area-inset-bottom, 0px) + 100px));
+    }
+    body.lounge-ui #guestChip.show {
+      bottom: max(178px, calc(env(safe-area-inset-bottom, 0px) + 160px));
+    }
+  }
   .mbtn.add {
     border-color: #7CFFB0; color: #b8ffe0; background: rgba(12, 40, 28, 0.85);
     width: 64px; height: 64px; font-size: 13px;
@@ -1073,6 +1104,7 @@
     <button type="button" class="lmbtn read" id="mRead">READ</button>
     <button type="button" class="lmbtn nope" id="mNext">NOT<br>INTERESTED</button>
     <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
+    <button type="button" class="lmbtn addg" id="mAddBar">ADD</button>
   </div>
   <div id="btnCol">
     <button type="button" class="mbtn swap" id="mSwap">SWAP<br>WPN</button>
@@ -5166,12 +5198,11 @@ function closeGuestInvite() {
     root.setAttribute("aria-hidden", "true");
   }
   if (mode === "play" && socialActive) {
-    if (!isMobile()) {
-      try { renderer.domElement.requestPointerLock(); } catch (_) {}
-    } else {
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    if (isMobile()) {
       try { showMobileUI(true); } catch (_) {}
-      try { syncLoungeMobileUI(); } catch (_) {}
     }
+    try { syncLoungeMobileUI(); } catch (_) {}
   }
 }
 
@@ -5822,13 +5853,15 @@ function syncLoungeMobileUI() {
   const bar = $("loungeMobBar");
   const hint = $("mobileHint");
   const chip = $("guestChip");
-  if (!ui) return;
+  if (!ui && !bar) return;
   const on = !!(typeof socialActive !== "undefined" && socialActive && mode === "play");
   const mob = isMobile();
-  ui.classList.toggle("lounge-mode", on);
+  if (ui) ui.classList.toggle("lounge-mode", on);
   document.body.classList.toggle("lounge-ui", on);
+  /* same action menu on PC + mobile so options are obvious */
   if (bar) {
-    const showBar = on && mob && !socialReading;
+    const inviteOpen = !!( $("guestInvite") && !$("guestInvite").classList.contains("hidden") );
+    const showBar = on && !socialReading && !inviteOpen;
     bar.classList.toggle("show", showBar);
     bar.setAttribute("aria-hidden", showBar ? "false" : "true");
   }
@@ -5839,9 +5872,9 @@ function syncLoungeMobileUI() {
       if (mob) hint.textContent = "move with stick · tap LOCK RUN to toggle auto-run";
     }
   }
-  /* focused guest — label ABOVE action bar only (never mid-screen / on pig face) */
+  /* focused guest label above action bar (PC + mobile) */
   if (chip) {
-    if (on && mob && socialNear && socialNear.user && !socialReading) {
+    if (on && socialNear && socialNear.user && !socialReading) {
       const h = socialNear.user.handle || "user";
       chip.textContent = "@" + h;
       chip.classList.add("show");
@@ -5852,18 +5885,21 @@ function syncLoungeMobileUI() {
       chip.textContent = "";
     }
   }
-  /* clean weapon panel in lounge */
+  /* lounge weapon panel — rifle for enemy VCs only */
   if (on) {
-    if ($("weaponV")) $("weaponV").textContent = "LOUNGE";
+    if ($("weaponV")) $("weaponV").textContent = "RIFLE · VCs";
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    if ($("weaponTip")) $("weaponTip").textContent = mob ? "READ · NOT INTERESTED · ADD" : "E read · Not interested · ADD";
-    try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
+    if ($("weaponTip")) $("weaponTip").textContent = "Menu below · rifle hurts VCs only";
+    try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
+    try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
+    try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
   }
 }
 
 function activateSocialLounge() {
   socialActive = true;
-  try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
   try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
   try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
   try { syncLoungeMobileUI(); } catch (_) {}
@@ -5895,8 +5931,8 @@ function activateSocialLounge() {
   const wv = $("waveV"); if (wv) wv.textContent = "LOUNGE";
   const qv = $("quotaV"); if (qv) qv.textContent = "—";
   showMsg(isMobile()
-    ? "LOUNGE — READ · NOT INTERESTED · LIKE · ADD guests"
-    : "TIMELINE LOUNGE — E read · Not Interested explodes · ADD invites");
+    ? "LOUNGE — READ · NOT INTERESTED · LIKE · ADD"
+    : "LOUNGE — use menu below · rifle = enemy VCs only");
   const mS = $("mSwap");
   if (mS) mS.innerHTML = "READ<br>THREAD";
   loadSocialFeed().then(users => {
@@ -6063,12 +6099,12 @@ function closeTweetReader(silent = false) {
   socialReading = false;
   if (!silent && was && mode === "play" && socialActive) {
     try { showMsg("Back in the lounge"); } catch (_) {}
-    if (!isMobile()) {
-      try { renderer.domElement.requestPointerLock(); } catch (_) {}
-    } else {
+    /* keep free cursor so lounge menu stays usable on PC */
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    if (isMobile()) {
       try { showMobileUI(true); } catch (_) {}
-      try { syncLoungeMobileUI(); } catch (_) {}
     }
+    try { syncLoungeMobileUI(); } catch (_) {}
   }
 }
 
@@ -7905,9 +7941,14 @@ document.addEventListener("mousemove", e => {
     return;
   }
   if (strikerGame.active) return;
-  if (document.pointerLockElement !== renderer.domElement) return;
-  yaw -= e.movementX * 0.0026;
-  pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
+  if (document.pointerLockElement === renderer.domElement) {
+    yaw -= e.movementX * 0.0026;
+    pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.002));
+  } else if (typeof socialActive !== "undefined" && socialActive && (e.buttons & 2)) {
+    /* lounge free-cursor: hold RMB to look so left hand can use the menu */
+    yaw -= e.movementX * 0.0032;
+    pitch = Math.max(0.05, Math.min(1.1, pitch + e.movementY * 0.0024));
+  }
 });
 renderer.domElement.addEventListener("mousedown", e => {
   if (mode !== "play") return;
@@ -7915,9 +7956,12 @@ renderer.domElement.addEventListener("mousedown", e => {
   if (strikerGame.active) { if (e.button === 0) resolveStriker(); return; }
   if (arcadeGame.active) { if (e.button === 0) arcadeClick(); return; }
   if (socialReading) return;
-  if (!isMobile() && document.pointerLockElement !== renderer.domElement) { renderer.domElement.requestPointerLock(); return; }
   if (socialActive) {
-    /* lounge: LMB rifle = next comment / eject VCs; RMB = open thread reader */
+    /* lounge PC: free-cursor menu; optional click-to-lock for aim. Rifle = VCs only. */
+    if (!isMobile() && document.pointerLockElement !== renderer.domElement && e.button === 0) {
+      /* allow click-to-lock for look, still fire this shot */
+      try { renderer.domElement.requestPointerLock(); } catch (_) {}
+    }
     if (e.button === 0) fireRifle();
     if (e.button === 2) {
       let guest = socialNear;
@@ -8080,10 +8124,18 @@ function startGame(opts = {}) {
   $("ammoV").textContent = ammo;
   pig.position.set(0, 0, 8); pigY = 0; pigVy = 0;
   overlay.classList.add("hidden");
-  if (!isMobile()) renderer.domElement.requestPointerLock();
-  else showMobileUI(true);
   if (enterSocial) {
+    /* lounge: free mouse so the on-screen menu is clickable */
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    if (isMobile()) showMobileUI(true);
     activateSocialLounge();
+  } else if (!isMobile()) {
+    renderer.domElement.requestPointerLock();
+  } else {
+    showMobileUI(true);
+  }
+  if (enterSocial) {
+    /* already activated above */
   } else if (skipToStarbase) {
     levelUpT = 0;
     levelUp(); /* wave → 2 + Starbase, skip office grind */
@@ -9459,8 +9511,10 @@ function hitscanWorld(origin, dir, maxDist = 55) {
     if (score < bestScore) { bestScore = score; best = { type, ref, dist, point: pos }; }
   };
   for (const e of enemies) {
+    /* lounge: rifle never targets friendly guests — only enemy VCs */
+    if (socialActive && e.type === "xuser") continue;
     let pad = 0;
-    if (socialActive && (e.type === "xuser" || e.type === "vc")) pad = 0.28;
+    if (socialActive && e.type === "vc") pad = 0.28;
     else if (e.type === "bot") pad = e.variant === "heavy" ? 0.22 : 0.16;
     else if (e.type === "reporter") pad = 0.14;
     else if (e.type === "spammer") pad = 0.12;
@@ -9706,35 +9760,33 @@ function fireFlamethrower(dt) {
 function fireRifle() {
   if (rifleCd > 0) return;
   if (socialActive) {
-    /* lounge: no rifle — soft "point" for VCs only; guests use Not Interested */
+    /* lounge: unlimited ammo; rifle only hurts enemy VCs, not guests */
     ammo = 999;
     if ($("ammoV")) $("ammoV").textContent = "∞";
-    try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
-    try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
   } else {
     if (ammo <= 0) { beep(160, 0.06, "square", 0.05); return; } /* dry click */
     ammo--;
     if ($("ammoV")) $("ammoV").textContent = ammo;
   }
-  rifleCd = socialActive ? 0.22 : 0.38;
-  if (!socialActive) {
-    SFX.shoot();
-    rifleHeld.visible = false;
-    rifleSlung.visible = true;
-    rifleSlung.rotation.x = 0.35;
-    setTimeout(() => { if (rifleSlung) rifleSlung.rotation.x = 0.12; }, 90);
-    shake = Math.max(shake, 0.28);
-    hitstop = Math.max(hitstop, 0.03);
-  } else {
-    try { beep(280, 0.04, "triangle", 0.04); } catch (_) {}
-  }
+  rifleCd = socialActive ? 0.28 : 0.38;
+  SFX.shoot();
+  try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
+  try {
+    if (rifleSlung) {
+      rifleSlung.visible = true;
+      rifleSlung.rotation.x = 0.35;
+      setTimeout(() => { if (rifleSlung) rifleSlung.rotation.x = 0.12; }, 90);
+    }
+  } catch (_) {}
+  shake = Math.max(shake, socialActive ? 0.18 : 0.28);
+  hitstop = Math.max(hitstop, 0.03);
   const origin = pig.position.clone().add(new THREE.Vector3(0, 1.2, 0));
   const dir = aimDir();
   let target = null;
   let worldHit = null;
   if (lockTarget && enemies.includes(lockTarget) && (
       locked ||
-      (socialActive && (lockTarget.type === "xuser" || lockTarget.type === "vc") && lockT > 0.05) ||
+      (socialActive && lockTarget.type === "vc" && lockT > 0.05) ||
       (!socialActive && (lockTarget.type === "bot" || lockTarget.type === "spammer" || lockTarget.type === "reporter") && lockT > 0.08)
     )) {
     target = lockTarget;
@@ -9768,8 +9820,10 @@ function fireRifle() {
       else shake = Math.max(shake, 0.2);
     }
     else if (target.type === "xuser") {
-      if (socialActive) notInterestedGuest(target); /* lounge: one-tap explode */
-      else dismissXUser(target);
+      if (socialActive) {
+        /* rifle does no damage to lounge guests — use NOT INTERESTED */
+        try { beep(180, 0.04, "sine", 0.03); } catch (_) {}
+      } else dismissXUser(target);
     }
     else if (target.type === "spammer") demonetize(target);
     else if (target.type === "bot") {
@@ -11388,11 +11442,13 @@ function bindMobileControls() {
   };
   tap("mRead", () => {
     if (!socialActive) return;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (socialNear) openTweetReader(socialNear);
     else showMsg("Walk up & face a guest to READ");
   });
   tap("mNext", () => {
     if (!socialActive) return;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (socialNear) notInterestedGuest(socialNear);
     else showMsg("Face a guest to mark Not Interested");
   });
@@ -11400,7 +11456,13 @@ function bindMobileControls() {
     if (!socialActive) return;
     openGuestInvite();
   });
+  tap("mAddBar", () => {
+    if (!socialActive) return;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    openGuestInvite();
+  });
   tap("mLike", () => {
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (!socialActive || !socialNear || !socialNear.user) {
       showMsg("Face a guest first");
       return;
