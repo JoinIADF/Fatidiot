@@ -365,14 +365,29 @@
     position: absolute; left: 28px; bottom: 152px;
     width: 120px; text-align: center;
     font: 800 10px/1.2 system-ui, sans-serif;
-    color: #7CFFB0;
+    color: #cfd6e0;
     text-shadow: 0 1px 3px #000;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 0.85;
+    pointer-events: auto;
+    touch-action: manipulation;
+    z-index: 5;
+    padding: 8px 4px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.45);
+    border: 1.5px solid rgba(255,255,255,0.28);
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  #stickBase.locked + #stickLockLabel,
-  #stickZone.locked #stickLockLabel { opacity: 1; }
-  #stickZone.locked #stickLockLabel { opacity: 1; }
+  #stickLockLabel:active { transform: scale(0.97); }
+  #stickZone.locked #stickLockLabel,
+  #stickBase.locked ~ #stickLockLabel {
+    opacity: 1;
+    color: #7CFFB0;
+    border-color: #7CFFB0;
+    background: rgba(20,60,40,0.55);
+    box-shadow: 0 0 12px rgba(124,255,176,0.35);
+  }
   #lookZone {
     position: absolute; right: 0; top: 0;
     width: 54%; height: 100%;
@@ -752,7 +767,7 @@
   #mobileUI.lounge-mode #mSwap,
   #mobileUI.lounge-mode #mRifle { display: none !important; }
   #mobileUI.lounge-mode #mobileHint { display: none !important; }
-  #mobileUI.lounge-mode #stickLockLabel { font-size: 9px; opacity: 0.75; }
+  #mobileUI.lounge-mode #stickLockLabel { font-size: 9px; opacity: 0.9; }
   /* compact lounge HUD */
   body.lounge-ui #quota { display: none !important; }
   body.lounge-ui #chargeWrap { display: none !important; }
@@ -974,10 +989,10 @@
   </div>
 </div>
 <div id="mobileUI" aria-hidden="true">
-  <div id="mobileHint">stick forward full = auto-run · tap stick to unlock</div>
+  <div id="mobileHint">move with stick · tap LOCK RUN to toggle auto-run</div>
   <div id="stickZone">
     <div id="stickBase"><div id="stickKnob"></div></div>
-    <div id="stickLockLabel">AUTO-RUN · TAP TO UNLOCK</div>
+    <div id="stickLockLabel" role="button" aria-pressed="false" tabindex="0">LOCK RUN</div>
   </div>
   <div id="lookZone"></div>
   <div id="loungeMobBar" aria-hidden="true">
@@ -3618,7 +3633,7 @@ function updateRocketPlaques(dt) {
         const ui = $("mobileUI");
         if (ui) ui.classList.remove("starbase-art");
         const mh = $("mobileHint");
-        if (mh && !socialActive) mh.textContent = "stick forward full = auto-run · tap stick to unlock";
+        if (mh && !socialActive) mh.textContent = "move with stick · tap LOCK RUN to toggle auto-run";
       } catch (_) {}
     }
   }
@@ -4436,6 +4451,8 @@ let socialNear = null;
 let socialQueue = [];
 let socialPool = [];
 const SOCIAL_VISIBLE = 15; /* bigger room, more mingling guests */
+const SOCIAL_BUBBLE = 3.6 * (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1.3); /* personal space — no guest closer than this */
+const SOCIAL_BUBBLE_SQ = SOCIAL_BUBBLE * SOCIAL_BUBBLE;
 const SOCIAL_PROX = 5.2;
 
 /* Seeded "most recently interacted" accounts + 3 recent posts each.
@@ -4857,7 +4874,7 @@ function spawnXUser(u, pos) {
     shotHits: 0,
     speed: 0,
     mesh,
-    r: 0.65,
+    r: 0.85,
     walk: rand(0, 6.28),
     zig: rand(0, 6.28),
     user: u,
@@ -4932,7 +4949,7 @@ function placeSocialGuests(users) {
   const slots = loungeSlots().sort(() => Math.random() - 0.5);
   const first = users.slice(0, SOCIAL_VISIBLE);
   const used = [];
-  const minD = 5.5 * LOUNGE_SCALE; /* spread people farther on start */
+  const minD = Math.max(5.5 * LOUNGE_SCALE, SOCIAL_BUBBLE * 1.35); /* personal-space start spread */
   first.forEach((u) => {
     let best = null, bestScore = -1;
     for (const s of slots) {
@@ -5533,7 +5550,7 @@ function syncLoungeMobileUI() {
     if (on && mob) hint.style.display = "none";
     else {
       hint.style.display = "";
-      if (mob) hint.textContent = "stick forward full = auto-run · tap stick to unlock";
+      if (mob) hint.textContent = "move with stick · tap LOCK RUN to toggle auto-run";
     }
   }
   /* focused guest — label ABOVE action bar only (never mid-screen / on pig face) */
@@ -5832,9 +5849,21 @@ function dismissXUser(e, reason = "scroll") {
   scene.remove(e.mesh);
   const next = takeNextSocialGuest();
   if (next && !isVCHandle(next.handle)) {
-    const slot = home.clone();
-    slot.x += rand(-0.8, 0.8);
-    slot.z += rand(-0.8, 0.8);
+    const bubble = SOCIAL_BUBBLE;
+    let slot = home.clone();
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const cand = home.clone();
+      cand.x += rand(-4, 4);
+      cand.z += rand(-4, 4);
+      let clear = true;
+      for (const o of enemies) {
+        if (o.type !== "xuser" && o.type !== "vc") continue;
+        if (Math.hypot(cand.x - o.mesh.position.x, cand.z - o.mesh.position.z) < bubble) {
+          clear = false; break;
+        }
+      }
+      if (clear) { slot = cand; break; }
+    }
     const ne = spawnXUser(next, slot);
     if (ne) {
       floatText(ne.mesh.position.clone().add(new THREE.Vector3(0, 2.2, 0)), "@" + next.handle, {
@@ -5862,18 +5891,55 @@ function updateSocialLounge(dt) {
     e.stateT -= dt;
     if (e.state === "idle" && e.stateT <= 0) {
       const ss = loungeSlots();
-      const s = ss[(Math.random() * ss.length) | 0];
-      e.target = new THREE.Vector3(s.x + rand(-0.7, 0.7), 0, s.z + rand(-0.7, 0.7));
+      const bubble = SOCIAL_BUBBLE;
+      let pickSlot = null;
+      for (let attempt = 0; attempt < 14; attempt++) {
+        const s = ss[(Math.random() * ss.length) | 0];
+        const tx = s.x + rand(-0.5, 0.5), tz = s.z + rand(-0.5, 0.5);
+        let clear = true;
+        for (const o of enemies) {
+          if (o === e || o.type !== "xuser") continue;
+          if (Math.hypot(tx - o.mesh.position.x, tz - o.mesh.position.z) < bubble) {
+            clear = false; break;
+          }
+        }
+        if (clear) { pickSlot = { x: tx, z: tz }; break; }
+      }
+      if (!pickSlot) {
+        const s = ss[(Math.random() * ss.length) | 0];
+        pickSlot = { x: s.x + rand(-0.4, 0.4), z: s.z + rand(-0.4, 0.4) };
+      }
+      e.target = new THREE.Vector3(pickSlot.x, 0, pickSlot.z);
       e.state = "walk"; e.stateT = 10;
     }
     if (e.state === "walk" && e.target) {
       const to = e.target.clone().sub(e.mesh.position); to.y = 0;
+      /* steer clear of other guests' personal space bubbles */
+      const sep = new THREE.Vector3();
+      const bubble = SOCIAL_BUBBLE;
+      for (const o of enemies) {
+        if (o === e || (o.type !== "xuser" && o.type !== "vc")) continue;
+        const dx = e.mesh.position.x - o.mesh.position.x;
+        const dz = e.mesh.position.z - o.mesh.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.01 && d < bubble) {
+          const push = (bubble - d) / bubble;
+          sep.x += (dx / d) * push;
+          sep.z += (dz / d) * push;
+        }
+      }
       if (to.length() < 0.35 || e.stateT <= 0) {
         e.state = "idle"; e.stateT = rand(5, 11);
         e.home.copy(e.mesh.position);
         e.mesh.position.y = 0;
       } else {
         to.normalize();
+        if (sep.lengthSq() > 0.0001) {
+          sep.normalize();
+          to.x = to.x * 0.55 + sep.x * 0.45;
+          to.z = to.z * 0.55 + sep.z * 0.45;
+          to.normalize();
+        }
         e.mesh.position.addScaledVector(to, dt * 2.1);
         e.mesh.rotation.y = Math.atan2(to.x, to.z);
         e.mesh.position.y = Math.abs(Math.sin(t * 9 + e.walk)) * 0.07; /* stride bob */
@@ -5902,6 +5968,30 @@ function updateSocialLounge(dt) {
     const W = 29.4 * LOUNGE_SCALE, Z0 = -7 * LOUNGE_SCALE, Z1 = 27.4 * LOUNGE_SCALE;
     e.mesh.position.x = Math.max(-W, Math.min(W, e.mesh.position.x));
     e.mesh.position.z = Math.max(Z0, Math.min(Z1, e.mesh.position.z));
+    /* soft personal-space bubble even while idle (prevents clumping) */
+    {
+      const bubble = SOCIAL_BUBBLE;
+      let sx = 0, sz = 0, n = 0;
+      for (const o of enemies) {
+        if (o === e || (o.type !== "xuser" && o.type !== "vc")) continue;
+        const dx = e.mesh.position.x - o.mesh.position.x;
+        const dz = e.mesh.position.z - o.mesh.position.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.01 && d < bubble) {
+          const push = (bubble - d) / bubble;
+          sx += (dx / d) * push;
+          sz += (dz / d) * push;
+          n++;
+        }
+      }
+      if (n > 0) {
+        const len = Math.hypot(sx, sz) || 1;
+        e.mesh.position.x += (sx / len) * dt * 2.4;
+        e.mesh.position.z += (sz / len) * dt * 2.4;
+        e.mesh.position.x = Math.max(-W, Math.min(W, e.mesh.position.x));
+        e.mesh.position.z = Math.max(Z0, Math.min(Z1, e.mesh.position.z));
+      }
+    }
     /* anyone idling on the dance floor DANCES */
     if (e.state === "idle" && Math.hypot(e.mesh.position.x - DANCE_CENTER.x, e.mesh.position.z - DANCE_CENTER.z) < 5 * LOUNGE_SCALE) {
       e.mesh.position.y = Math.abs(Math.sin(t * 7 + e.walk)) * 0.22;
@@ -10717,9 +10807,15 @@ function bindMobileControls() {
     if (stickKnob) stickKnob.style.transform = `translate(${nx * R}px, ${ny * R}px)`;
   };
 
+  const stickLockLabel = $("stickLockLabel");
   const setStickLockVisual = (on) => {
     stickBase.classList.toggle("locked", on);
     stickZone.classList.toggle("locked", on);
+    if (stickLockLabel) {
+      stickLockLabel.classList.toggle("locked", on);
+      stickLockLabel.setAttribute("aria-pressed", on ? "true" : "false");
+      stickLockLabel.textContent = on ? "AUTO-RUN ON · TAP OFF" : "LOCK RUN";
+    }
   };
   const unlockStick = () => {
     stickLocked = false;
@@ -10728,48 +10824,58 @@ function bindMobileControls() {
     setKnob(0, 0);
     setStickLockVisual(false);
   };
-  const tryLockForward = (dx, dy) => {
-    /* full forward (screen-up = negative y) locks auto-run */
-    const mag = Math.hypot(dx, dy);
-    if (mag >= 0.88 && dy <= -0.72) {
-      stickLocked = true;
-      touchMove.x = 0;
-      touchMove.y = -1;
-      touchMove.active = true;
-      setKnob(0, -1);
-      setStickLockVisual(true);
-      return true;
-    }
-    return false;
+  const lockStickForward = () => {
+    stickLocked = true;
+    touchMove.x = 0;
+    touchMove.y = -1;
+    touchMove.active = true;
+    setKnob(0, -1);
+    setStickLockVisual(true);
+    try { beep(720, 0.04, "square", 0.05); } catch (_) {}
   };
+  const toggleStickLock = (e) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (mode !== "play") return;
+    if (stickLocked) unlockStick();
+    else lockStickForward();
+  };
+  /* explicit toggle only — never auto-lock from pushing the stick forward */
+  if (stickLockLabel) {
+    stickLockLabel.addEventListener("touchstart", toggleStickLock, { passive: false });
+    stickLockLabel.addEventListener("click", toggleStickLock);
+  }
 
   stickZone.addEventListener("touchstart", (e) => {
     if (mode !== "play") return;
-    /* tap while locked → unlock */
-    if (stickLocked) {
-      unlockStick();
-      e.preventDefault();
-      return;
-    }
+    /* don't steal touches from the LOCK RUN toggle */
+    if (e.target === stickLockLabel || (e.target.closest && e.target.closest("#stickLockLabel"))) return;
     stickTouchId = e.changedTouches[0].identifier;
+    /* while auto-run is on, stick still steers left/right; keep forward locked */
     touchMove.active = true;
     e.preventDefault();
   }, { passive: false });
 
   stickZone.addEventListener("touchmove", (e) => {
-    if (mode !== "play" || stickLocked) return;
-    let t = null;
-    for (const x of e.changedTouches) if (x.identifier === stickTouchId) t = x;
-    if (!t) return;
+    if (mode !== "play") return;
+    let tch = null;
+    for (const x of e.changedTouches) if (x.identifier === stickTouchId) tch = x;
+    if (!tch) return;
     const rect = stickBase.getBoundingClientRect();
     const cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-    let dx = (t.clientX - cx) / R, dy = (t.clientY - cy) / R;
+    let dx = (tch.clientX - cx) / R, dy = (tch.clientY - cy) / R;
     const len = Math.hypot(dx, dy) || 1;
     if (len > 1) { dx /= len; dy /= len; }
-    touchMove.x = dx; touchMove.y = dy;
-    touchMove.active = true;
-    setKnob(dx, dy);
-    tryLockForward(dx, dy);
+    if (stickLocked) {
+      /* locked: always full forward, allow mild left/right steer */
+      touchMove.x = Math.max(-0.55, Math.min(0.55, dx));
+      touchMove.y = -1;
+      touchMove.active = true;
+      setKnob(touchMove.x * 0.6, -1);
+    } else {
+      touchMove.x = dx; touchMove.y = dy;
+      touchMove.active = true;
+      setKnob(dx, dy);
+    }
     e.preventDefault();
   }, { passive: false });
 
