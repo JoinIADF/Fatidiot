@@ -1,0 +1,34 @@
+--- a/index.html
++++ b/index.html
+@@ -7359,15 +7359,32 @@
+   }
+   g.visible = false;
+   g.userData.isLoungeHero = true;
+-  scene.add(g);
++  g.userData.keepInLounge = true;
++  /* Prefer parenting under loungeDecor so combat-world hide never eats it */
++  if (loungeDecor) loungeDecor.add(g);
++  else scene.add(g);
+   loungeHero = g;
+   return g;
+ }
++
++function clampPigToLounge() {
++  if (!(typeof socialActive !== "undefined" && socialActive && loungeDecor && pig)) return;
++  const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
++  pig.position.x = Math.max(b.xMin, Math.min(b.xMax, pig.position.x));
++  pig.position.z = Math.max(b.zMin, Math.min(b.zMax, pig.position.z));
++}
++
+ function setLoungeHeroVisible(on) {
+   try {
+     if (on) {
+       if (!loungeHero) loungeHero = buildLoungeHero();
++      /* re-parent if lounge was rebuilt after hero */
++      if (loungeDecor && loungeHero.parent !== loungeDecor) {
++        try { if (loungeHero.parent) loungeHero.parent.remove(loungeHero); } catch (_) {}
++        loungeDecor.add(loungeHero);
++      }
+       loungeHero.visible = true;
++      loungeHero.userData.keepInLounge = true;
+       if (loungeDecor && loungeDecor.userData) {

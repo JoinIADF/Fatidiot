@@ -1,0 +1,26 @@
+         loungeDecor.userData.walkBounds = getLoungeWalkBounds();
+       }
+@@ -7469,6 +7486,15 @@
+     if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
+   } catch (_) {}
+   try { setLoungeHeroVisible(false); } catch (_) {}
++  try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
++  try {
++    if (loungeHero) {
++      loungeHero.visible = false;
++      if (loungeHero.parent) loungeHero.parent.remove(loungeHero);
++      scene.remove(loungeHero);
++      loungeHero = null;
++    }
++  } catch (_) {}
+ 
+   socialActive = false;
+   liveLoungeMode = false;
+@@ -13122,6 +13148,7 @@
+   /* Pre-clamp desired camera target to lounge before lerp (avoids starting outside) */
+   const inLounge = !!(typeof socialActive !== "undefined" && socialActive && loungeDecor);
+   if (inLounge) {
++    try { clampPigToLounge(); } catch (_) {}
+     const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+     const pad = 0.35; /* camera can sit closer to walls than the pig */
+     target.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, target.x));
