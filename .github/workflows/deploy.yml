@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Commits pushed by a workflow using GITHUB_TOKEN do NOT raise a `push` event,
+  # so patch-applying workflows would land code that never deployed. Redeploy
+  # after they finish. Add new bot workflows to this list.
+  workflow_run:
+    workflows: ["Apply hide-on-read patch"]
+    types: [completed]
+  # Safety net: if anything still slips through, publish current main hourly.
+  schedule:
+    - cron: "17 * * * *"
 
 permissions:
   contents: read
