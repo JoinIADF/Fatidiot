@@ -831,43 +831,46 @@
   }
   #loungeMobBar #guestChip.show,
   #loungeMobBar .lounge-focus.show { display: block; }
+  /* U-grid: top chip spans full width; bottom row is the U base of 4 actions */
   #loungeMobBar .lounge-btns {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-areas:
+      "read remove like list";
+    gap: 6px;
     width: 100%;
   }
   #loungeMobBar .lmbtn {
-    flex: 1 1 0;
-    min-width: 72px;
-    min-height: 60px;
-    padding: 11px 12px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 10px 6px;
     border-radius: 14px;
     border: 1.5px solid rgba(255,255,255,0.35);
-    background: rgba(16, 22, 34, 0.92);
-    color: #e8eef8;
+    background: rgba(16, 22, 34, 0.9);
+    color: #e8ecf4;
     font: 800 12px/1.15 system-ui, sans-serif;
-    touch-action: manipulation;
-    -webkit-user-select: none; user-select: none;
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
     cursor: pointer;
-    display: grid;
-    place-items: center;
-    letter-spacing: 0.01em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: transform 0.12s, background 0.12s, border-color 0.12s;
   }
-  #loungeMobBar .lmbtn:active { filter: brightness(1.18); }
+  #loungeMobBar .lmbtn:active { transform: scale(0.96); }
+  #loungeMobBar .lmbtn .ico { font-size: 18px; line-height: 1; }
+  #loungeMobBar .lmbtn .lbl { font-size: 10px; letter-spacing: 0.04em; opacity: 0.9; }
+  #loungeMobBar .lmbtn[data-act="read"] { grid-area: read; }
+  #loungeMobBar .lmbtn[data-act="remove"] { grid-area: remove; }
+  #loungeMobBar .lmbtn[data-act="like"] { grid-area: like; }
+  #loungeMobBar .lmbtn[data-act="list"] { grid-area: list; }
   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
   #loungeMobBar .lmbtn.next,
   #loungeMobBar .lmbtn.nope {
     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
     font-size: 12px; line-height: 1.1;
-    flex: 1.15 1 0;
-    min-width: 88px;
-    padding-left: 10px;
-    padding-right: 10px;
   }
   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
   #loungeMobBar .lmbtn.addg {
@@ -880,7 +883,16 @@
     z-index: 85;
     pointer-events: auto;
   }
+  /* mobile: nest the bar in the U between left stick and right JUMP */
   @media (max-width: 900px), (pointer: coarse) {
+    #loungeMobBar {
+      left: max(12px, env(safe-area-inset-left, 0px) + 8px);
+      right: max(12px, env(safe-area-inset-right, 0px) + 8px);
+      transform: none;
+      bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+      width: auto;
+      max-width: none;
+    }
     body.lounge-ui #loungeMobBar.show {
       bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     }
@@ -1394,10 +1406,10 @@
 <div id="loungeMobBar" aria-hidden="true">
   <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
   <div class="lounge-btns">
-    <button type="button" class="lmbtn read" id="mRead">READ</button>
-    <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
-    <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
-    <button type="button" class="lmbtn addg" id="mAddBar">LIST</button>
+    <button type="button" class="lmbtn read" data-act="read" id="mRead"><span class="ico">📖</span><span class="lbl">READ</span></button>
+    <button type="button" class="lmbtn nope" data-act="remove" id="mNext"><span class="ico">✕</span><span class="lbl">REMOVE</span></button>
+    <button type="button" class="lmbtn like" data-act="like" id="mLike"><span class="ico">♡</span><span class="lbl">LIKE</span></button>
+    <button type="button" class="lmbtn addg" data-act="list" id="mAddBar"><span class="ico">☰</span><span class="lbl">LIST</span></button>
   </div>
 </div>
 <div id="loungePanel" class="hidden" aria-hidden="true">
@@ -7191,6 +7203,7 @@ function buildIndependentLoungeWorld() {
   g.add(welcome);
 
   g.userData.liveLounge = true;
+  g.userData.walkBounds = { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
   g.layers.set(1);
   g.traverse(o => o.layers.set(1));
   scene.add(g);
@@ -7296,6 +7309,74 @@ function syncLoungeMobileUI() {
   }
 }
 
+
+/* —— LOUNGE HERO (bond-hero wall art) + walk bounds —— */
+let loungeHero = null;
+function getLoungeWalkBounds() {
+  /* Independent live lounge is roughly 48 x 40 around origin with lobby at +z */
+  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.walkBounds) {
+    return loungeDecor.userData.walkBounds;
+  }
+  return { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
+}
+function buildLoungeHero() {
+  const g = new THREE.Group();
+  g.name = "LoungeBondHero";
+  /* framed wall piece behind the lobby welcome */
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(6.4, 4.0, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
+  );
+  frame.position.set(0, 2.6, -12.4);
+  g.add(frame);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x334455,
+    side: THREE.DoubleSide,
+    toneMapped: false
+  });
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.5), mat);
+  plane.position.set(0, 2.6, -12.32);
+  g.add(plane);
+  try {
+    const loader = new THREE.TextureLoader();
+    loader.load("lounge-bond-hero.jpg", (tex) => {
+      try {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        plane.material.map = tex;
+        plane.material.color.set(0xffffff);
+        plane.material.needsUpdate = true;
+      } catch (_) {}
+    }, undefined, () => { /* keep placeholder color if missing */ });
+  } catch (_) {}
+  const cap = (typeof textSprite === "function")
+    ? textSprite("TIMELINE LOUNGE · BOND", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 })
+    : null;
+  if (cap) {
+    cap.scale.multiplyScalar(0.55);
+    cap.position.set(0, 4.7, -12.2);
+    g.add(cap);
+  }
+  g.visible = false;
+  g.userData.isLoungeHero = true;
+  scene.add(g);
+  loungeHero = g;
+  return g;
+}
+function setLoungeHeroVisible(on) {
+  try {
+    if (on) {
+      if (!loungeHero) loungeHero = buildLoungeHero();
+      loungeHero.visible = true;
+      if (loungeDecor && loungeDecor.userData) {
+        loungeDecor.userData.walkBounds = getLoungeWalkBounds();
+      }
+    } else if (loungeHero) {
+      loungeHero.visible = false;
+    }
+  } catch (_) {}
+}
+
 function activateSocialLounge() {
   socialActive = true;
   liveLoungeMode = true;
@@ -7374,6 +7455,7 @@ function activateSocialLounge() {
     try { syncLoungeMobileUI(); } catch (_) {}
   });
   try { syncLoungeMobileUI(); } catch (_) {}
+  try { setLoungeHeroVisible(true); } catch (_) {}
 }
 
 function deactivateSocialLounge() {
@@ -7386,6 +7468,7 @@ function deactivateSocialLounge() {
     const chip = $("guestChip");
     if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
   } catch (_) {}
+  try { setLoungeHeroVisible(false); } catch (_) {}
 
   socialActive = false;
   liveLoungeMode = false;
@@ -13036,17 +13119,41 @@ function updateCamera(dt) {
     pig.position.y + h,
     pig.position.z + Math.cos(yaw) * dist * Math.cos(pitch * 0.6)
   );
+  /* Pre-clamp desired camera target to lounge before lerp (avoids starting outside) */
+  const inLounge = !!(typeof socialActive !== "undefined" && socialActive && loungeDecor);
+  if (inLounge) {
+    const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+    const pad = 0.35; /* camera can sit closer to walls than the pig */
+    target.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, target.x));
+    target.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, target.z));
+    target.y = Math.min(5.4, Math.max(1.4, target.y));
+  }
   camera.position.lerp(target, 1 - Math.pow(0.0001, dt));
-  /* keep camera inside room */
-  camera.position.x = Math.max(-FLOOR_W / 2 + 0.5, Math.min(FLOOR_W / 2 - 0.5, camera.position.x));
-  const camZMax = (typeof starbaseActive !== "undefined" && starbaseActive) ? FLOOR_D / 2 + 66 : FLOOR_D / 2 - 0.5;
-  camera.position.z = Math.max(-FLOOR_D / 2 + 0.5, Math.min(camZMax, camera.position.z));
-  camera.position.y = Math.min(6.7, camera.position.y);
+  if (inLounge) {
+    const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+    const pad = 0.35;
+    camera.position.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, camera.position.x));
+    camera.position.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, camera.position.z));
+    camera.position.y = Math.min(5.4, Math.max(1.4, camera.position.y));
+  } else {
+    /* keep camera inside office / starbase bounds */
+    camera.position.x = Math.max(-FLOOR_W / 2 + 0.5, Math.min(FLOOR_W / 2 - 0.5, camera.position.x));
+    const camZMax = (typeof starbaseActive !== "undefined" && starbaseActive) ? FLOOR_D / 2 + 66 : FLOOR_D / 2 - 0.5;
+    camera.position.z = Math.max(-FLOOR_D / 2 + 0.5, Math.min(camZMax, camera.position.z));
+    camera.position.y = Math.min(6.7, camera.position.y);
+  }
   const look = pig.position.clone().add(new THREE.Vector3(0, 1.4, 0));
   if (shake > 0) {
     shake = Math.max(0, shake - dt * 1.8);
     camera.position.x += rand(-1, 1) * shake * 0.25;
     camera.position.y += rand(-1, 1) * shake * 0.25;
+    /* re-clamp after shake so we never pop outside */
+    if (inLounge) {
+      const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+      const pad = 0.35;
+      camera.position.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, camera.position.x));
+      camera.position.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, camera.position.z));
+    }
   }
   camera.lookAt(look);
 }
