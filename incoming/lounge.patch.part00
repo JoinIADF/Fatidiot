@@ -1,0 +1,30 @@
+--- index-main-current.html	2026-08-02 22:29:08.430628002 +0000
++++ index.html	2026-08-02 19:24:56.396000000 +0000
+@@ -831,58 +831,82 @@
+   }
+   #loungeMobBar #guestChip.show,
+   #loungeMobBar .lounge-focus.show { display: block; }
++  /* U-grid: top chip spans full width; bottom row is the U base of 4 actions */
+   #loungeMobBar .lounge-btns {
+-    display: flex;
+-    gap: 8px;
+-    justify-content: center;
+-    flex-wrap: nowrap;
++    display: grid;
++    grid-template-columns: 1fr 1fr 1fr 1fr;
++    grid-template-areas:
++      "read remove like list";
++    gap: 6px;
+     width: 100%;
+   }
+   #loungeMobBar .lmbtn {
+-    flex: 1 1 0;
+-    min-width: 72px;
+-    min-height: 60px;
+-    padding: 11px 12px;
++    min-width: 0;
++    min-height: 52px;
++    padding: 10px 6px;
+     border-radius: 14px;
+     border: 1.5px solid rgba(255,255,255,0.35);
+     background: rgba(16, 22, 34, 0.92);
