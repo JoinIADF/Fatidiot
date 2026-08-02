@@ -1,0 +1,81 @@
+name: Ingest chunked artifacts
+
+# Agents hit two hard walls writing to this repo:
+#   1. index.html is ~570 KB, so full-file rewrites and large patches truncate.
+#   2. Binary uploads (jpg/png) get stored as literal text instead of image data.
+#
+# Both are solved by writing SMALL TEXT chunks into incoming/, which this
+# workflow reassembles server-side:
+#
+#   incoming/<file>.b64.part00, .part01, ...   -> base64-decoded to <file> at repo root
+#   incoming/<name>.patch.part00, .part01, ... -> concatenated and applied with `patch -p1`
+#
+# Chunks are concatenated in sorted order, so zero-pad the part numbers.
+# Keep each chunk comfortably small (~8-10 KB) so no single write truncates.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'incoming/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rebuild binaries from base64 chunks
+        run: |
+          shopt -s nullglob
+          names=$(ls incoming 2>/dev/null | sed -n 's/\.b64\.part[0-9]*$//p' | sort -u)
+          if [ -z "$names" ]; then echo "no base64 chunks"; exit 0; fi
+          for name in $names; do
+            echo "assembling $name"
+            cat $(ls incoming/"$name".b64.part* | sort) | tr -d '\r\n ' | base64 -d > "$name"
+            echo "  -> $(stat -c%s "$name") bytes"
+            file "$name" || true
+          done
+
+      - name: Assemble and apply patch chunks
+        run: |
+          shopt -s nullglob
+          parts=$(ls incoming/*.patch.part* 2>/dev/null | sort)
+          if [ -z "$parts" ]; then echo "no patch chunks"; exit 0; fi
+          cat $parts > combined.patch
+          echo "combined patch: $(wc -c < combined.patch) bytes, $(grep -c '^@@' combined.patch) hunks"
+          # --forward skips already-applied hunks instead of reversing them;
+          # a non-zero exit here is informational, not fatal.
+          patch -p1 --forward --batch < combined.patch || echo "NOTE: some hunks were already applied or skipped"
+          rm -f combined.patch
+          rej=$(find . -name '*.rej' -not -path './.git/*')
+          if [ -n "$rej" ]; then echo "REJECTED HUNKS (left in tree for inspection):"; echo "$rej"; fi
+
+      - name: Mirror index.html to game.html
+        run: |
+          if [ -f index.html ]; then cp index.html game.html; fi
+
+      - name: Report resulting sizes
+        run: |
+          for f in index.html game.html; do
+            [ -f "$f" ] && echo "$f: $(stat -c%s "$f") bytes"
+          done
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "Ingest chunked artifacts"
+            git push
+          fi
