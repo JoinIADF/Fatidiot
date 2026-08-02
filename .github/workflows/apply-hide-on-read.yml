@@ -1,0 +1,36 @@
+name: Apply hide-on-read patch
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'patches/hide-on-read.patch'
+      - '.github/workflows/apply-hide-on-read.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: |
+          set -e
+          if [ -f patches/hide-on-read.patch ]; then
+            patch -p1 --forward < patches/hide-on-read.patch || {
+              echo "Patch may already be applied; checking..."
+              grep -q 'z-index: 500' index.html && echo "Already fixed" && exit 0
+              exit 1
+            }
+          fi
+          cp index.html game.html
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html game.html
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Apply hide-on-read: lounge controls off while reading tweets"
+            git push
+          fi

@@ -1,0 +1,143 @@
+diff --git a/index.html b/index.html
+index a8ce5b9..0cbc05e 100644
+--- a/index.html
++++ b/index.html
+@@ -654,7 +654,7 @@
+ 
+   /* —— TIMELINE LOUNGE / TWEET READER —— */
+   #tweetReader {
+-    position: fixed; inset: 0; z-index: 80;
++    position: fixed; inset: 0; z-index: 500;
+     display: flex; align-items: center; justify-content: center;
+     background: rgba(4,6,12,0.88);
+     padding: 16px;
+@@ -1272,6 +1272,24 @@
+   #overlay .modeBtn.lounge { border-color: #7CFFB0; color: #7CFFB0; }
+   #overlay .modeBtn.star { border-color: #ffb06a; color: #ffb06a; }
+ 
++
++  /* hide lounge controls while tweet reader is open */
++  body.reading-tweets #loungeMobBar,
++  body.reading-tweets #loungeMobBar.show,
++  body.lounge-ui.reading-tweets #loungeMobBar,
++  body.lounge-ui.reading-tweets #loungeMobBar.show,
++  body:has(#tweetReader:not(.hidden)) #loungeMobBar,
++  body:has(#tweetReader:not(.hidden)) #loungeMobBar.show,
++  body.reading-tweets #mobileUI,
++  body.reading-tweets #mobileUI.show,
++  #loungeMobBar.reading-hidden {
++    display: none !important;
++    visibility: hidden !important;
++    pointer-events: none !important;
++    opacity: 0 !important;
++    z-index: -1 !important;
++  }
++
+ </style>
+ </head>
+ <body>
+@@ -7212,18 +7230,33 @@ function syncLoungeMobileUI() {
+   if (bar) {
+     const panel = document.getElementById("loungePanel");
+     const inviteOpen = !!(panel && !panel.classList.contains("hidden"));
+-    const showBar = on && !socialReading && !inviteOpen;
++    const tr = document.getElementById("tweetReader");
++    const readerOpen = !!(tr && !tr.classList.contains("hidden"));
++    if (readerOpen) {
++      document.body.classList.add("reading-tweets");
++      socialReading = true;
++    }
++    const reading = !!(typeof socialReading !== "undefined" && socialReading)
++      || document.body.classList.contains("reading-tweets")
++      || readerOpen;
++    const showBar = on && !reading && !inviteOpen;
+     bar.classList.toggle("show", showBar);
++    if (reading) bar.classList.add("reading-hidden");
++    else bar.classList.remove("reading-hidden");
+     bar.setAttribute("aria-hidden", showBar ? "false" : "true");
+-    /* hard-show so desktop (no #mobileUI) always gets the menu */
++    /* hard-show / hard-hide */
+     if (showBar) {
+-      bar.style.display = "flex";
+-      bar.style.visibility = "visible";
+-      bar.style.opacity = "1";
+-      bar.style.pointerEvents = "auto";
+-      bar.style.zIndex = "85";
++      bar.style.setProperty("display", "flex", "important");
++      bar.style.setProperty("visibility", "visible", "important");
++      bar.style.setProperty("opacity", "1", "important");
++      bar.style.setProperty("pointer-events", "auto", "important");
++      bar.style.setProperty("z-index", "85", "important");
+     } else {
+-      bar.style.display = "none";
++      bar.style.setProperty("display", "none", "important");
++      bar.style.setProperty("visibility", "hidden", "important");
++      bar.style.setProperty("pointer-events", "none", "important");
++      bar.style.setProperty("opacity", "0", "important");
++      if (reading) bar.style.setProperty("z-index", "-1", "important");
+     }
+   }
+   if (hint) {
+@@ -7393,7 +7426,20 @@ function openTweetReader(e) {
+   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+   try { if (renderer && renderer.domElement) renderer.domElement.style.cursor = "default"; } catch (_) {}
+   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+-  try { const bar = $("loungeMobBar"); if (bar) bar.classList.remove("show"); } catch (_) {}
++  try {
++    document.body.classList.add("reading-tweets");
++    const bar = document.getElementById("loungeMobBar");
++    if (bar) {
++      bar.classList.remove("show");
++      bar.classList.add("reading-hidden");
++      bar.style.setProperty("display", "none", "important");
++      bar.style.setProperty("visibility", "hidden", "important");
++      bar.style.setProperty("pointer-events", "none", "important");
++      bar.style.setProperty("opacity", "0", "important");
++      bar.style.setProperty("z-index", "-1", "important");
++      bar.setAttribute("aria-hidden", "true");
++    }
++  } catch (_) {}
+   const head = $("trHead");
+   const body = $("trBody");
+   if (head) {
+@@ -7494,6 +7540,21 @@ function openTweetReader(e) {
+   }
+   root.classList.remove("hidden");
+   root.setAttribute("aria-hidden", "false");
++  try {
++    document.body.classList.add("reading-tweets");
++    socialReading = true;
++    const bar = document.getElementById("loungeMobBar");
++    if (bar) {
++      bar.classList.remove("show");
++      bar.classList.add("reading-hidden");
++      bar.style.setProperty("display", "none", "important");
++      bar.style.setProperty("visibility", "hidden", "important");
++      bar.style.setProperty("pointer-events", "none", "important");
++      bar.style.setProperty("opacity", "0", "important");
++      bar.style.setProperty("z-index", "-1", "important");
++    }
++    if (typeof syncLoungeMobileUI === "function") syncLoungeMobileUI();
++  } catch (_) {}
+   const hint = root.querySelector(".tr-hint");
+   if (hint) hint.textContent = isMobile()
+     ? "♡ like · Reply · ✕ close · REMOVE"
+@@ -7508,6 +7569,18 @@ function closeTweetReader(silent = false) {
+   }
+   const was = socialReading;
+   socialReading = false;
++  try {
++    document.body.classList.remove("reading-tweets");
++    const bar = document.getElementById("loungeMobBar");
++    if (bar) {
++      bar.classList.remove("reading-hidden");
++      bar.style.removeProperty("display");
++      bar.style.removeProperty("visibility");
++      bar.style.removeProperty("pointer-events");
++      bar.style.removeProperty("opacity");
++      bar.style.removeProperty("z-index");
++    }
++  } catch (_) {}
+   if (!silent && was && mode === "play" && socialActive) {
+     try { showMsg("Drag on the game to look · click guest to read"); } catch (_) {}
+     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
