@@ -7359,15 +7359,32 @@ function buildLoungeHero() {
   }
   g.visible = false;
   g.userData.isLoungeHero = true;
-  scene.add(g);
+  g.userData.keepInLounge = true;
+  /* Prefer parenting under loungeDecor so combat-world hide never eats it */
+  if (loungeDecor) loungeDecor.add(g);
+  else scene.add(g);
   loungeHero = g;
   return g;
 }
+
+function clampPigToLounge() {
+  if (!(typeof socialActive !== "undefined" && socialActive && loungeDecor && pig)) return;
+  const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+  pig.position.x = Math.max(b.xMin, Math.min(b.xMax, pig.position.x));
+  pig.position.z = Math.max(b.zMin, Math.min(b.zMax, pig.position.z));
+}
+
 function setLoungeHeroVisible(on) {
   try {
     if (on) {
       if (!loungeHero) loungeHero = buildLoungeHero();
+      /* re-parent if lounge was rebuilt after hero */
+      if (loungeDecor && loungeHero.parent !== loungeDecor) {
+        try { if (loungeHero.parent) loungeHero.parent.remove(loungeHero); } catch (_) {}
+        loungeDecor.add(loungeHero);
+      }
       loungeHero.visible = true;
+      loungeHero.userData.keepInLounge = true;
       if (loungeDecor && loungeDecor.userData) {
         loungeDecor.userData.walkBounds = getLoungeWalkBounds();
       }
@@ -7469,6 +7486,15 @@ function deactivateSocialLounge() {
     if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
   } catch (_) {}
   try { setLoungeHeroVisible(false); } catch (_) {}
+  try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
+  try {
+    if (loungeHero) {
+      loungeHero.visible = false;
+      if (loungeHero.parent) loungeHero.parent.remove(loungeHero);
+      scene.remove(loungeHero);
+      loungeHero = null;
+    }
+  } catch (_) {}
 
   socialActive = false;
   liveLoungeMode = false;
@@ -13122,6 +13148,7 @@ function updateCamera(dt) {
   /* Pre-clamp desired camera target to lounge before lerp (avoids starting outside) */
   const inLounge = !!(typeof socialActive !== "undefined" && socialActive && loungeDecor);
   if (inLounge) {
+    try { clampPigToLounge(); } catch (_) {}
     const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
     const pad = 0.35; /* camera can sit closer to walls than the pig */
     target.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, target.x));
