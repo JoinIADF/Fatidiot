@@ -1,0 +1,11 @@
+.5 : 0);
+-  pigParts.head.rotation.x += (0 - pigParts.head.rotation.x) * dt * 6;
++  if (loungeHeroActive) {
++    /* Bond stays sharp — no cartoon waddle / ear flick / squash */
++    pig.rotation.z = 0;
++    pigParts.head.rotation.x = 0;
++    pigParts.earL.rotation.z = 0.15;
++    pigParts.earR.rotation.z = -0.15;
++    pig.scale.set(1, 1, 1);
++  } else {
++    pigParts.head.rotation.x += (0 - pigParts.head.rotation.x) * dt * 6;
