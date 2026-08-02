@@ -35,21 +35,28 @@ jobs:
       - name: Rebuild binaries from base64 chunks
         run: |
           shopt -s nullglob
-          names=$(ls incoming 2>/dev/null | sed -n 's/\.b64\.part[0-9]*$//p' | sort -u)
-          if [ -z "$names" ]; then echo "no base64 chunks"; exit 0; fi
+          # NOTE: use arrays, never `ls glob` — with nullglob an unmatched glob
+          # makes `ls` run bare and list the repo root, which then gets cat'd.
+          chunks=(incoming/*.b64.part*)
+          if [ ${#chunks[@]} -eq 0 ]; then echo "no base64 chunks"; exit 0; fi
+          names=$(printf '%s\n' "${chunks[@]}" | sed 's#^incoming/##; s#\.b64\.part[0-9]*$##' | sort -u)
           for name in $names; do
             echo "assembling $name"
-            cat $(ls incoming/"$name".b64.part* | sort) | tr -d '\r\n ' | base64 -d > "$name"
-            echo "  -> $(stat -c%s "$name") bytes"
+            group=(incoming/"$name".b64.part*)
+            mapfile -t sorted < <(printf '%s\n' "${group[@]}" | sort)
+            cat "${sorted[@]}" | tr -d '\r\n ' | base64 -d > "$name"
+            echo "  -> $(stat -c%s "$name") bytes from ${#sorted[@]} chunk(s)"
             file "$name" || true
           done
 
       - name: Assemble and apply patch chunks
         run: |
           shopt -s nullglob
-          parts=$(ls incoming/*.patch.part* 2>/dev/null | sort)
-          if [ -z "$parts" ]; then echo "no patch chunks"; exit 0; fi
-          cat $parts > combined.patch
+          parts=(incoming/*.patch.part*)
+          if [ ${#parts[@]} -eq 0 ]; then echo "no patch chunks"; exit 0; fi
+          mapfile -t sorted < <(printf '%s\n' "${parts[@]}" | sort)
+          echo "combining ${#sorted[@]} chunk(s)"
+          cat "${sorted[@]}" > combined.patch
           echo "combined patch: $(wc -c < combined.patch) bytes, $(grep -c '^@@' combined.patch) hunks"
           # --forward skips already-applied hunks instead of reversing them;
           # a non-zero exit here is informational, not fatal.
