@@ -1,0 +1,59 @@
++    cap.scale.multiplyScalar(0.55);
++    cap.position.set(0, 4.7, -12.2);
++    g.add(cap);
++  }
++  g.visible = false;
++  g.userData.isLoungeHero = true;
++  scene.add(g);
++  loungeHero = g;
++  return g;
++}
++function setLoungeHeroVisible(on) {
++  try {
++    if (on) {
++      if (!loungeHero) loungeHero = buildLoungeHero();
++      loungeHero.visible = true;
++      if (loungeDecor && loungeDecor.userData) {
++        loungeDecor.userData.walkBounds = getLoungeWalkBounds();
++      }
++    } else if (loungeHero) {
++      loungeHero.visible = false;
++    }
++  } catch (_) {}
++}
++
+ function activateSocialLounge() {
+   socialActive = true;
+   liveLoungeMode = true;
+@@ -7374,6 +7455,7 @@
+     try { syncLoungeMobileUI(); } catch (_) {}
+   });
+   try { syncLoungeMobileUI(); } catch (_) {}
++  try { setLoungeHeroVisible(true); } catch (_) {}
+ }
+ 
+ function deactivateSocialLounge() {
+@@ -7386,6 +7468,7 @@
+     const chip = $("guestChip");
+     if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
+   } catch (_) {}
++  try { setLoungeHeroVisible(false); } catch (_) {}
+ 
+   socialActive = false;
+   liveLoungeMode = false;
+@@ -13036,17 +13119,41 @@
+     pig.position.y + h,
+     pig.position.z + Math.cos(yaw) * dist * Math.cos(pitch * 0.6)
+   );
++  /* Pre-clamp desired camera target to lounge before lerp (avoids starting outside) */
++  const inLounge = !!(typeof socialActive !== "undefined" && socialActive && loungeDecor);
++  if (inLounge) {
++    const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
++    const pad = 0.35; /* camera can sit closer to walls than the pig */
++    target.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, target.x));
++    target.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, target.z));
++    target.y = Math.min(5.4, Math.max(1.4, target.y));
++  }
+   camera.position.lerp(target, 1 - Math.pow(0.0001, dt));
+-  /* keep camera inside room */
+-  camera.position.x = Math.max(-FLOOR_W / 2 + 0.5, Math.min(FLOOR_W / 2 - 0.5, camera.position.x));

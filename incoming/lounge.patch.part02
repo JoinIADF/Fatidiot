@@ -1,0 +1,59 @@
+   </div>
+ </div>
+ <div id="loungePanel" class="hidden" aria-hidden="true">
+@@ -7191,6 +7203,7 @@
+   g.add(welcome);
+ 
+   g.userData.liveLounge = true;
++  g.userData.walkBounds = { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
+   g.layers.set(1);
+   g.traverse(o => o.layers.set(1));
+   scene.add(g);
+@@ -7296,6 +7309,74 @@
+   }
+ }
+ 
++
++/* —— LOUNGE HERO (bond-hero wall art) + walk bounds —— */
++let loungeHero = null;
++function getLoungeWalkBounds() {
++  /* Independent live lounge is roughly 48 x 40 around origin with lobby at +z */
++  if (loungeDecor && loungeDecor.userData && loungeDecor.userData.walkBounds) {
++    return loungeDecor.userData.walkBounds;
++  }
++  return { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
++}
++function buildLoungeHero() {
++  const g = new THREE.Group();
++  g.name = "LoungeBondHero";
++  /* framed wall piece behind the lobby welcome */
++  const frame = new THREE.Mesh(
++    new THREE.BoxGeometry(6.4, 4.0, 0.12),
++    new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
++  );
++  frame.position.set(0, 2.6, -12.4);
++  g.add(frame);
++  const mat = new THREE.MeshBasicMaterial({
++    color: 0x334455,
++    side: THREE.DoubleSide,
++    toneMapped: false
++  });
++  const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.5), mat);
++  plane.position.set(0, 2.6, -12.32);
++  g.add(plane);
++  try {
++    const loader = new THREE.TextureLoader();
++    loader.load("lounge-bond-hero.jpg", (tex) => {
++      try {
++        tex.colorSpace = THREE.SRGBColorSpace;
++        tex.anisotropy = 4;
++        plane.material.map = tex;
++        plane.material.color.set(0xffffff);
++        plane.material.needsUpdate = true;
++      } catch (_) {}
++    }, undefined, () => { /* keep placeholder color if missing */ });
++  } catch (_) {}
++  const cap = (typeof textSprite === "function")
++    ? textSprite("TIMELINE LOUNGE · BOND", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 })
++    : null;
++  if (cap) {

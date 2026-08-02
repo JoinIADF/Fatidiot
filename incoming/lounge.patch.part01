@@ -1,0 +1,41 @@
+   #loungeMobBar .lmbtn.read { border-color: #1d9bf0; color: #8fd1ff; }
+   #loungeMobBar .lmbtn.next,
+   #loungeMobBar .lmbtn.nope {
+     border-color: #ff6a4a; color: #ffc8b8; background: rgba(48, 16, 12, 0.92);
+     font-size: 12px; line-height: 1.1;
+-    flex: 1.15 1 0;
+-    min-width: 88px;
+-    padding-left: 10px;
+-    padding-right: 10px;
+   }
+   #loungeMobBar .lmbtn.like { border-color: #ff2d55; color: #ff8aa8; }
+   #loungeMobBar .lmbtn.addg {
+@@ -880,7 +883,16 @@
+     z-index: 85;
+     pointer-events: auto;
+   }
++  /* mobile: nest the bar in the U between left stick and right JUMP */
+   @media (max-width: 900px), (pointer: coarse) {
++    #loungeMobBar {
++      left: max(12px, env(safe-area-inset-left, 0px) + 8px);
++      right: max(12px, env(safe-area-inset-right, 0px) + 8px);
++      transform: none;
++      bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
++      width: auto;
++      max-width: none;
++    }
+     body.lounge-ui #loungeMobBar.show {
+       bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
+     }
+@@ -1394,10 +1406,10 @@
+ <div id="loungeMobBar" aria-hidden="true">
+   <div id="guestChip" class="lounge-focus" aria-hidden="true"></div>
+   <div class="lounge-btns">
+-    <button type="button" class="lmbtn read" id="mRead">READ</button>
+-    <button type="button" class="lmbtn nope" id="mNext">REMOVE</button>
+-    <button type="button" class="lmbtn like" id="mLike">♡ LIKE</button>
+-    <button type="button" class="lmbtn addg" id="mAddBar">LIST</button>
++    <button type="button" class="lmbtn read" data-act="read" id="mRead"><span class="ico">📖</span><span class="lbl">READ</span></button>
++    <button type="button" class="lmbtn nope" data-act="remove" id="mNext"><span class="ico">✕</span><span class="lbl">REMOVE</span></button>
++    <button type="button" class="lmbtn like" data-act="like" id="mLike"><span class="ico">♡</span><span class="lbl">LIKE</span></button>
++    <button type="button" class="lmbtn addg" data-act="list" id="mAddBar"><span class="ico">☰</span><span class="lbl">LIST</span></button>
