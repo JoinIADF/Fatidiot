@@ -10,7 +10,6 @@ on:
   workflow_run:
     workflows:
       - "Apply hide-on-read patch"
-      - "Apply lounge-update patch"
       - "Ingest chunked artifacts"
     types: [completed]
   # Safety net: if anything still slips through, publish current main hourly.

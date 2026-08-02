@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Timeline Lounge — social poster (1080×1080)</title>
+<style>
+  html, body { margin: 0; background: #15181d; height: 100%; display: grid; place-items: center; }
+  svg { max-width: 96vmin; max-height: 96vmin; display: block; box-shadow: 0 12px 60px rgba(0,0,0,0.6); }
+</style>
+</head>
+<body>
+<svg id="poster" viewBox="0 0 1080 1080" width="1080" height="1080" xmlns="http://www.w3.org/2000/svg" font-family="Arial, Helvetica, sans-serif">
+  <!-- ============ background ============ -->
+  <rect width="1080" height="1080" fill="#0b0f14"/>
+  <!-- subtle vignette-ish glow behind the lounge -->
+  <ellipse cx="660" cy="560" rx="430" ry="300" fill="#101a24"/>
+
+  <!-- ============ 1. TITLE ============ -->
+  <text x="540" y="118" text-anchor="middle" font-size="92" font-weight="900" fill="#ffffff" letter-spacing="-2">Timeline <tspan fill="#7CFFB0">Lounge</tspan></text>
+
+  <!-- ============ 2. HOOK ============ -->
+  <text x="540" y="178" text-anchor="middle" font-size="38" font-weight="700" fill="#9ec4e0">Walk your timeline. Hang with the people</text>
+  <text x="540" y="222" text-anchor="middle" font-size="38" font-weight="700" fill="#9ec4e0">you already talk to.</text>
+
+  <!-- ============ 3. VISUAL: Scroll -> Lounge ============ -->
+  <!-- phone: boring feed -->
+  <g transform="translate(96,300)">
+    <rect x="0" y="0" width="150" height="290" rx="22" fill="#141a21" stroke="#26303b" stroke-width="3"/>
+    <rect x="16" y="26" width="118" height="34" rx="8" fill="#1d242d"/>
+    <rect x="16" y="70" width="118" height="34" rx="8" fill="#1d242d"/>
+    <rect x="16" y="114" width="118" height="34" rx="8" fill="#1d242d"/>
+    <rect x="16" y="158" width="118" height="34" rx="8" fill="#1d242d"/>
+    <rect x="16" y="202" width="118" height="34" rx="8" fill="#1d242d"/>
+    <!-- endless strangers dots -->
+    <circle cx="30" cy="43" r="8" fill="#2c3540"/><circle cx="30" cy="87" r="8" fill="#2c3540"/>
+    <circle cx="30" cy="131" r="8" fill="#2c3540"/><circle cx="30" cy="175" r="8" fill="#2c3540"/>
+    <circle cx="30" cy="219" r="8" fill="#2c3540"/>
+    <text x="75" y="272" text-anchor="middle" font-size="24" font-weight="800" fill="#5c6a78" letter-spacing="2">SCROLL</text>
+  </g>
+
+  <!-- arrow -->
+  <g stroke="#7CFFB0" stroke-width="10" stroke-linecap="round" fill="none">
+    <path d="M 276 445 L 356 445"/>
+    <path d="M 332 420 L 360 445 L 332 470"/>
+  </g>
+
+  <!-- lounge scene -->
+  <g transform="translate(380,270)">
+    <!-- room floor -->
+    <ellipse cx="290" cy="330" rx="300" ry="84" fill="#132030"/>
+    <ellipse cx="290" cy="330" rx="300" ry="84" fill="none" stroke="#1d9bf0" stroke-width="3" opacity="0.5"/>
+    <!-- rug -->
+    <ellipse cx="290" cy="330" rx="160" ry="44" fill="#17293c"/>
+
+    <!-- helper-style stylized people: rounded body + head -->
+    <!-- person 1 -->
+    <g transform="translate(120,215)">
+      <rect x="-26" y="26" width="52" height="76" rx="24" fill="#1d9bf0"/>
+      <circle cx="0" cy="0" r="27" fill="#f2d5b8"/>
+      <path d="M -27 -6 a27 27 0 0 1 54 0 l 0 -8 a27 22 0 0 0 -54 0 z" fill="#3a2a1c"/>
+    </g>
+    <!-- bubble 1 -->
+    <g transform="translate(30,120)">
+      <rect x="0" y="0" width="188" height="54" rx="16" fill="#ffffff"/>
+      <path d="M 88 54 l 14 22 l 10 -22 z" fill="#ffffff"/>
+      <text x="94" y="36" text-anchor="middle" font-size="26" font-weight="700" fill="#0b0f14">shipped it 🚀</text>
+    </g>
+
+    <!-- person 2 -->
+    <g transform="translate(300,190)">
+      <rect x="-26" y="26" width="52" height="76" rx="24" fill="#7CFFB0"/>
+      <circle cx="0" cy="0" r="27" fill="#e8c4a8"/>
+      <path d="M -27 -4 a27 27 0 0 1 54 0 l 0 -10 a27 20 0 0 0 -54 0 z" fill="#181410"/>
+    </g>
+    <!-- bubble 2 -->
+    <g transform="translate(228,96)">
+      <rect x="0" y="0" width="150" height="54" rx="16" fill="#ffffff"/>
+      <path d="M 66 54 l 12 20 l 10 -20 z" fill="#ffffff"/>
+      <text x="75" y="36" text-anchor="middle" font-size="26" font-weight="700" fill="#0b0f14">gm ☕</text>
+    </g>
+
+    <!-- person 3 -->
+    <g transform="translate(470,225)">
+      <rect x="-26" y="26" width="52" height="76" rx="24" fill="#1d9bf0"/>
+      <circle cx="0" cy="0" r="27" fill="#c98d68"/>
+      <path d="M -27 -8 a27 27 0 0 1 54 0 l 0 -4 a27 24 0 0 0 -54 0 z" fill="#101010"/>
+    </g>
+    <!-- bubble 3 -->
+    <g transform="translate(430,120)">
+      <rect x="0" y="0" width="200" height="54" rx="16" fill="#ffffff"/>
+      <path d="M 76 54 l 14 22 l 10 -22 z" fill="#ffffff"/>
+      <text x="100" y="36" text-anchor="middle" font-size="26" font-weight="700" fill="#0b0f14">new drop friday</text>
+    </g>
+
+    <!-- person 4 (chatting pair with 3) -->
+    <g transform="translate(548,262)">
+      <rect x="-24" y="24" width="48" height="68" rx="22" fill="#155a8a"/>
+      <circle cx="0" cy="0" r="25" fill="#f2d5b8"/>
+      <path d="M -25 -5 a25 25 0 0 1 50 0 l 0 -8 a25 20 0 0 0 -50 0 z" fill="#6a4a2a"/>
+    </g>
+
+    <!-- YOU character: front-center, mint glow -->
+    <g transform="translate(290,320)">
+      <ellipse cx="0" cy="66" rx="52" ry="14" fill="#7CFFB0" opacity="0.25"/>
+      <rect x="-30" y="24" width="60" height="82" rx="26" fill="#ffffff"/>
+      <circle cx="0" cy="-6" r="30" fill="#ffd5c2"/>
+      <path d="M -30 -12 a30 30 0 0 1 60 0 l 0 -8 a30 24 0 0 0 -60 0 z" fill="#2a2a2a"/>
+      <rect x="-44" y="118" width="88" height="40" rx="20" fill="#7CFFB0"/>
+      <text x="0" y="146" text-anchor="middle" font-size="27" font-weight="900" fill="#0b0f14" letter-spacing="2">YOU</text>
+    </g>
+  </g>
+
+  <!-- contrast line -->
+  <text x="540" y="742" text-anchor="middle" font-size="30" font-weight="700" fill="#7CFFB0">Only people you already interact with — no random strangers.</text>
+
+  <!-- ============ 4. THREE BENEFITS ============ -->
+  <g font-weight="800" font-size="30" fill="#ffffff" text-anchor="middle">
+    <!-- benefit 1 -->
+    <g transform="translate(230,800)">
+      <circle cx="0" cy="18" r="34" fill="#12222f" stroke="#1d9bf0" stroke-width="3"/>
+      <text x="0" y="30" font-size="32">👥</text>
+      <text x="0" y="92">Your people</text>
+    </g>
+    <!-- benefit 2 -->
+    <g transform="translate(540,800)">
+      <circle cx="0" cy="18" r="34" fill="#12222f" stroke="#1d9bf0" stroke-width="3"/>
+      <text x="0" y="30" font-size="32">⚡</text>
+      <text x="0" y="92">Fresh posts</text>
+    </g>
+    <!-- benefit 3 -->
+    <g transform="translate(850,800)">
+      <circle cx="0" cy="18" r="34" fill="#12222f" stroke="#1d9bf0" stroke-width="3"/>
+      <text x="0" y="30" font-size="32">🎮</text>
+      <text x="0" y="92">Actually fun</text>
+    </g>
+  </g>
+
+  <!-- ============ 5. FUTURE TEASE ============ -->
+  <text x="540" y="948" text-anchor="middle" font-size="24" font-weight="600" fill="#5c7488">X Lives · invite-only lounges · watch parties</text>
+
+  <!-- ============ 6. CTA ============ -->
+  <g transform="translate(540,1002)">
+    <rect x="-360" y="-34" width="720" height="68" rx="34" fill="#1d9bf0"/>
+    <text x="0" y="11" text-anchor="middle" font-size="30" font-weight="900" fill="#ffffff">Try the demo  →  joiniadf.github.io/Fatidiot</text>
+  </g>
+</svg>
+</body>
+</html>
