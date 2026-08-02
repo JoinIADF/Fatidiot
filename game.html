@@ -1059,6 +1059,25 @@
   body.live-lounge #quota, body.live-lounge #chargeWrap, body.live-lounge #bossBarWrap,
   body.live-lounge #weapon, body.live-lounge #portalHint { display: none !important; }
   body.live-lounge #wave { opacity: 0.95; }
+  #dartPower {
+    position: fixed; left: 50%; bottom: 48px; transform: translateX(-50%);
+    z-index: 85; display: none; width: min(320px, 80vw);
+    background: rgba(8,12,20,0.88); border: 1px solid rgba(124,255,176,0.35);
+    border-radius: 14px; padding: 12px 14px; color: #e8eef8;
+    font: 700 12px/1.3 system-ui, sans-serif; text-align: center;
+    pointer-events: none;
+  }
+  #dartPower.show { display: block; }
+  #dartPower .dp-label { letter-spacing: 0.12em; color: #7CFFB0; margin-bottom: 6px; font-size: 11px; }
+  #dartPower .dp-track {
+    height: 14px; border-radius: 8px; background: #1a2230;
+    border: 1px solid #3a4558; overflow: hidden;
+  }
+  #dartPower .dp-fill {
+    height: 100%; width: 0%; background: #ffd94a;
+    transition: width 0.05s linear;
+  }
+  #dartPower .dp-hint { margin-top: 8px; color: #8b98a8; font-weight: 600; font-size: 11px; }
   body.live-lounge #score { opacity: 0.9; }
 
   /* —— Lounge Activated / Favorites panel —— */
@@ -1443,7 +1462,7 @@ function blockArea(x, z, hw, hd, h = 10, tag = null) {
 }
 
 
-const camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 280);
+const camera = window.__camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 280);
 
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight;
@@ -6509,13 +6528,16 @@ function updateRaceGame(dt) {
 
 /* enhance darts for longer 4-player session */
 function startDartLeague() {
-  startDartGame();
-  dartGame.throwsLeft = 12; /* ~2 min of play */
   dartGame.league = true;
   dartGame.player = 0;
   dartGame.pScores = [0, 0, 0, 0];
-  showMsg("🎯 DARTS LEAGUE — 12 darts · 4-player slots (you play all in demo)");
+  dartGame.total = 0;
+  dartGame.throwsLeft = 12;
+  startDartGame();
+  dartGame.throwsLeft = 12;
+  showMsg("🎯 DARTS LEAGUE — 12 darts · hold LMB power · mouse aim · 4 seats");
 }
+try { window.startDartLeague = startDartLeague; window.startDartGame = startDartGame; } catch (_) {}
 
 /* Create Live Lounge invite (fake X Chat) */
 function openCreateLiveLounge() {
@@ -6610,7 +6632,7 @@ function buildIndependentLoungeWorld() {
   g.name = "LiveLoungeWorld";
   g.userData.liveLounge = true;
   g.userData.independent = true;
-  g.userData.liveLoungeV = 6;
+  g.userData.liveLoungeV = 11;
   g.userData.seats = [];
   g.userData.zones = [];
   g.userData.gameSpots = [];
@@ -6981,28 +7003,86 @@ function buildIndependentLoungeWorld() {
     g.add(rt);
     g.userData.gameSpots.push({ kind: "race", pos: new THREE.Vector3(tx, 0, tz - 5.4), seats: 4 });
 
-    /* darts */
-    const dx = tx - 9, dz = tz + 6;
-    g.add(box(0.15, 1.4, 1.4, 0x1a120c, dx, 1.5, dz));
-    const board = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.55, 0.55, 0.08, 32),
-      new THREE.MeshStandardMaterial({ color: 0x1a3020 })
-    );
-    board.rotation.z = Math.PI / 2;
-    board.position.set(dx + 0.12, 1.5, dz);
-    g.add(board);
-    g.userData.dartBoardPos = new THREE.Vector3(dx + 0.12, 1.5, dz);
-    g.userData.dartTablePos = new THREE.Vector3(dx + 1.8, 0, dz);
-    g.add(box(1.2, 0.85, 1.2, WALNUT, dx + 1.8, 0.45, dz));
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + 0.4;
-      registerSeat(g, dx + 1.8 + Math.cos(a) * 1.5, 0.55, dz + Math.sin(a) * 1.5, a + Math.PI, "Darts seat " + (i + 1), "Game Arena");
-    }
-    const dt = textSprite("🎯 DARTS LEAGUE · 4", { size: 30, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    dt.scale.multiplyScalar(0.55);
-    dt.position.set(dx + 1.8, 2.1, dz);
-    g.add(dt);
-    g.userData.gameSpots.push({ kind: "darts", pos: g.userData.dartTablePos.clone(), seats: 4 });
+    /* darts on EAST WALL — alley with oche, not mid-room */
+    try {
+      const wallX = W / 2 - 0.35;
+      const boardZ = 8;
+      const boardY = 1.72;
+      const boardR = 0.95;
+      const ocheX = wallX - 6.2;
+      g.add(box(0.22, 2.6, 2.8, 0x1a120c, wallX, 1.75, boardZ));
+      g.add(box(0.14, 2.2, 2.4, 0x2a1a10, wallX - 0.1, 1.75, boardZ));
+      const boardTex = canvasTex(512, 512, (ctx, cw, ch) => {
+        const cx = cw / 2, cy = ch / 2, R = cw * 0.46;
+        ctx.fillStyle = "#12100c"; ctx.fillRect(0, 0, cw, ch);
+        for (let i = 0; i < 20; i++) {
+          const a0 = (i / 20) * Math.PI * 2 - Math.PI / 20;
+          const a1 = ((i + 1) / 20) * Math.PI * 2 - Math.PI / 20;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
+          ctx.fillStyle = i % 2 ? "#1f4a30" : "#101010"; ctx.fill();
+        }
+        [[0.95, "#d4af37"], [0.62, "#a01818"], [0.38, "#d4af37"], [0.12, "#a01818"]].forEach(([fr, col]) => {
+          ctx.beginPath(); ctx.arc(cx, cy, R * fr, 0, Math.PI * 2);
+          ctx.strokeStyle = col; ctx.lineWidth = R * 0.05; ctx.stroke();
+        });
+        ctx.beginPath(); ctx.arc(cx, cy, R * 0.05, 0, Math.PI * 2);
+        ctx.fillStyle = "#d4af37"; ctx.fill();
+        ctx.strokeStyle = "#d4af37"; ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+      });
+      /* Plane facing into room (-X): rotate Y 90° so +Z local faces -X world... 
+         Plane default faces +Z. rotation.y = +PI/2 faces -X. */
+      const boardPos = new THREE.Vector3(ocheX + 2.8, boardY, boardZ); /* closer to thrower, clear of wall */
+      const board = new THREE.Mesh(
+        new THREE.PlaneGeometry(boardR * 2.2, boardR * 2.2),
+        new THREE.MeshBasicMaterial({ map: boardTex, toneMapped: false, side: THREE.DoubleSide })
+      );
+      board.rotation.y = -Math.PI / 2;
+      board.position.copy(boardPos);
+      board.userData.dartBoard = true;
+      g.add(board);
+      /* billboard-style backup so board is never "edge on" if cam drifts */
+      const boardSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: boardTex, toneMapped: false, depthTest: true, sizeAttenuation: true
+      }));
+      boardSprite.position.copy(boardPos);
+      boardSprite.position.x -= 0.02;
+      boardSprite.scale.set(boardR * 2.6, boardR * 2.6, 1);
+      g.add(boardSprite);
+      /* gold ring */
+      const frame = new THREE.Mesh(
+        new THREE.RingGeometry(boardR * 1.05, boardR * 1.15, 48),
+        new THREE.MeshBasicMaterial({ color: 0xd4af37, side: THREE.DoubleSide })
+      );
+      frame.rotation.y = -Math.PI / 2;
+      frame.position.copy(boardPos);
+      g.add(frame);
+      const dartLight = new THREE.PointLight(0xfff2e0, 28, 22);
+      dartLight.position.set(ocheX + 1.2, boardY + 1.2, boardZ);
+      g.add(dartLight);
+      g.userData.dartBoardPos = boardPos.clone();
+      g.userData.dartBoardNormal = new THREE.Vector3(-1, 0, 0);
+      g.userData.dartBoardRadius = boardR;
+      g.add(box(0.15, 0.05, 3.4, 0xffd94a, ocheX, 0.03, boardZ));
+      const ocheLab = textSprite("OCHE · THROW LINE", { size: 26, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
+      ocheLab.scale.multiplyScalar(0.48);
+      ocheLab.position.set(ocheX, 0.4, boardZ - 1.7);
+      g.add(ocheLab);
+      g.userData.dartTablePos = new THREE.Vector3(ocheX, 0, boardZ);
+      g.userData.dartThrowPos = new THREE.Vector3(ocheX, 1.4, boardZ);
+      for (let i = 0; i < 4; i++) {
+        const sz = boardZ - 2.8 + i * 1.5;
+        g.add(cyl(0.26, 0.28, 0.08, VELVET, ocheX - 1.4, 0.88, sz, 12));
+        g.add(cyl(0.05, 0.06, 0.85, BRASS, ocheX - 1.4, 0.42, sz, 8));
+        registerSeat(g, ocheX - 1.4, 0.95, sz, Math.PI / 2, "Darts seat " + (i + 1), "Darts Alley");
+      }
+      addZone("Darts Alley", ocheX - 0.5, boardZ, "#7CFFB0");
+      const dt = textSprite("🎯 DARTS · HOLD LMB · aim with mouse", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+      dt.scale.multiplyScalar(0.52);
+      dt.position.set(ocheX, 2.6, boardZ + 2.2);
+      g.add(dt);
+      g.userData.gameSpots.push({ kind: "darts", pos: g.userData.dartTablePos.clone(), seats: 4 });
+    } catch (err) { console.warn("darts alley build", err); }
 
     /* trivia */
     const qx = tx - 9, qz = tz - 5;
@@ -7276,6 +7356,7 @@ function deactivateSocialLounge() {
   if (seated && seated.seat) seated.seat.occupied = false;
   seated = null;
   try { if (raceGame && raceGame.active) endRaceGame(false); } catch (_) {}
+  try { if (dartGame && dartGame.active) endDartGame(); } catch (_) {}
   try { if (triviaGame && triviaGame.active) endTriviaGame(); } catch (_) {}
   try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
   try { closeGuestInvite(); } catch (_) {}
@@ -7750,8 +7831,13 @@ function updateSocialLounge(dt) {
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
     /* dart table: walk up to start the mini-game */
-    if (!dartGame.active && !strikerGame.active && !arcadeGame.active && !triviaGame.active && !raceGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos && pig.position.distanceTo(L.dartTablePos) < 2.4) {
-      if (socialActive) startDartLeague(); else startDartGame();
+    if (!dartGame.active && !strikerGame.active && !arcadeGame.active && !triviaGame.active && !raceGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos) {
+      const dpos = L.dartTablePos;
+      const sc = L.independent ? 1 : (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1);
+      const wx = dpos.x * (L.independent ? 1 : sc), wz = dpos.z * (L.independent ? 1 : sc);
+      if (Math.hypot(pig.position.x - wx, pig.position.z - wz) < 2.8) {
+        if (socialActive) startDartLeague(); else startDartGame();
+      }
     }
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
     /* clout striker */
@@ -8126,77 +8212,408 @@ function setHeroForMiniGame(on) {
   } catch (_) {}
 }
 
-/* —— DARTS MINI-GAME: 3 darts, wobbling aim, ring scoring —— */
-const dartGame = { active: false, throwsLeft: 0, total: 0, aimY: 0, aimZ: 0, cool: 0, darts: [], reticle: null };
+/* —— DARTS MINI-GAME (realistic): wall board, aim arm, hold-LMB power —— */
+const dartGame = {
+  active: false, throwsLeft: 0, total: 0, cool: 0, darts: [], flying: [],
+  /* aim offsets on board plane (local Y up, Z along wall) */
+  aimY: 0, aimZ: 0,
+  power: 0, charging: false, chargeT: 0,
+  arm: null, heldDart: null, reticle: null, powerBar: null,
+  throwPos: null, boardPos: null, boardR: 0.72,
+  league: false, pScores: null, player: 0,
+  shake: 0,
+};
+function mkDartMesh(color = 0xd44a90) {
+  const dart = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, 0.014, 0.38, 8),
+    new THREE.MeshBasicMaterial({ color: 0xf0e8d0 })
+  );
+  shaft.rotation.z = Math.PI / 2;
+  dart.add(shaft);
+  const tip = new THREE.Mesh(
+    new THREE.ConeGeometry(0.012, 0.1, 8),
+    new THREE.MeshBasicMaterial({ color: 0xe8eef8 })
+  );
+  tip.rotation.z = -Math.PI / 2;
+  tip.position.x = 0.24;
+  dart.add(tip);
+  const barrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.02, 0.018, 0.1, 10),
+    new THREE.MeshBasicMaterial({ color })
+  );
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.x = -0.02;
+  dart.add(barrel);
+  /* flights */
+  for (let i = 0; i < 3; i++) {
+    const fl = new THREE.Mesh(
+      new THREE.BoxGeometry(0.01, 0.08, 0.06),
+      new THREE.MeshBasicMaterial({ color })
+    );
+    fl.position.set(-0.16, 0, 0);
+    fl.rotation.x = (i / 3) * Math.PI * 2;
+    dart.add(fl);
+  }
+  return dart;
+}
+function mkThrowingArm() {
+  const arm = new THREE.Group();
+  arm.name = "DartArm";
+  /* upper arm */
+  const capGeo = (r, len) => (THREE.CapsuleGeometry
+    ? new THREE.CapsuleGeometry(r, len, 4, 8)
+    : new THREE.CylinderGeometry(r, r, len + r * 2, 8));
+  const upper = new THREE.Mesh(
+    capGeo(0.07, 0.28),
+    new THREE.MeshBasicMaterial({ color: 0xf0c4a8 })
+  );
+  upper.position.set(0, 0, 0);
+  upper.rotation.z = 0.4;
+  arm.add(upper);
+  /* forearm pivot */
+  const elbow = new THREE.Group();
+  elbow.position.set(0.12, -0.18, 0.02);
+  arm.add(elbow);
+  const fore = new THREE.Mesh(
+    capGeo(0.055, 0.32),
+    new THREE.MeshBasicMaterial({ color: 0xe8b090 })
+  );
+  fore.position.set(0.16, -0.02, 0);
+  fore.rotation.z = -0.15;
+  elbow.add(fore);
+  /* hand */
+  const hand = new THREE.Mesh(
+    new THREE.SphereGeometry(0.055, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0xd4a080 })
+  );
+  hand.position.set(0.34, -0.04, 0.02);
+  elbow.add(hand);
+  /* sleeve cuff */
+  const cuff = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.08, 0.07, 0.1, 10),
+    new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.8 })
+  );
+  cuff.position.set(0.02, 0.06, 0);
+  cuff.rotation.z = 0.5;
+  arm.add(cuff);
+  arm.userData.elbow = elbow;
+  arm.userData.hand = hand;
+  return arm;
+}
+function dartLayer(obj) {
+  try {
+    obj.layers.set(1);
+    obj.traverse(c => c.layers.set(1));
+  } catch (_) {}
+}
 function startDartGame() {
   const L = loungeDecor && loungeDecor.userData;
   if (!L || !L.dartBoardPos) return;
   dartGame.active = true;
-  dartGame.throwsLeft = 3;
-  dartGame.total = 0;
-  dartGame.aimY = 0; dartGame.aimZ = 0;
-  socialReading = true; /* freezes combat via gameplayFrozen() */
+  if (!dartGame.league) {
+    dartGame.throwsLeft = 9;
+    dartGame.total = 0;
+  } else if (!dartGame.throwsLeft) {
+    dartGame.throwsLeft = 12;
+  }
+  dartGame.aimY = 0;
+  dartGame.aimZ = 0;
+  dartGame.power = 0;
+  dartGame.charging = false;
+  dartGame.chargeT = 0;
+  dartGame.shake = 0;
+  dartGame.camSnapped = false;
+  dartGame.boardPos = L.dartBoardPos.clone();
+  dartGame.boardR = L.dartBoardRadius || 0.72;
+  dartGame.throwPos = (L.dartThrowPos || L.dartTablePos || new THREE.Vector3(L.dartBoardPos.x - 7.6, 1.35, L.dartBoardPos.z)).clone();
+  dartGame.throwPos.y = 1.4;
+  socialReading = true;
   setHeroForMiniGame(true);
-  try { showMsg("PAUSED — mini-game (Esc quits)"); } catch (_) {}
-  try { setMiniTouch(true, isMobile() ? "DRAG TO AIM · TAP TO THROW" : "CLICK TO THROW · ESC QUITS"); } catch (_) {}
-  for (const d of dartGame.darts) scene.remove(d);
+  try { setMiniTouch(true, isMobile() ? "DRAG AIM · HOLD THROW" : "MOUSE aim · HOLD LMB power · RELEASE throw · ESC"); } catch (_) {}
+  for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
   dartGame.darts = [];
+  dartGame.flying = [];
+  /* arm + held dart */
+  if (dartGame.arm) try { scene.remove(dartGame.arm); } catch (_) {}
+  dartGame.arm = mkThrowingArm();
+  dartLayer(dartGame.arm);
+  scene.add(dartGame.arm);
+  dartGame.heldDart = mkDartMesh(0x1d9bf0);
+  dartLayer(dartGame.heldDart);
+  dartGame.arm.userData.hand.add(dartGame.heldDart);
+  dartGame.heldDart.position.set(0.08, 0, 0.06);
+  dartGame.heldDart.rotation.y = Math.PI / 2;
+  dartGame.heldDart.rotation.z = 0.2;
   if (!dartGame.reticle) {
-    dartGame.reticle = textSprite("+", { size: 60, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
-    dartGame.reticle.scale.multiplyScalar(0.5);
+    dartGame.reticle = textSprite("◎", { size: 72, color: "#7CFFB0", strokeW: 4, maxWidth: 0 });
+    dartGame.reticle.scale.multiplyScalar(0.35);
     scene.add(dartGame.reticle);
   }
+  dartLayer(dartGame.reticle);
   dartGame.reticle.visible = true;
-  showMsg("🎯 DARTS — click to throw (3 darts)");
-  SFX.pickup();
+  /* ensure a big always-facing board marker in front of cam */
+  if (dartGame.debugBoard) { try { scene.remove(dartGame.debugBoard); } catch(_){} }
+  {
+    const bp = dartGame.boardPos;
+    const tex = canvasTex(256, 256, (ctx, w, h) => {
+      ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0,0,w,h);
+      for (let i=0;i<20;i++){
+        ctx.beginPath(); ctx.moveTo(w/2,h/2);
+        ctx.arc(w/2,h/2,w*0.45, i/20*Math.PI*2, (i+1)/20*Math.PI*2);
+        ctx.closePath(); ctx.fillStyle = i%2?"#1a5a30":"#111"; ctx.fill();
+      }
+      ctx.strokeStyle="#d4af37"; ctx.lineWidth=8;
+      ctx.beginPath(); ctx.arc(w/2,h/2,w*0.45,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle="#d4af37"; ctx.beginPath(); ctx.arc(w/2,h/2,12,0,Math.PI*2); ctx.fill();
+    });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, toneMapped: false, depthTest: false }));
+    sp.position.copy(bp);
+    sp.scale.set(2.8, 2.8, 1);
+    dartLayer(sp);
+    scene.add(sp);
+    dartGame.debugBoard = sp;
+  }
+
+  /* power bar DOM */
+  let bar = document.getElementById("dartPower");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "dartPower";
+    bar.innerHTML = `<div class="dp-label">POWER</div><div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div><div class="dp-hint" id="dartHint">Hold LMB · release to throw</div>`;
+    document.body.appendChild(bar);
+  }
+  bar.classList.add("show");
+  showMsg("🎯 DARTS — mouse aims arm · hold LMB for power · release to throw");
+  try { SFX.pickup(); } catch (_) {}
 }
 function endDartGame() {
   dartGame.active = false;
+  dartGame.charging = false;
   dartGame.cool = 6;
+  dartGame.league = false;
   socialReading = false;
   setHeroForMiniGame(false);
   try { setMiniTouch(false); } catch (_) {}
   if (dartGame.reticle) dartGame.reticle.visible = false;
-  setTimeout(() => { for (const d of dartGame.darts) scene.remove(d); dartGame.darts = []; }, 2500);
-  showMsg(`🎯 DARTS TOTAL: +${dartGame.total}`);
+  if (dartGame.debugBoard) { try { scene.remove(dartGame.debugBoard); } catch (_) {} dartGame.debugBoard = null; }
+  if (dartGame.arm) { try { scene.remove(dartGame.arm); } catch (_) {} dartGame.arm = null; }
+  if (dartGame._fov) { try { camera.fov = dartGame._fov; camera.updateProjectionMatrix(); } catch(_){} dartGame._fov = null; }
+  dartGame.heldDart = null;
+  const bar = document.getElementById("dartPower");
+  if (bar) bar.classList.remove("show");
+  setTimeout(() => {
+    for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
+    dartGame.darts = [];
+    dartGame.flying = [];
+  }, 2800);
+  showMsg(`🎯 DARTS TOTAL: ${dartGame.total} pts`);
   score += dartGame.total;
   updateHud();
 }
+function dartScoreFromOffset(off, R) {
+  const r = off / Math.max(0.001, R);
+  if (r < 0.06) return 50;       /* bull */
+  if (r < 0.12) return 25;       /* outer bull */
+  if (r < 0.38) return 15;       /* triple-ish band score */
+  if (r < 0.55) return 10;
+  if (r < 0.72) return 5;
+  if (r < 0.98) return 2;
+  return 0; /* miss board */
+}
+function beginDartCharge() {
+  if (!dartGame.active || dartGame.throwsLeft <= 0) return;
+  if (dartGame.flying.some(f => f.alive)) return; /* wait for flight */
+  dartGame.charging = true;
+  dartGame.chargeT = 0;
+  dartGame.power = 0.08;
+}
+function releaseDartThrow() {
+  if (!dartGame.active || !dartGame.charging) return;
+  dartGame.charging = false;
+  const power = Math.max(0.12, Math.min(1, dartGame.power));
+  dartGame.power = 0;
+  throwDart(power);
+}
+function throwDart(power = 0.65) {
+  if (!dartGame.active || dartGame.throwsLeft <= 0) return;
+  const bp = dartGame.boardPos || loungeDecor.userData.dartBoardPos;
+  const R = dartGame.boardR || 0.72;
+  const tp = dartGame.throwPos;
+  /* ideal aim point on board */
+  let targetY = bp.y + dartGame.aimY;
+  let targetZ = bp.z + dartGame.aimZ;
+  /* under/over power drifts */
+  const powerErr = (power - 0.72) * 0.55; /* sweet spot ~0.72 */
+  const shake = (1.05 - power) * 0.12 + dartGame.shake * 0.08;
+  targetY += powerErr * 0.35 + (Math.random() - 0.5) * shake;
+  targetZ += (Math.random() - 0.5) * shake * 1.1;
+  /* very low power falls short (before board) */
+  let hitX = bp.x + 0.05;
+  if (power < 0.28) {
+    hitX = tp.x + (bp.x - tp.x) * (0.35 + power);
+    targetY -= (0.28 - power) * 1.2;
+  } else if (power > 0.95) {
+    /* overpower: bounce-ish high then miss */
+    targetY += (power - 0.95) * 2.5;
+  }
+  const start = new THREE.Vector3(tp.x + 0.35, tp.y + 0.05, tp.z);
+  if (dartGame.heldDart) {
+    try {
+      dartGame.arm.userData.hand.remove(dartGame.heldDart);
+      scene.add(dartGame.heldDart);
+      dartGame.heldDart.position.copy(start);
+      dartLayer(dartGame.heldDart);
+    } catch (_) {}
+  }
+  const mesh = dartGame.heldDart || mkDartMesh();
+  dartGame.heldDart = null;
+  const end = new THREE.Vector3(hitX, targetY, targetZ);
+  const flight = {
+    mesh, start: start.clone(), end: end.clone(),
+    t: 0, dur: 0.38 + (1 - power) * 0.25,
+    power, alive: true, scored: false,
+  };
+  dartGame.flying.push(flight);
+  dartGame.throwsLeft--;
+  try { beep(180 + power * 200, 0.06, "triangle", 0.05); } catch (_) {}
+  /* arm follow-through */
+  dartGame.shake = 0.4;
+}
+function finishDartFlight(f) {
+  if (f.scored) return;
+  f.scored = true;
+  f.alive = false;
+  const bp = dartGame.boardPos;
+  const R = dartGame.boardR || 0.72;
+  const hitY = f.end.y, hitZ = f.end.z;
+  const off = Math.hypot(hitY - bp.y, hitZ - bp.z);
+  const onBoard = off <= R * 1.02 && f.power >= 0.28 && f.power <= 0.98;
+  const pts = onBoard ? dartScoreFromOffset(off, R) : 0;
+  dartGame.total += pts;
+  /* stick dart */
+  f.mesh.position.set(f.end.x, f.end.y, f.end.z);
+  f.mesh.rotation.set(0, 0, 0);
+  f.mesh.rotation.y = Math.PI / 2;
+  f.mesh.rotation.z = (Math.random() - 0.5) * 0.15;
+  dartGame.darts.push(f.mesh);
+  try { SFX.hit(); } catch (_) {}
+  floatText(new THREE.Vector3(bp.x - 0.6, hitY + 0.4, hitZ),
+    pts ? `+${pts}${pts === 50 ? " BULL!" : pts === 25 ? " OUTER" : ""}` : (f.power < 0.28 ? "SHORT" : "MISS"),
+    { size: 40, color: pts >= 25 ? "#7CFFB0" : pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.15);
+  /* new held dart if more throws */
+  if (dartGame.throwsLeft > 0 && dartGame.arm) {
+    dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a]));
+    dartLayer(dartGame.heldDart);
+    dartGame.arm.userData.hand.add(dartGame.heldDart);
+    dartGame.heldDart.position.set(0.08, 0, 0.06);
+    dartGame.heldDart.rotation.y = Math.PI / 2;
+  }
+  if (dartGame.throwsLeft <= 0) setTimeout(endDartGame, 1100);
+}
 function updateDartGame(dt) {
   if (!dartGame.active) return;
-  const bp = loungeDecor.userData.dartBoardPos;
-  /* wobble + player aim */
-  const wy = Math.sin(t * 2.6) * 0.16 + Math.sin(t * 6.1) * 0.07;
-  const wz = Math.cos(t * 3.2) * 0.16 + Math.sin(t * 5.3) * 0.07;
-  dartGame.aimY = Math.max(-0.6, Math.min(0.6, dartGame.aimY));
-  dartGame.aimZ = Math.max(-0.6, Math.min(0.6, dartGame.aimZ));
-  dartGame.reticle.position.set(bp.x - 0.25, bp.y + dartGame.aimY + wy, bp.z + dartGame.aimZ + wz);
-  /* camera locked square to the board */
-  camera.position.lerp(new THREE.Vector3(bp.x - 5.5, bp.y + 0.3, bp.z), Math.min(1, dt * 6));
-  camera.lookAt(bp.x, bp.y, bp.z);
+  const L = loungeDecor && loungeDecor.userData;
+  if (!L || !L.dartBoardPos) return;
+  const bp = L.dartBoardPos;
+  dartGame.boardPos = bp;
+  const tp = dartGame.throwPos || new THREE.Vector3(bp.x - 7.6, 1.4, bp.z);
+  dartGame.shake = Math.max(0, dartGame.shake - dt);
+
+  /* charge power */
+  if (dartGame.charging) {
+    dartGame.chargeT += dt;
+    /* ease to 1 over ~1.1s, with slight pulse */
+    dartGame.power = Math.min(1, dartGame.chargeT / 1.05);
+    dartGame.shake = 0.05 + dartGame.power * 0.25;
+  }
+  const fill = document.getElementById("dartPowerFill");
+  if (fill) {
+    fill.style.width = (dartGame.charging ? dartGame.power * 100 : 0) + "%";
+    fill.style.background = dartGame.power > 0.88 ? "#ff6a4a" : dartGame.power > 0.55 ? "#7CFFB0" : "#ffd94a";
+  }
+  const hint = document.getElementById("dartHint");
+  if (hint) {
+    hint.textContent = dartGame.charging
+      ? `Power ${Math.round(dartGame.power * 100)}% · release to throw · darts left ${dartGame.throwsLeft}`
+      : `Aim with mouse · hold LMB · ${dartGame.throwsLeft} darts · ${dartGame.total} pts · Esc quits`;
+  }
+
+  /* clamp aim to board radius */
+  const R = dartGame.boardR || 0.72;
+  const aimLim = R * 0.95;
+  dartGame.aimY = Math.max(-aimLim, Math.min(aimLim, dartGame.aimY));
+  dartGame.aimZ = Math.max(-aimLim, Math.min(aimLim, dartGame.aimZ));
+  /* reticle on board */
+  if (dartGame.reticle) {
+    dartGame.reticle.position.set(bp.x - 0.12, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
+    dartGame.reticle.visible = !dartGame.flying.some(f => f.alive);
+  }
+
+  /* camera: behind throw line looking at board (east wall) */
+  const camTarget = new THREE.Vector3(tp.x - 3.2, 1.75, tp.z);
+  if (!dartGame.camSnapped) {
+    camera.position.copy(camTarget);
+    dartGame.camSnapped = true;
+    dartGame._fov = camera.fov;
+    camera.fov = 58;
+    camera.updateProjectionMatrix();
+  } else {
+    camera.position.lerp(camTarget, Math.min(1, dt * 10));
+  }
+  const look = new THREE.Vector3(bp.x, bp.y + dartGame.aimY * 0.2, bp.z + dartGame.aimZ * 0.2);
+  camera.up.set(0, 1, 0);
+  camera.lookAt(look);
+  camera.layers.enable(0); /* also see layer 0 just in case */
+  camera.layers.enable(1);
+  camera.updateMatrixWorld(true);
+  if (dartGame.debugBoard) {
+    dartGame.debugBoard.position.copy(bp);
+    dartGame.debugBoard.visible = true;
+  }
+
+  /* arm position + aim pose */
+  if (dartGame.arm) {
+    const sh = dartGame.shake * (Math.sin(t * 40) * 0.015);
+    /* arm lower-right, scaled down so board stays primary focus */
+    dartGame.arm.position.set(tp.x + 0.15 + sh, tp.y - 0.6, tp.z + 0.9 + sh * 0.4);
+    dartGame.arm.scale.setScalar(0.75);
+    const handWorld = new THREE.Vector3(bp.x, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
+    dartGame.arm.lookAt(handWorld);
+    dartGame.arm.rotateY(-Math.PI / 2);
+    dartGame.arm.rotateZ(-0.55);
+    /* elbow draw-back when charging */
+    const elbow = dartGame.arm.userData.elbow;
+    if (elbow) {
+      const pull = dartGame.charging ? dartGame.power * 0.55 : 0.08;
+      elbow.rotation.z = -0.2 - pull;
+      elbow.position.x = 0.12 - pull * 0.15;
+    }
+    dartLayer(dartGame.arm);
+  }
+
+  /* fly darts */
+  for (const f of dartGame.flying) {
+    if (!f.alive) continue;
+    f.t += dt;
+    const u = Math.min(1, f.t / f.dur);
+    const e = 1 - Math.pow(1 - u, 2); /* ease out */
+    f.mesh.position.lerpVectors(f.start, f.end, e);
+    /* arc */
+    f.mesh.position.y += Math.sin(u * Math.PI) * (0.35 + f.power * 0.25);
+    f.mesh.lookAt(f.end);
+    f.mesh.rotateY(Math.PI / 2);
+    if (u >= 1) finishDartFlight(f);
+  }
 }
-function throwDart() {
-  if (!dartGame.active || dartGame.throwsLeft <= 0) return;
-  const bp = loungeDecor.userData.dartBoardPos;
-  const hitY = dartGame.reticle.position.y, hitZ = dartGame.reticle.position.z;
-  const off = Math.hypot(hitY - bp.y, hitZ - bp.z);
-  const pts = off < 0.09 ? 50 : off < 0.2 ? 25 : off < 0.36 ? 15 : off < 0.55 ? 5 : 0;
-  dartGame.total += pts;
-  dartGame.throwsLeft--;
-  /* stick a dart in the board */
-  const dart = new THREE.Group();
-  const shaft = cyl(0.018, 0.018, 0.34, 0xd8d0b8, 0, 0, 0, 6);
-  shaft.rotation.z = Math.PI / 2;
-  dart.add(shaft);
-  dart.add(sph(0.035, pick([0xd44a90, 0x40c8a0, 0x5a8ad4]), -0.2, 0, 0));
-  dart.position.set(bp.x - 0.15, hitY, hitZ);
-  scene.add(dart);
-  dartGame.darts.push(dart);
-  SFX.hit();
-  floatText(new THREE.Vector3(bp.x - 0.5, hitY + 0.35, hitZ), pts ? `+${pts}${pts === 50 ? " BULL!" : ""}` : "MISS",
-    { size: 38, color: pts >= 25 ? "#7CFFB0" : pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.1);
-  if (dartGame.throwsLeft <= 0) setTimeout(endDartGame, 900);
+/* mouse aim while darts active */
+function dartAimFromMouse(dx, dy) {
+  if (!dartGame.active || dartGame.charging && false) {}
+  if (!dartGame.active) return;
+  dartGame.aimZ += dx * 0.0022; /* mouse X → along wall */
+  dartGame.aimY -= dy * 0.0022; /* mouse Y → up/down */
 }
+
 
 /* —— TEST YOUR CLOUT: timing striker — click at the PEAK for 100% + victory bell —— */
 const strikerGame = { active: false, tT: 0, cool: 0, power: 0, slammed: false };
@@ -8589,7 +9006,7 @@ function quitActiveMiniGame() {
   }
 }
 function miniTap() {
-  if (dartGame.active) throwDart();
+  if (dartGame.active) { if (dartGame.charging) releaseDartThrow(); else beginDartCharge(); }
   else if (strikerGame.active) resolveStriker();
   else if (arcadeGame.active) arcadeClick();
 }
@@ -9321,6 +9738,11 @@ document.addEventListener("mousemove", e => {
   }
   if (strikerGame.active) return;
 
+  /* darts aim takes mouse when active */
+  if (typeof dartGame !== "undefined" && dartGame.active) {
+    dartAimFromMouse(e.movementX || 0, e.movementY || 0);
+    return;
+  }
   /* pointer-lock mouselook (any mode) */
   if (document.pointerLockElement === renderer.domElement) {
     applyMouseLook(e.movementX, e.movementY, 0.0026);
@@ -9343,7 +9765,7 @@ document.addEventListener("mousemove", e => {
 
 renderer.domElement.addEventListener("mousedown", e => {
   if (mode !== "play") return;
-  if (dartGame.active) { if (e.button === 0) throwDart(); return; }
+  if (dartGame.active) { if (e.button === 0) { beginDartCharge(); e.preventDefault(); } return; }
   if (strikerGame.active) { if (e.button === 0) resolveStriker(); return; }
   if (arcadeGame.active) { if (e.button === 0) arcadeClick(); return; }
   if (socialReading) return;
@@ -9423,6 +9845,7 @@ addEventListener("wheel", e => {
   toggleWeaponBank();
 }, { passive: false });
 addEventListener("mouseup", e => {
+  if (dartGame.active && e.button === 0) { releaseDartThrow(); return; }
   if (mode === "play" && e.button === 0 && weaponIdx === 0 && charging) {
     throwBoomerang(chargeT > 0.45);
     charging = false; chargeT = 0;
@@ -12517,6 +12940,12 @@ scene.add(lockBracket);
 
 /* ============================== CAMERA + LOOP ============================== */
 function updateCamera(dt) {
+  /* mini-games cameras own the view */
+  if (typeof dartGame !== "undefined" && dartGame.active) return;
+  if (typeof raceGame !== "undefined" && raceGame.active) return;
+  if (typeof triviaGame !== "undefined" && triviaGame.active) return;
+  if (typeof strikerGame !== "undefined" && strikerGame.active) return;
+  if (typeof arcadeGame !== "undefined" && arcadeGame.active) return;
   if (window.__camLock) return;
   /* mini-games own the camera (arcade / striker / darts) */
   if (typeof dartGame !== "undefined" && dartGame.active) return;
