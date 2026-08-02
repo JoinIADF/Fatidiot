@@ -1,0 +1,53 @@
+--- a/index.html
++++ b/index.html
+@@ -786,21 +786,27 @@
+   }
+   body.lounge-ui #crosshair { opacity: 0.55; font-size: 18px; }
+   /* lounge action menu — mid size (+25% from prior compact) */
++  /* Lounge action bar — U-shape nestled between left stick and right JUMP column */
+   #loungeMobBar {
+-    display: none; position: fixed; left: 50%;
+-    bottom: max(112px, calc(env(safe-area-inset-bottom, 0px) + 96px));
+-    transform: translateX(-50%);
+-    z-index: 85; pointer-events: auto;
+-    width: auto; max-width: min(760px, calc(100vw - 16px));
++    display: none;
++    position: fixed;
++    z-index: 85;
++    pointer-events: auto;
+     flex-direction: column;
+     align-items: stretch;
+-    gap: 7px;
+-    padding: 9px 10px 10px;
+-    background: rgba(6, 10, 18, 0.78);
++    gap: 6px;
++    padding: 8px 8px 9px;
++    background: rgba(6, 10, 18, 0.82);
+     border: 1px solid rgba(255,255,255,0.12);
+     border-radius: 18px;
+     backdrop-filter: blur(8px);
+     -webkit-backdrop-filter: blur(8px);
++    /* desktop default: centered */
++    left: 50%;
++    transform: translateX(-50%);
++    bottom: max(24px, env(safe-area-inset-bottom, 0px));
++    width: auto;
++    max-width: min(520px, calc(100vw - 24px));
+   }
+   #loungeMobBar.show { display: flex !important; }
+   #loungeMobBar .lounge-focus,
+@@ -811,12 +817,12 @@
+     transform: none;
+     max-width: none;
+     margin: 0;
+-    padding: 6px 12px;
++    padding: 7px 12px;
+     border-radius: 12px;
+     text-align: center;
+     font: 800 13px/1.2 system-ui, sans-serif;
+     color: #7CFFB0;
+-    background: rgba(8, 20, 16, 0.65);
++    background: rgba(8, 20, 16, 0.7);
+     border: 1px solid rgba(124,255,176,0.35);
+     white-space: nowrap;
+     overflow: hidden;
