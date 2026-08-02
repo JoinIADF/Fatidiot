@@ -1,1 +1,6 @@
-PLACEHOLDER
+--- index.html	2026-08-02 22:29:08.430628002 +0000
++++ index.html	2026-08-02 19:24:56.396000000 +0000
+@@ -831,58 +831,82 @@
+   }
+   #loungeMobBar #guestChip.show,
+   #loungeMobBar .lounge-focus.show {
