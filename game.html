@@ -885,16 +885,13 @@
   }
   /* mobile: nest the bar in the U between left stick and right JUMP */
   @media (max-width: 900px), (pointer: coarse) {
+    /* bottom set by U-nest block below — keep left/right full-bleed fallback only */
     #loungeMobBar {
       left: max(12px, env(safe-area-inset-left, 0px) + 8px);
       right: max(12px, env(safe-area-inset-right, 0px) + 8px);
       transform: none;
-      bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
       width: auto;
       max-width: none;
-    }
-    body.lounge-ui #loungeMobBar.show {
-      bottom: max(108px, calc(env(safe-area-inset-bottom, 0px) + 92px));
     }
   }
   .mbtn.add {
@@ -1275,15 +1272,17 @@
        button column instead of spanning full width on top of both. The stick
        and the button column form the arms of the U; the bar is its base.
        Widths below mirror #stickBase (108 @ left:18) and #btnCol (76 @ right:12). */
-    #loungeMobBar {
+    /* Align bar bottom with stick (18px) / JUMP column (14px) — same baseline */
+    #loungeMobBar,
+    body.lounge-ui #loungeMobBar.show {
       left: calc(18px + 108px + 10px);
       right: calc(12px + 76px + 12px);
       transform: none;
       width: auto;
       max-width: none;
-      bottom: max(14px, env(safe-area-inset-bottom, 0px));
-      padding: 7px;
-      gap: 5px;
+      bottom: max(18px, env(safe-area-inset-bottom, 0px));
+      padding: 6px;
+      gap: 4px;
     }
     /* narrow centre column -> 2x2 instead of 4-across */
     #loungeMobBar .lounge-btns {
@@ -1291,23 +1290,24 @@
       grid-template-areas:
         "read remove"
         "like list";
-      gap: 5px;
+      gap: 4px;
     }
-    #loungeMobBar .lmbtn { min-height: 46px; padding: 8px 6px; }
-    #loungeMobBar .lmbtn .ico { font-size: 15px; }
-    #loungeMobBar .lmbtn .lbl { font-size: 9px; }
-    #loungeMobBar #guestChip { font-size: 12px; padding: 5px 10px; }
+    #loungeMobBar .lmbtn { min-height: 40px; padding: 6px 4px; }
+    #loungeMobBar .lmbtn .ico { font-size: 14px; }
+    #loungeMobBar .lmbtn .lbl { font-size: 8px; }
+    #loungeMobBar #guestChip { font-size: 11px; padding: 4px 8px; }
     @media (orientation: landscape) and (max-height: 480px) {
       #stickBase { width: 88px; height: 88px; }
       #btnCol { gap: 6px; }
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
       /* landscape has width to spare: back to a single 4-across row */
-      #loungeMobBar {
+      #loungeMobBar,
+      body.lounge-ui #loungeMobBar.show {
         left: calc(18px + 88px + 10px);
         right: calc(12px + 62px + 12px);
-        bottom: max(12px, env(safe-area-inset-bottom, 0px));
-        padding: 6px 7px;
+        bottom: max(14px, env(safe-area-inset-bottom, 0px));
+        padding: 5px 6px;
       }
       #loungeMobBar .lounge-btns {
         grid-template-columns: 1fr 1fr 1fr 1fr;
