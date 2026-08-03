@@ -1058,6 +1058,7 @@
   #triviaGame .tg-opts button.good { border-color: #7CFFB0; background: rgba(124,255,176,0.15); }
   #triviaGame .tg-opts button.bad { border-color: #ff6a4a; background: rgba(255,80,60,0.12); }
   #raceHud {
+    z-index: 110;
     position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
     z-index: 80; pointer-events: none;
     background: rgba(8,12,20,0.78); border: 1px solid #1d9bf0;
@@ -6596,111 +6597,193 @@ function updateLoungeZoneHUD() {
   el.textContent = best;
 }
 
-/* —— TRIVIA (2–3 min, up to 4 players conceptually) —— */
+
 const TRIVIA_BANK = [
-  { q: "What does a blue check usually mean on X?", a: ["Verified / premium identity", "You're a bot", "You work at X", "You own Tesla"], i: 0 },
-  { q: "A ratio usually means…", a: ["Replies dunk on the original post", "You hit 1:1 likes", "You got banned", "You went viral positively"], i: 0 },
-  { q: "Grok is built by…", a: ["xAI", "OpenAI", "Meta", "Google"], i: 0 },
-  { q: "Best lounge move when a VC appears?", a: ["Destroy the pitch", "Sign the SAFE", "Give them your cap table", "Offer free equity"], i: 0 },
-  { q: "Timeline Lounge is full of…", a: ["People you actually interact with", "Random strangers", "Only brands", "Only bots"], i: 0 },
-  { q: "Fa'tidiot's hero is a…", a: ["Pig with a man's face", "Blue bird", "Robot dog", "Coffee mug"], i: 0 },
-  { q: "Demonetized is yelled when you…", a: ["Rifle a spammer", "Like a post", "Sit at the bar", "Jump"], i: 0 },
-  { q: "An invite-only VIP booth is for…", a: ["Friends you bring into the lounge", "Enemy VCs only", "Office printers", "Server racks"], i: 0 },
-  { q: "X Chat invites in this demo are…", a: ["Faked for the prototype", "Always real API sends", "SMS only", "Email digests"], i: 0 },
-  { q: "Up to how many can play arena games here?", a: ["4", "2", "12", "1"], i: 0 },
+  { q: "What does the X in X.com stand for historically?", opts: ["Twitter rebrand only", "Everything app ambition", "A Roman numeral", "Elon’s middle initial"], a: 1 },
+  { q: "Grok is developed by which lab?", opts: ["OpenAI", "DeepMind", "xAI", "Anthropic"], a: 2 },
+  { q: "In this lounge, what does walking to the OCHE start?", opts: ["Trivia", "Darts", "Racing", "Dance"], a: 1 },
+  { q: "Timeline GP is best described as…", opts: ["A card game", "An oval racer for 4", "A cooking sim", "A boss fight"], a: 1 },
+  { q: "Which zone is for freestyle movement and music vibes?", opts: ["VIP Booth", "Dance Floor", "Library", "Darts Alley"], a: 1 },
+  { q: "A double-out in 201 darts means…", opts: ["Any finish", "Finish on a double or bull", "Only triple 20", "Three misses"], a: 1 },
+  { q: "Cricket darts focuses on which numbers?", opts: ["1–10", "15–20 and bull", "Only bull", "Evens only"], a: 1 },
+  { q: "Activated friends in Live Lounge are…", opts: ["Enemies only", "Favorites / invited social graph", "NPCs with guns", "Server admins"], a: 1 },
+  { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
+  { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
+  { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
+  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the west-wall track", "Behind the bar", "VIP booth couch"], a: 1 },
 ];
+
+/* —— TRIVIA (wall bay, 4-player scores) —— */
 const triviaGame = {
-  active: false, i: 0, score: 0, tLeft: 150, cool: 0, order: [], players: ["You", "P2", "P3", "P4"],
+  active: false, i: 0, score: 0, tLeft: 150, cool: 0, order: [],
+  players: [
+    { name: "You", score: 0, color: "#7CFFB0" },
+    { name: "P2", score: 0, color: "#8fd1ff" },
+    { name: "P3", score: 0, color: "#ffd94a" },
+    { name: "P4", score: 0, color: "#d48cff" },
+  ],
+  aiTimer: 0,
 };
 function startTriviaGame() {
   if (triviaGame.active) return;
   triviaGame.active = true;
   triviaGame.i = 0;
   triviaGame.score = 0;
-  triviaGame.tLeft = 150; /* 2.5 minutes */
+  triviaGame.tLeft = 150;
   triviaGame.order = TRIVIA_BANK.map((_, i) => i).sort(() => Math.random() - 0.5).slice(0, 8);
+  triviaGame.players.forEach(p => { p.score = 0; });
+  triviaGame.aiTimer = 0;
   socialReading = true;
   setHeroForMiniGame(true);
+  try { setMiniTouch(false); } catch (_) {}
+  document.body.classList.add("darts-active", "reading-tweets"); /* reuse hide-chrome */
   const root = document.getElementById("triviaGame");
   if (root) { root.classList.remove("hidden"); root.setAttribute("aria-hidden", "false"); }
   renderTriviaQ();
-  showMsg("🧠 TRIVIA — 8 questions · ~2.5 min · 4-player ready");
+  showMsg("🧠 TRIVIA — 8 questions · 4 players · ~2.5 min");
   try { SFX.pickup(); } catch (_) {}
 }
 function renderTriviaQ() {
   const qi = triviaGame.order[triviaGame.i];
   const item = TRIVIA_BANK[qi];
   const root = document.getElementById("triviaGame");
-  if (!item || !root) return;
-  const tgQ = document.getElementById("tgQ");
+  if (!root || !item) return;
   const tgRound = document.getElementById("tgRound");
   const tgScore = document.getElementById("tgScore");
-  const opts = document.getElementById("tgOpts");
+  const tgQ = document.getElementById("tgQ");
+  const tgOpts = document.getElementById("tgOpts");
   if (tgRound) tgRound.textContent = `Q ${triviaGame.i + 1}/${triviaGame.order.length}`;
-  if (tgScore) tgScore.textContent = triviaGame.score + " pts";
+  if (tgScore) {
+    tgScore.textContent = triviaGame.players.map(p => `${p.name} ${p.score}`).join(" · ");
+  }
   if (tgQ) tgQ.textContent = item.q;
-  if (opts) {
-    opts.innerHTML = "";
-    item.a.forEach((text, idx) => {
+  if (tgOpts) {
+    tgOpts.innerHTML = "";
+    item.opts.forEach((opt, idx) => {
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = text;
+      b.textContent = opt;
       b.onclick = () => answerTrivia(idx);
-      opts.appendChild(b);
+      tgOpts.appendChild(b);
     });
   }
+  /* paint wall screen */
+  try {
+    const scr = loungeDecor && loungeDecor.userData && loungeDecor.userData.triviaScreen;
+    if (scr && scr.ctx) {
+      const c = scr.ctx, w = scr.canvas.width, h = scr.canvas.height;
+      c.fillStyle = "#07140f"; c.fillRect(0, 0, w, h);
+      c.strokeStyle = "#7CFFB0"; c.lineWidth = 6; c.strokeRect(8, 8, w - 16, h - 16);
+      c.fillStyle = "#7CFFB0"; c.font = "bold 22px system-ui"; c.textAlign = "left";
+      c.fillText(`Q${triviaGame.i + 1}/${triviaGame.order.length}`, 24, 40);
+      c.fillStyle = "#e8eef8"; c.font = "bold 20px system-ui";
+      const words = String(item.q).split(" ");
+      let line = "", y = 80;
+      for (const word of words) {
+        const trial = line ? line + " " + word : word;
+        if (c.measureText(trial).width > w - 48) { c.fillText(line, 24, y); y += 28; line = word; }
+        else line = trial;
+      }
+      if (line) c.fillText(line, 24, y);
+      c.fillStyle = "#a8e0c8"; c.font = "16px system-ui";
+      c.fillText(triviaGame.players.map(p => `${p.name}:${p.score}`).join("  "), 24, h - 24);
+      scr.tex.needsUpdate = true;
+    }
+  } catch (_) {}
 }
 function answerTrivia(idx) {
   if (!triviaGame.active) return;
   const item = TRIVIA_BANK[triviaGame.order[triviaGame.i]];
-  const opts = document.getElementById("tgOpts");
-  if (opts) {
-    [...opts.children].forEach((b, i) => {
+  const tgOpts = document.getElementById("tgOpts");
+  if (tgOpts) {
+    [...tgOpts.querySelectorAll("button")].forEach((b, i) => {
       b.disabled = true;
-      if (i === item.i) b.classList.add("good");
-      if (i === idx && idx !== item.i) b.classList.add("bad");
+      if (i === item.a) b.classList.add("good");
+      else if (i === idx) b.classList.add("bad");
     });
   }
-  if (idx === item.i) {
+  if (idx === item.a) {
     triviaGame.score += 100;
-    try { beep(880, 0.08, "square", 0.06); } catch (_) {}
+    triviaGame.players[0].score += 100;
+    try { SFX.pickup(); } catch (_) {}
   } else {
-    try { beep(180, 0.1, "sawtooth", 0.05); } catch (_) {}
+    try { SFX.hit(); } catch (_) {}
+  }
+  /* AI players score with slight randomness */
+  for (let p = 1; p < 4; p++) {
+    if (Math.random() < 0.55) triviaGame.players[p].score += 100;
   }
   setTimeout(() => {
     triviaGame.i++;
     if (triviaGame.i >= triviaGame.order.length || triviaGame.tLeft <= 0) endTriviaGame();
     else renderTriviaQ();
-  }, 650);
+  }, 700);
 }
 function endTriviaGame() {
   triviaGame.active = false;
   triviaGame.cool = 8;
   socialReading = false;
+  document.body.classList.remove("darts-active", "reading-tweets");
   setHeroForMiniGame(false);
+  try { syncLoungeMobileUI(); } catch (_) {}
   const root = document.getElementById("triviaGame");
   if (root) { root.classList.add("hidden"); root.setAttribute("aria-hidden", "true"); }
   score += triviaGame.score;
   updateHud();
-  showMsg(`🧠 TRIVIA DONE · ${triviaGame.score} pts (4-player table ready for live X users)`);
+  const standings = triviaGame.players.slice().sort((a, b) => b.score - a.score)
+    .map((p, i) => `${i + 1}. ${p.name} ${p.score}`).join(" · ");
+  showMsg(`🧠 TRIVIA DONE · You ${triviaGame.score} pts · ${standings}`);
+  try {
+    const scr = loungeDecor && loungeDecor.userData && loungeDecor.userData.triviaScreen;
+    if (scr && scr.paintIdle) { scr.paintIdle(); scr.tex.needsUpdate = true; }
+  } catch (_) {}
 }
 function updateTriviaGame(dt) {
   if (!triviaGame.active) return;
   triviaGame.tLeft -= dt;
   const m = Math.max(0, Math.floor(triviaGame.tLeft / 60));
-  const s = Math.max(0, Math.floor(triviaGame.tLeft % 60));
-  const el = document.getElementById("tgTimer");
-  if (el) el.textContent = m + ":" + String(s).padStart(2, "0");
+  const sec = Math.max(0, Math.floor(triviaGame.tLeft % 60));
+  const tgTimer = document.getElementById("tgTimer");
+  if (tgTimer) tgTimer.textContent = `${m}:${String(sec).padStart(2, "0")}`;
   if (triviaGame.tLeft <= 0) endTriviaGame();
 }
 
-/* —— TIMELINE GP racing (oval, ~2–3 min) —— */
+/* —— TIMELINE GP racing (west-wall bay, 4 racers, fully visible) —— */
 const raceGame = {
   active: false, tLeft: 150, lap: 1, laps: 3, angle: 0, speed: 0, cool: 0,
-  best: 0, car: null, ghostCars: [],
+  best: 0, car: null, ghostCars: [], progress: 0,
+  standings: [],
 };
+function mkRaceCar(color) {
+  const car = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.75, 0.28, 1.15),
+    new THREE.MeshBasicMaterial({ color, toneMapped: false })
+  );
+  body.position.y = 0.22;
+  car.add(body);
+  const cabin = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.22, 0.55),
+    new THREE.MeshBasicMaterial({ color: 0x0a1520, toneMapped: false })
+  );
+  cabin.position.set(0, 0.42, -0.05);
+  car.add(cabin);
+  for (const [wx, wz] of [[-0.38, 0.35], [0.38, 0.35], [-0.38, -0.4], [0.38, -0.4]]) {
+    const wh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.14, 0.14, 0.12, 10),
+      new THREE.MeshBasicMaterial({ color: 0x111418, toneMapped: false })
+    );
+    wh.rotation.z = Math.PI / 2;
+    wh.position.set(wx, 0.14, wz);
+    car.add(wh);
+  }
+  car.traverse(o => { if (o.isMesh) { o.layers.set(1); o.frustumCulled = false; } });
+  car.layers.set(1);
+  return car;
+}
 function startRaceGame() {
-  if (raceGame.active || !loungeDecor && loungeDecor.userData && loungeDecor.userData.raceCenter) return;
+  if (raceGame.active) return;
+  if (!loungeDecor || !loungeDecor.userData || !loungeDecor.userData.raceCenter) return;
   raceGame.active = true;
   raceGame.tLeft = 150;
   raceGame.lap = 1;
@@ -6709,92 +6792,125 @@ function startRaceGame() {
   raceGame.progress = 0;
   socialReading = true;
   setHeroForMiniGame(true);
+  try { setMiniTouch(false); } catch (_) {}
+  document.body.classList.add("darts-active", "reading-tweets");
   const rc = loungeDecor.userData.raceCenter;
-  const sc = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
-  const c = new THREE.Vector3(rc.x * sc, 0, rc.z * sc);
-  if (!raceGame.car) {
-    raceGame.car = new THREE.Group();
-    raceGame.car.add(box(0.7, 0.28, 1.1, 0x1d9bf0, 0, 0.2, 0));
-    raceGame.car.add(box(0.5, 0.2, 0.5, 0x0a1520, 0, 0.38, -0.05));
-    scene.add(raceGame.car);
+  /* player car parented under loungeDecor so layer-1 camera always sees it */
+  if (raceGame.car) {
+    try { if (raceGame.car.parent) raceGame.car.parent.remove(raceGame.car); } catch (_) {}
+    try { scene.remove(raceGame.car); } catch (_) {}
   }
+  raceGame.car = mkRaceCar(0x1d9bf0);
+  raceGame.car.name = "RaceCarYou";
+  loungeDecor.add(raceGame.car);
   raceGame.car.visible = true;
-  /* ghost rivals for "up to 4" feel */
-  for (const g of raceGame.ghostCars) scene.remove(g);
+  for (const g of raceGame.ghostCars) {
+    try { if (g.parent) g.parent.remove(g); } catch (_) {}
+    try { scene.remove(g); } catch (_) {}
+  }
   raceGame.ghostCars = [];
+  const cols = [0xff6a4a, 0x7CFFB0, 0xd48cff];
+  const names = ["P2", "P3", "P4"];
   for (let i = 0; i < 3; i++) {
-    const ghost = new THREE.Group();
-    ghost.add(box(0.65, 0.26, 1.0, pick([0xff6a4a, 0x7CFFB0, 0xd48cff]), 0, 0.2, 0));
-    ghost.userData.ang = (i + 1) * 0.9;
-    ghost.userData.spd = 1.1 + i * 0.15;
-    scene.add(ghost);
+    const ghost = mkRaceCar(cols[i]);
+    ghost.name = "RaceCar" + names[i];
+    ghost.userData.ang = (i + 1) * 0.85;
+    ghost.userData.spd = 1.05 + i * 0.12 + Math.random() * 0.08;
+    ghost.userData.racerName = names[i];
+    ghost.userData.lap = 1;
+    loungeDecor.add(ghost);
     raceGame.ghostCars.push(ghost);
   }
+  raceGame.standings = ["You", "P2", "P3", "P4"];
   const hud = document.getElementById("raceHud");
   if (hud) { hud.classList.remove("hidden"); hud.setAttribute("aria-hidden", "false"); }
-  showMsg("🏎️ TIMELINE GP — 3 laps · beat the ghosts · ~2.5 min");
+  showMsg("🏎️ TIMELINE GP — 3 laps · WASD/stick · beat 3 rivals");
   try { SFX.pickup(); } catch (_) {}
 }
 function endRaceGame(won) {
   raceGame.active = false;
   raceGame.cool = 10;
   socialReading = false;
+  document.body.classList.remove("darts-active", "reading-tweets");
   setHeroForMiniGame(false);
-  if (raceGame.car) raceGame.car.visible = false;
-  for (const g of raceGame.ghostCars) { try { scene.remove(g); } catch (_) {} }
+  try { syncLoungeMobileUI(); } catch (_) {}
+  if (raceGame.car) {
+    try { if (raceGame.car.parent) raceGame.car.parent.remove(raceGame.car); } catch (_) {}
+    raceGame.car = null;
+  }
+  for (const g of raceGame.ghostCars) {
+    try { if (g.parent) g.parent.remove(g); } catch (_) {}
+  }
   raceGame.ghostCars = [];
   const hud = document.getElementById("raceHud");
   if (hud) { hud.classList.add("hidden"); hud.setAttribute("aria-hidden", "true"); }
   const bonus = won ? 500 : Math.floor(raceGame.lap * 80);
   score += bonus;
   updateHud();
-  showMsg(won ? "🏎️ YOU WIN TIMELINE GP · +" + bonus : "🏎️ Race over · +" + bonus);
+  showMsg(won ? "🏎️ YOU WIN TIMELINE GP · +" + bonus : "🏎️ Race over · +" + bonus + " · " + (raceGame.standings || []).join(", "));
 }
 function updateRaceGame(dt) {
   if (!raceGame.active || !loungeDecor || !loungeDecor.userData.raceCenter) return;
   raceGame.tLeft -= dt;
   const rc = loungeDecor.userData.raceCenter;
-  const scR = loungeDecor.userData.independent ? 1 : LOUNGE_SCALE;
-  const c = new THREE.Vector3(rc.x * scR, 0, rc.z * scR);
+  const c = new THREE.Vector3(rc.x, 0, rc.z);
+  const r = loungeDecor.userData.raceRadius || 3.85;
   const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
   const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
   const throttle = keys["KeyW"] || keys["ArrowUp"] || stickY < -0.25;
   const brake = keys["KeyS"] || keys["ArrowDown"] || stickY > 0.25;
-  const steer = (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0) + (keys["KeyD"] || keys["ArrowRight"] ? -1 : 0)
-    + (-stickX);
-  if (throttle) raceGame.speed = Math.min(2.8, raceGame.speed + dt * 2.2);
-  else raceGame.speed = Math.max(0.6, raceGame.speed - dt * 1.2);
-  if (brake) raceGame.speed = Math.max(0.2, raceGame.speed - dt * 3);
-  raceGame.angle += steer * dt * 1.8 * (0.4 + raceGame.speed / 3);
+  const steer = (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0) + (keys["KeyD"] || keys["ArrowRight"] ? -1 : 0) + (-stickX);
+  if (throttle) raceGame.speed = Math.min(3.2, raceGame.speed + dt * 2.4);
+  else raceGame.speed = Math.max(0.5, raceGame.speed - dt * 1.1);
+  if (brake) raceGame.speed = Math.max(0.15, raceGame.speed - dt * 3.2);
+  /* progress around oval */
   const prev = raceGame.progress || 0;
-  raceGame.progress = (raceGame.progress || 0) + raceGame.speed * dt * 0.35;
-  /* lap when wrapping */
+  raceGame.progress = prev + raceGame.speed * dt * 0.38;
   if (Math.floor(raceGame.progress / (Math.PI * 2)) > Math.floor(prev / (Math.PI * 2))) {
     raceGame.lap++;
     try { beep(660, 0.08, "square", 0.07); } catch (_) {}
     if (raceGame.lap > raceGame.laps) { endRaceGame(true); return; }
   }
   const ang = raceGame.progress;
-  const r = 3.9;
   const x = c.x + Math.cos(ang) * r;
   const z = c.z + Math.sin(ang) * r;
-  raceGame.car.position.set(x, 0.05, z);
-  raceGame.car.rotation.y = -ang + Math.PI / 2;
+  if (raceGame.car) {
+    raceGame.car.position.set(x, 0.05, z);
+    raceGame.car.rotation.y = -ang + Math.PI / 2;
+    raceGame.car.visible = true;
+    raceGame.car.traverse(o => { o.layers.set(1); o.visible = true; });
+  }
+  /* park pig under car / hide */
   pig.position.set(x, 0, z);
+  pig.visible = false;
   pigY = 0.1;
   yaw = -ang + Math.PI / 2;
+  const placements = [{ name: "You", prog: raceGame.progress + (raceGame.lap - 1) * Math.PI * 2 }];
   for (const g of raceGame.ghostCars) {
-    g.userData.ang += g.userData.spd * dt * 0.35;
+    g.userData.ang += g.userData.spd * dt * 0.38;
     const a = g.userData.ang;
     g.position.set(c.x + Math.cos(a) * r, 0.05, c.z + Math.sin(a) * r);
     g.rotation.y = -a + Math.PI / 2;
+    g.visible = true;
+    g.traverse(o => { o.layers.set(1); o.visible = true; });
+    placements.push({ name: g.userData.racerName || "AI", prog: a });
   }
-  camera.position.lerp(new THREE.Vector3(x - Math.sin(yaw) * 6, 4.5, z - Math.cos(yaw) * 6), Math.min(1, dt * 4));
-  camera.lookAt(x, 0.4, z);
+  placements.sort((a, b) => b.prog - a.prog);
+  raceGame.standings = placements.map(p => p.name);
+  /* chase cam */
+  const camX = x - Math.sin(yaw) * 7;
+  const camZ = z - Math.cos(yaw) * 7;
+  camera.position.lerp(new THREE.Vector3(camX, 5.2, camZ), Math.min(1, dt * 5));
+  camera.lookAt(x, 0.5, z);
+  camera.layers.set(1);
   const m = Math.max(0, Math.floor(raceGame.tLeft / 60));
-  const s = Math.max(0, Math.floor(raceGame.tLeft % 60));
+  const sec = Math.max(0, Math.floor(raceGame.tLeft % 60));
   const line = document.getElementById("raceLine");
-  if (line) line.textContent = `LAP ${Math.min(raceGame.lap, raceGame.laps)}/${raceGame.laps} · ${m}:${String(s).padStart(2,"0")} · SPEED ${raceGame.speed.toFixed(1)}`;
+  if (line) {
+    line.textContent = `LAP ${Math.min(raceGame.lap, raceGame.laps)}/${raceGame.laps} · ${m}:${String(sec).padStart(2, "0")} · ${raceGame.speed.toFixed(1)}u`;
+  }
+  const sub = document.getElementById("raceSub");
+  if (sub) sub.textContent = "Standings: " + raceGame.standings.join(" → ") + " · WASD / stick";
   if (raceGame.tLeft <= 0) endRaceGame(false);
 }
 
@@ -7252,31 +7368,131 @@ function buildIndependentLoungeWorld() {
     lb(bx, bz, 3.2, 2.7, 1.3);
   }
 
-  /* —— Game Arena —— */
+  /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
-    const tx = 14, tz = -2;
-    addZone("Game Arena", tx, tz, "#7CFFB0");
-    /* race oval */
+    /* ===== TIMELINE GP — WEST WALL race bay ===== */
+    const rcx = -17.5, rcz = 1.5;
+    addZone("Timeline GP", rcx, rcz, "#8fd1ff");
+    /* bay flooring */
+    g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
+    /* west-wall backboard + neon title */
+    g.add(box(0.2, 3.2, 11, 0x0e121a, -W / 2 + 0.45, 2.0, rcz));
+    g.add(box(0.08, 2.6, 10, 0x1a2435, -W / 2 + 0.35, 2.0, rcz));
+    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
+    raceBanner.scale.multiplyScalar(0.7);
+    raceBanner.position.set(-W / 2 + 0.55, 3.5, rcz);
+    g.add(raceBanner);
+    /* track oval — asphalt + gold lane */
+    const trackR0 = 3.0, trackR1 = 4.6;
     const track = new THREE.Mesh(
-      new THREE.RingGeometry(3.4, 5.0, 64),
-      new THREE.MeshStandardMaterial({ color: 0x1a1e28, roughness: 0.85 })
+      new THREE.RingGeometry(trackR0, trackR1, 72),
+      new THREE.MeshBasicMaterial({ color: 0x1c222c, toneMapped: false, side: THREE.DoubleSide })
     );
     track.rotation.x = -Math.PI / 2;
-    track.position.set(tx, 0.03, tz);
+    track.position.set(rcx, 0.06, rcz);
+    track.name = "RaceTrack";
     g.add(track);
     const lane = new THREE.Mesh(
-      new THREE.RingGeometry(4.1, 4.22, 64),
-      new THREE.MeshBasicMaterial({ color: 0xffd94a })
+      new THREE.RingGeometry(3.75, 3.9, 72),
+      new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false, side: THREE.DoubleSide })
     );
     lane.rotation.x = -Math.PI / 2;
-    lane.position.set(tx, 0.04, tz);
+    lane.position.set(rcx, 0.07, rcz);
     g.add(lane);
-    g.userData.raceCenter = new THREE.Vector3(tx, 0, tz);
-    const rt = textSprite("🏎️ TIMELINE GP · 4 racers", { size: 34, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
-    rt.scale.multiplyScalar(0.62);
-    rt.position.set(tx, 2.3, tz - 5.6);
-    g.add(rt);
-    g.userData.gameSpots.push({ kind: "race", pos: new THREE.Vector3(tx, 0, tz - 5.4), seats: 4 });
+    /* curb blocks around oval */
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const rr = trackR1 + 0.15;
+      g.add(box(0.35, 0.22, 0.35, 0x3a4048,
+        rcx + Math.cos(a) * rr, 0.14, rcz + Math.sin(a) * rr));
+    }
+    /* start/finish stripe */
+    g.add(box(0.2, 0.04, 1.5, 0xffffff, rcx + 3.85, 0.09, rcz));
+    const sf = textSprite("START / FINISH", { size: 22, color: "#ffffff", strokeW: 4, maxWidth: 0 });
+    sf.scale.multiplyScalar(0.4);
+    sf.position.set(rcx + 4.6, 0.55, rcz);
+    g.add(sf);
+    /* pit stools — 4 multiplayer seats */
+    for (let i = 0; i < 4; i++) {
+      const pz = rcz - 4.2 + i * 2.4;
+      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx + 5.6, 0.85, pz, 12));
+      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx + 5.6, 0.42, pz, 8));
+      registerSeat(g, rcx + 5.6, 0.95, pz, -Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+    }
+    /* walk-up pad in front of track */
+    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx + 5.2, 0.04, rcz));
+    const walkRace = textSprite("WALK HERE · START RACE", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+    walkRace.scale.multiplyScalar(0.48);
+    walkRace.position.set(rcx + 5.2, 1.9, rcz);
+    g.add(walkRace);
+    g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
+    g.userData.racePad = new THREE.Vector3(rcx + 5.2, 0, rcz);
+    g.userData.raceRadius = 3.85;
+    g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
+
+    /* ===== TRIVIA — NORTH WALL open bay (east of bar center) ===== */
+    const tqx = 8, tqz = -D / 2 + 3.2; /* against north wall */
+    addZone("Trivia Bay", tqx, tqz + 2.5, "#7CFFB0");
+    /* wall screen frame */
+    g.add(box(5.5, 3.2, 0.18, 0x0c1018, tqx, 2.2, -D / 2 + 2.35));
+    g.add(box(5.0, 2.7, 0.1, 0x101820, tqx, 2.2, -D / 2 + 2.25));
+    /* glowing quiz face */
+    const triviaFace = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.6, 2.4),
+      new THREE.MeshBasicMaterial({ color: 0x0a1a14, toneMapped: false })
+    );
+    triviaFace.position.set(tqx, 2.25, -D / 2 + 2.18);
+    g.add(triviaFace);
+    /* live quiz canvas texture */
+    const tCanvas = document.createElement("canvas");
+    tCanvas.width = 512; tCanvas.height = 288;
+    const tCtx = tCanvas.getContext("2d");
+    const paintTriviaIdle = () => {
+      tCtx.fillStyle = "#07140f"; tCtx.fillRect(0, 0, 512, 288);
+      tCtx.strokeStyle = "#7CFFB0"; tCtx.lineWidth = 8; tCtx.strokeRect(10, 10, 492, 268);
+      tCtx.fillStyle = "#7CFFB0";
+      tCtx.font = "bold 42px system-ui, sans-serif";
+      tCtx.textAlign = "center";
+      tCtx.fillText("X TRIVIA", 256, 120);
+      tCtx.font = "600 22px system-ui, sans-serif";
+      tCtx.fillStyle = "#a8e0c8";
+      tCtx.fillText("4 players · walk up to play", 256, 170);
+      tCtx.fillText("Timeline lore · memes · tech", 256, 210);
+    };
+    paintTriviaIdle();
+    const tTex = new THREE.CanvasTexture(tCanvas);
+    tTex.colorSpace = THREE.SRGBColorSpace;
+    triviaFace.material.map = tTex;
+    triviaFace.material.needsUpdate = true;
+    g.userData.triviaScreen = { mesh: triviaFace, canvas: tCanvas, ctx: tCtx, tex: tTex, paintIdle: paintTriviaIdle };
+    const qt = textSprite("TRIVIA · 4 PLAYERS", { size: 32, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    qt.scale.multiplyScalar(0.55);
+    qt.position.set(tqx, 4.0, -D / 2 + 2.5);
+    g.add(qt);
+    /* 4 chairs facing the wall screen */
+    for (let i = 0; i < 4; i++) {
+      const sx = tqx - 2.4 + i * 1.6;
+      const sz = tqz + 2.8;
+      g.add(box(0.7, 0.12, 0.7, WALNUT, sx, 0.45, sz));
+      g.add(box(0.7, 0.55, 0.12, TEAL, sx, 0.75, sz - 0.28));
+      g.add(cyl(0.05, 0.05, 0.42, BRASS, sx, 0.22, sz, 8));
+      registerSeat(g, sx, 0.55, sz, Math.PI, "Trivia seat " + (i + 1), "Trivia Bay");
+    }
+    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, tqx, 0.04, tqz + 2.8));
+    const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+    walkT.scale.multiplyScalar(0.45);
+    walkT.position.set(tqx, 1.7, tqz + 2.8);
+    g.add(walkT);
+    g.userData.triviaPos = new THREE.Vector3(tqx, 0, tqz + 2.8);
+    g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
+
+    /* darts remain on EAST WALL (built below in same block historically — keep darts section after) */
+  }
+
+  /* —— Darts Alley (east wall) — kept separate for clarity —— */
+  {
+    const tx = 14, tz = -2; /* anchor for nearby labels only */
+    addZone("Game Arena", tx, tz, "#7CFFB0");
 
     /* darts — large bright board on EAST WALL, clearly in-room (never buried) */
     try {
@@ -7407,21 +7623,6 @@ function buildIndependentLoungeWorld() {
       g.add(title);
       g.userData.gameSpots.push({ kind: "darts", pos: g.userData.dartTablePos.clone(), seats: 3 });
     } catch (err) { console.warn("darts alley build", err); }
-
-    /* trivia */
-    const qx = tx - 9, qz = tz - 5;
-    g.add(box(1.6, 1.5, 0.9, 0x152030, qx, 0.85, qz));
-    g.add(box(1.35, 0.8, 0.08, 0x7CFFB0, qx, 1.55, qz + 0.5));
-    g.userData.triviaPos = new THREE.Vector3(qx, 0, qz + 1.2);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      registerSeat(g, qx + Math.cos(a) * 1.7, 0.55, qz + Math.sin(a) * 1.7, a + Math.PI, "Trivia seat " + (i + 1), "Game Arena");
-    }
-    const qt = textSprite("🧠 TRIVIA · 4 players", { size: 30, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    qt.scale.multiplyScalar(0.55);
-    qt.position.set(qx, 2.25, qz);
-    g.add(qt);
-    g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
   }
 
   /* dance floor */
@@ -8575,6 +8776,8 @@ function updateSocialLounge(dt) {
       }
     }
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
+    triviaGame.cool = Math.max(0, (triviaGame.cool || 0) - dt);
+    raceGame.cool = Math.max(0, (raceGame.cool || 0) - dt);
     /* clout striker */
     strikerGame.cool = Math.max(0, strikerGame.cool - dt);
     if (!strikerGame.active && !dartGame.active && !arcadeGame.active && strikerGame.cool <= 0 && L.strikerPos) {
@@ -10615,11 +10818,19 @@ addEventListener("keydown", e => {
       const L = loungeDecor && loungeDecor.userData;
       if (L) {
         const sc = L.independent ? 1 : LOUNGE_SCALE;
-        if (L.triviaPos && pig.position.distanceTo(new THREE.Vector3(L.triviaPos.x * sc, 0, L.triviaPos.z * sc)) < 3.2) {
-          startTriviaGame(); return;
+        if (!triviaGame.active && (triviaGame.cool || 0) <= 0 && L.triviaPos) {
+          const tp = L.triviaPos;
+          const tx = tp.x * (L.independent ? 1 : sc), tz = tp.z * (L.independent ? 1 : sc);
+          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 2.8) {
+            startTriviaGame(); return;
+          }
         }
-        if (L.raceCenter && pig.position.distanceTo(new THREE.Vector3(L.raceCenter.x * sc, 0, L.raceCenter.z * sc)) < 6.5) {
-          startRaceGame(); return;
+        if (!raceGame.active && (raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
+          const rp = L.racePad || L.raceCenter;
+          const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
+          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 3.0) {
+            startRaceGame(); return;
+          }
         }
         if (L.dartTablePos && pig.position.distanceTo(new THREE.Vector3(L.dartTablePos.x * sc, 0, L.dartTablePos.z * sc)) < 2.8) {
           startDartLeague(); return;
@@ -14099,6 +14310,14 @@ renderer.setAnimationLoop(() => {
           for (const d of dartGame.darts || []) dartOnLoungeLayer(d);
           for (const f of dartGame.flying || []) if (f && f.mesh) dartOnLoungeLayer(f.mesh);
         } catch (_) {}
+      } else if (typeof raceGame !== "undefined" && raceGame.active) {
+        if (pig) pig.visible = false;
+        try {
+          if (raceGame.car) dartOnLoungeLayer(raceGame.car);
+          for (const g of raceGame.ghostCars || []) dartOnLoungeLayer(g);
+        } catch (_) {}
+      } else if (typeof triviaGame !== "undefined" && triviaGame.active) {
+        if (pig) { pig.layers.set(L); pig.traverse(o => o.layers.set(L)); /* keep visible at seats */ }
       } else if (pig) {
         pig.layers.set(L); pig.traverse(o => o.layers.set(L)); pig.visible = true;
       }
