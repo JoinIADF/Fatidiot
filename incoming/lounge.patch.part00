@@ -1,0 +1,169 @@
+--- a/index.html
++++ b/index.html
+@@ -6959,7 +6959,7 @@
+   { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
+   { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
+   { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
+-  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the west-wall track", "Behind the bar", "VIP booth couch"], a: 1 },
++  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the SE track", "Behind the bar", "VIP booth couch"], a: 1 },
+ ];
+ 
+ /* —— TRIVIA (wall bay, 4-player scores) —— */
+@@ -7752,17 +7752,17 @@
+ 
+   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
+   {
+-    /* ===== TIMELINE GP — WEST WALL race bay ===== */
+-    const rcx = -22, rcz = -8; /* empty NW corner, clear of all furniture */
++    /* ===== TIMELINE GP — SE corner (clear of bar + west wall) ===== */
++    const rcx = 17.5, rcz = 12.5;
+     addZone("Timeline GP", rcx, rcz, "#8fd1ff");
+     /* bay flooring */
+     g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
+-    /* west-wall backboard + neon title */
+-    g.add(box(0.2, 3.2, 11, 0x0e121a, -W / 2 + 0.45, 2.0, rcz));
+-    g.add(box(0.08, 2.6, 10, 0x1a2435, -W / 2 + 0.35, 2.0, rcz));
++    /* east-side backboard + neon title (away from Algorithm Bar) */
++    g.add(box(0.2, 3.2, 11, 0x0e121a, W / 2 - 0.45, 2.0, rcz));
++    g.add(box(0.08, 2.6, 10, 0x1a2435, W / 2 - 0.35, 2.0, rcz));
+     const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
+     raceBanner.scale.multiplyScalar(0.7);
+-    raceBanner.position.set(-W / 2 + 0.55, 3.5, rcz);
++    raceBanner.position.set(W / 2 - 0.55, 3.5, rcz);
+     g.add(raceBanner);
+     /* track oval — asphalt + gold lane */
+     const trackR0 = 3.0, trackR1 = 4.6;
+@@ -7794,21 +7794,21 @@
+     sf.scale.multiplyScalar(0.4);
+     sf.position.set(rcx + 4.6, 0.55, rcz);
+     g.add(sf);
+-    /* pit stools — 4 multiplayer seats */
++    /* pit stools — room-side (west of track) so pad faces into the lounge */
+     for (let i = 0; i < 4; i++) {
+       const pz = rcz - 2.2 + i * 2.2;
+-      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx + 5.6, 0.85, pz, 12));
+-      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx + 5.6, 0.42, pz, 8));
+-      registerSeat(g, rcx + 5.6, 0.95, pz, -Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
++      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx - 5.6, 0.85, pz, 12));
++      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx - 5.6, 0.42, pz, 8));
++      registerSeat(g, rcx - 5.6, 0.95, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+     }
+-    /* walk-up pad in front of track */
+-    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx + 5.2, 0.04, rcz));
++    /* walk-up pad — stand here to auto-start race */
++    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx - 5.2, 0.04, rcz));
+     const walkRace = textSprite("WALK HERE · START RACE", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+     walkRace.scale.multiplyScalar(0.48);
+-    walkRace.position.set(rcx + 5.2, 1.9, rcz);
++    walkRace.position.set(rcx - 5.2, 1.9, rcz);
+     g.add(walkRace);
+     g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
+-    g.userData.racePad = new THREE.Vector3(rcx + 5.2, 0, rcz);
++    g.userData.racePad = new THREE.Vector3(rcx - 5.2, 0, rcz);
+     g.userData.raceRadius = 3.85;
+     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
+ 
+@@ -8098,17 +8098,11 @@
+ try { window.getLoungeMediaScreens = getLoungeMediaScreens; } catch (_) {}
+ 
+ /* ============================== LOUNGE LIVE TV ==============================
+- * Four independent TVs on the bar wall, one tuner each.
+- * Lineup (iptv-org database, main US feeds): CBS News 24/7 - ABC News Live -
+- * CNBC - LiveNOW from FOX. TV n starts on channel n.
+- * - REMOTES: four remotes sit on the bar, one per TV. Walk up to grab one;
+- *   while holding it, T changes THAT TV's channel.
+- * - CAPTIONS: on by default (C toggles). Uses embedded CEA-608/708 cues via
+- *   hls.js when the stream carries them.
+- * - SOUND: walk up to a TV and press V — that TV unmutes (others mute).
+- *   Walk away and it mutes itself.
+- * Dead/geo-blocked/CORS-poisoned streams auto-skip. Failure never breaks
+- * the game — screens fall back to their idle art. */
++ * Four TVs always on, one fixed channel each (TV n = channel n).
++ * Closed captions always on. No remotes / no T/C channel hotkeys.
++ * Walk up to a screen and press V to engage — focuses that channel and
++ * unmutes volume for this user only. Walk away or V again to disengage.
++ * Dead/geo-blocked streams auto-skip. Failure never breaks the game. */
+ const LIVE_TV_CHANNELS = [
+   { name: "CBS News 24/7", urls: [
+     "https://jmp2.uk/plu-6350fdd266e9ea0007bedec5.m3u8",
+@@ -8131,7 +8125,7 @@
+ ];
+ const liveTV = {
+   active: false, tuners: [], remotes: [], heldRemote: null,
+-  captions: true, audioTV: null, frameSkip: 0,
++  captions: true, audioTV: null, focused: null, frameSkip: 0,
+ };
+ function ensureHlsJs() {
+   return new Promise((resolve, reject) => {
+@@ -8170,8 +8164,8 @@
+       if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
+       ctx2.drawImage(v, dx, dy, dw, dh);
+     }
+-    /* closed captions */
+-    if (liveTV.captions) {
++    /* closed captions — always on */
++    {
+       const cue = liveTVActiveCue(t);
+       if (cue) {
+         ctx2.font = "bold 18px system-ui, sans-serif";
+@@ -8288,6 +8282,7 @@
+   } catch (e) { liveTVTuneTV(idx, false); }
+ }
+ function liveTVBuildRemotes() {
++  return; /* remotes removed — engage TVs with V near a screen */
+   if (liveTV.remotes.length || !loungeDecor) return;
+   /* four remotes along the (lowered) bar top: one per TV */
+   const spots = [[-16.5, -11.3], [-12.2, -11.3], [-7.8, -11.3], [-3.4, -11.3]];
+@@ -8371,6 +8366,7 @@
+ function stopLoungeLiveTV() {
+   liveTV.active = false;
+   liveTV.audioTV = null;
++  liveTV.focused = null;
+   liveTV.heldRemote = null;
+   for (const t of liveTV.tuners) {
+     t.playing = false;
+@@ -8401,42 +8397,47 @@
+ }
+ function liveTVSetAudio(idx) {
+   liveTV.audioTV = idx;
+-  for (const t of liveTV.tuners) t.video.muted = (t.idx !== idx);
++  for (const t of liveTV.tuners) {
++    try { t.video.muted = (idx == null || t.idx !== idx); } catch (_) {}
++  }
+   if (idx != null) {
+     const t = liveTV.tuners[idx];
+-    t.video.play().catch(() => {});
+-    try { showMsg("\ud83d\udd0a TV-" + (idx + 1) + " (" + t.name + ") sound ON \u00b7 V again to mute \u00b7 mutes as you walk away"); } catch (_) {}
++    try { t.video.volume = 1; t.video.play().catch(() => {}); } catch (_) {}
++  }
++}
++function liveTVEngage(idx) {
++  if (idx == null || !liveTV.active) return;
++  if (liveTV.focused === idx) {
++    liveTV.focused = null;
++    liveTVSetAudio(null);
++    try { showMsg("TV disengaged · muted"); } catch (_) {}
++    return;
+   }
++  liveTV.focused = idx;
++  liveTVSetAudio(idx);
++  const t = liveTV.tuners[idx];
++  try { showMsg("Watching " + ((t && t.name) || ("TV-" + (idx + 1))) + " · CC on · V to leave"); } catch (_) {}
++  try {
++    const scr = getLoungeMediaScreens()[idx];
++    if (scr && scr.mesh) {
++      const p = new THREE.Vector3();
++      scr.mesh.getWorldPosition(p);
++      yaw = Math.atan2(p.x - pig.position.x, p.z - pig.position.z);
++    }
++  } catch (_) {}
+ }
+ function updateLoungeLiveTV() {
+   if (!liveTV.active) return;
+-  /* remote pickup by proximity */
+-  for (const r of liveTV.remotes) {
+-    if (r.held || !r.mesh.visible) continue;
++  /* engaged TV: mute when player walks away (volume only while focused) */
++  if (liveTV.focused != null) {
+     const p = new THREE.Vector3();
+-    r.mesh.getWorl
