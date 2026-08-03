@@ -1512,6 +1512,120 @@
     z-index: -1 !important;
   }
 
+
+  /* —— Multiplayer lounge —— */
+  #mpJoinModal {
+    position: fixed; inset: 0; z-index: 220; display: flex; align-items: center; justify-content: center;
+    background: rgba(4,6,12,0.82); pointer-events: auto;
+  }
+  #mpJoinModal.hidden { display: none !important; }
+  #mpJoinModal .mpj-card {
+    width: min(420px, 92vw); background: linear-gradient(165deg, #141a28, #0c1018);
+    border: 1px solid rgba(124,255,176,0.35); border-radius: 18px; padding: 22px 20px 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55); color: #e8eef8; font-family: system-ui, sans-serif;
+  }
+  #mpJoinModal h2 { font: 800 20px/1.2 system-ui; margin: 0 0 6px; color: #7CFFB0; letter-spacing: 0.04em; }
+  #mpJoinModal .mpj-sub { font: 600 13px/1.4 system-ui; color: #8b98a8; margin-bottom: 14px; }
+  #mpJoinModal label { display: block; font: 700 11px/1 system-ui; color: #8fd1ff; letter-spacing: 0.08em; margin: 10px 0 6px; text-transform: uppercase; }
+  #mpJoinModal input {
+    width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid #2a3548; background: #0a0e16; color: #e8eef8; font: 600 15px system-ui;
+  }
+  #mpJoinModal input:focus { outline: none; border-color: #7CFFB0; }
+  #mpJoinModal .mpj-actions { display: flex; gap: 10px; margin-top: 16px; }
+  #mpJoinModal .mpj-actions button {
+    flex: 1; padding: 12px; border-radius: 10px; border: 2px solid #3a4558;
+    background: #141a24; color: #e8eef8; font: 800 13px system-ui; cursor: pointer;
+  }
+  #mpJoinModal .mpj-actions button.primary { border-color: #7CFFB0; color: #7CFFB0; background: rgba(124,255,176,0.08); }
+  #mpJoinModal .mpj-err { color: #ff6a6a; font: 600 12px system-ui; min-height: 16px; margin-top: 8px; }
+  #mpJoinModal .mpj-badge {
+    display: inline-block; font: 700 10px system-ui; letter-spacing: 0.1em; text-transform: uppercase;
+    color: #ffd94a; border: 1px solid rgba(255,217,74,0.4); padding: 3px 8px; border-radius: 999px; margin-bottom: 10px;
+  }
+  #mpHud {
+    position: fixed; top: max(10px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+    z-index: 90; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  #mpHud.hidden { display: none !important; }
+  #mpRoomChip {
+    pointer-events: auto; background: rgba(10,14,22,0.88); border: 1px solid rgba(143,209,255,0.4);
+    color: #8fd1ff; font: 700 12px/1.2 system-ui; padding: 8px 14px; border-radius: 999px;
+    letter-spacing: 0.04em; cursor: pointer;
+  }
+  #mpRoomChip b { color: #7CFFB0; }
+  #mpChatDock {
+    position: fixed; left: 12px; bottom: max(120px, calc(env(safe-area-inset-bottom) + 100px));
+    z-index: 95; width: min(340px, 46vw); max-height: 28vh; overflow: hidden;
+    pointer-events: none; display: flex; flex-direction: column; gap: 4px;
+  }
+  #mpChatDock.hidden { display: none !important; }
+  #mpChatDock .mpc-line {
+    background: rgba(8,12,18,0.72); border-left: 3px solid #1d9bf0; padding: 6px 10px; border-radius: 0 8px 8px 0;
+    color: #e8eef8; font: 600 12px/1.35 system-ui; text-shadow: 0 1px 2px #000; animation: mpcIn 0.2s ease;
+  }
+  #mpChatDock .mpc-line .n { color: #7CFFB0; font-weight: 800; }
+  #mpChatDock .mpc-line.sys { border-left-color: #ffd94a; opacity: 0.9; }
+  @keyframes mpcIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  #mpChatBar {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: max(18px, env(safe-area-inset-bottom)); z-index: 100;
+    display: flex; gap: 8px; align-items: center; width: min(520px, 94vw); pointer-events: auto;
+  }
+  #mpChatBar.hidden { display: none !important; }
+  #mpChatBar input {
+    flex: 1; padding: 12px 14px; border-radius: 12px; border: 1px solid #2a3548;
+    background: rgba(10,14,22,0.92); color: #e8eef8; font: 600 14px system-ui;
+  }
+  #mpChatBar input:focus { outline: none; border-color: #1d9bf0; }
+  #mpChatBar button {
+    padding: 12px 14px; border-radius: 12px; border: 1px solid #2a3548;
+    background: #141a24; color: #e8eef8; font: 800 12px system-ui; cursor: pointer; white-space: nowrap;
+  }
+  #mpChatBar button.primary { border-color: #1d9bf0; color: #8fd1ff; }
+  #mpChatBar button.group { border-color: #d48cff; color: #d48cff; }
+  #mpGroupChat {
+    position: fixed; right: 12px; top: max(56px, env(safe-area-inset-top));
+    z-index: 110; width: min(360px, 92vw); height: min(52vh, 480px);
+    background: linear-gradient(180deg, #121820, #0a0e14); border: 1px solid rgba(212,140,255,0.4);
+    border-radius: 16px; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5); font-family: system-ui, sans-serif; pointer-events: auto;
+  }
+  #mpGroupChat.hidden { display: none !important; }
+  #mpGroupChat .mpg-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 12px 14px; border-bottom: 1px solid #1e2838; background: rgba(212,140,255,0.08);
+  }
+  #mpGroupChat .mpg-head h3 { margin: 0; font: 800 14px system-ui; color: #d48cff; letter-spacing: 0.06em; }
+  #mpGroupChat .mpg-head span { font: 600 11px system-ui; color: #8b98a8; }
+  #mpGroupChat .mpg-close {
+    border: 0; background: transparent; color: #8b98a8; font: 800 16px system-ui; cursor: pointer;
+  }
+  #mpGroupChat .mpg-log {
+    flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  }
+  #mpGroupChat .mpg-msg {
+    background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 10px;
+  }
+  #mpGroupChat .mpg-msg .who { font: 800 12px system-ui; color: #7CFFB0; }
+  #mpGroupChat .mpg-msg .who.me { color: #8fd1ff; }
+  #mpGroupChat .mpg-msg .txt { font: 600 13px/1.4 system-ui; color: #e8eef8; margin-top: 2px; word-break: break-word; }
+  #mpGroupChat .mpg-msg .t { font: 600 10px system-ui; color: #5a6578; margin-top: 4px; }
+  #mpGroupChat .mpg-foot {
+    display: flex; gap: 8px; padding: 10px; border-top: 1px solid #1e2838;
+  }
+  #mpGroupChat .mpg-foot input {
+    flex: 1; padding: 10px 12px; border-radius: 10px; border: 1px solid #2a3548;
+    background: #0a0e16; color: #e8eef8; font: 600 13px system-ui;
+  }
+  #mpGroupChat .mpg-foot button {
+    padding: 10px 14px; border-radius: 10px; border: 1px solid #d48cff;
+    background: rgba(212,140,255,0.12); color: #d48cff; font: 800 12px system-ui; cursor: pointer;
+  }
+  body.mp-chat-focus #loungeMobBar,
+  body.mp-chat-focus #mobileUI { pointer-events: none; opacity: 0.35; }
+  #overlay .modeBtn.mp { border-color: #d48cff; color: #d48cff; }
+
 </style>
 </head>
 <body>
@@ -1554,11 +1668,12 @@
   JUMP · X BOOM · RIFLE · SWAP buttons</span><br>
   Shoot vendings for RX · PCs/servers for complaints · CEO office rants<br>
   Jump out windows to escape<br>
-  <span style="opacity:.75;font-size:13px">Desktop: <b>2</b> Starbase · <b>3</b> Lounge · Create Live Lounge invites friends</span></p>
+  <span style="opacity:.75;font-size:13px">Desktop: <b>2</b> Starbase · <b>3</b> Lounge · <b>JOIN MULTIPLAYER</b> for live guests (Playroom)</span></p>
   <div class="modeRow">
     <button type="button" class="modeBtn primary" id="btnPlay">WORKING AT X</button>
     <button type="button" class="modeBtn lounge" id="btnLounge">TIMELINE LOUNGE</button>
     <button type="button" class="modeBtn live" id="btnLiveLounge">CREATE LIVE LOUNGE</button>
+    <button type="button" class="modeBtn mp" id="btnMpLounge">JOIN MULTIPLAYER</button>
     <button type="button" class="modeBtn star" id="btnStarbase">DEFEND STARBASE</button>
   </div>
   <p class="go" id="overlayGo">TAP / CLICK — WORKING AT X</p>
@@ -1646,6 +1761,48 @@
     </div>
   </div>
 </div>
+
+<!-- Multiplayer join + chat -->
+<div id="mpJoinModal" class="hidden" aria-hidden="true">
+  <div class="mpj-card" role="dialog" aria-labelledby="mpjTitle">
+    <div class="mpj-badge">Unverified guest · max 30</div>
+    <h2 id="mpjTitle">Join Multiplayer Lounge</h2>
+    <p class="mpj-sub">Enter as a guest. Pick a display name — no X verification. Share the room code so friends can pile in.</p>
+    <label for="mpName">Display name</label>
+    <input id="mpName" maxlength="24" placeholder="e.g. LoungeCat" autocomplete="nickname" />
+    <label for="mpRoom">Room code (optional)</label>
+    <input id="mpRoom" maxlength="12" placeholder="Leave blank to create a new room" autocomplete="off" spellcheck="false" />
+    <div class="mpj-err" id="mpjErr"></div>
+    <div class="mpj-actions">
+      <button type="button" id="mpjCancel">Cancel</button>
+      <button type="button" class="primary" id="mpjGo">Enter lounge</button>
+    </div>
+  </div>
+</div>
+<div id="mpHud" class="hidden" aria-hidden="true">
+  <div id="mpRoomChip" title="Click to copy room code">ROOM <b id="mpRoomCode">————</b> · <span id="mpCount">1</span>/30 · guest</div>
+</div>
+<div id="mpChatDock" class="hidden" aria-hidden="true"></div>
+<div id="mpChatBar" class="hidden" aria-hidden="true">
+  <input id="mpChatInput" maxlength="160" placeholder="Say something to the lounge… (Enter)" autocomplete="off" />
+  <button type="button" class="primary" id="mpChatSend">Send</button>
+  <button type="button" class="group" id="mpChatOpen">Group chat</button>
+</div>
+<div id="mpGroupChat" class="hidden" aria-hidden="true">
+  <div class="mpg-head">
+    <div>
+      <h3>LOUNGE GROUP CHAT</h3>
+      <span id="mpgSub">Everyone in the room · like a stream chat</span>
+    </div>
+    <button type="button" class="mpg-close" id="mpgClose" aria-label="Close">✕</button>
+  </div>
+  <div class="mpg-log" id="mpgLog"></div>
+  <div class="mpg-foot">
+    <input id="mpgInput" maxlength="200" placeholder="Message the group…" autocomplete="off" />
+    <button type="button" id="mpgSend">Chat</button>
+  </div>
+</div>
+
 <div id="liveChatToast" aria-live="polite"></div>
 <div id="zoneTag">LOBBY</div>
 <div id="sitHint">[E] Sit</div>
@@ -1664,6 +1821,7 @@
   <div id="raceLine">LAP 1/3 · 2:00</div>
   <div id="raceSub" style="font-weight:600;opacity:.85;font-size:12px;margin-top:4px">WASD / stick to race</div>
 </div>
+<script src="https://unpkg.com/playroomkit@0.0.97/multiplayer.full.umd.js" crossorigin="anonymous"></script>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
@@ -6070,7 +6228,9 @@ function renderLoungePanel() {
 
   if (loungePanelMode === "activated") {
     if (title) title.textContent = "Top accounts you interact with that can enter the lounge";
-    if (sub) sub.textContent = "One tap brings them near you. Tick the boxes to move accounts into the lounge or remove them.";
+    if (sub) sub.textContent = (typeof mpListIsDemoOnly === "function" && mpListIsDemoOnly())
+      ? "DEMO LIST · multiplayer guests can browse the roster only (no add/remove)."
+      : "One tap brings them near you. Tick the boxes to move accounts into the lounge or remove them.";
     /* toolbar: neutral nav on the left, add-users pushed to the right.
        Selection actions live at the BOTTOM now (see renderActivatedActions). */
     if (toolbar) toolbar.innerHTML = `
@@ -6099,8 +6259,12 @@ function renderLoungePanel() {
     renderActivatedActions();
   } else if (loungePanelMode === "favorites") {
     if (title) title.textContent = "Favorite Accounts";
-    if (sub) sub.textContent = "Master bank. Push people into Activated, or remove from favorites. Activated pulls from here.";
-    if (toolbar) toolbar.innerHTML = `
+    if (sub) sub.textContent = (typeof mpListIsDemoOnly === "function" && mpListIsDemoOnly())
+      ? "DEMO · browse only. Multiplayer guests cannot add or remove accounts."
+      : "Master bank. Push people into Activated, or remove from favorites. Activated pulls from here.";
+    if (toolbar) toolbar.innerHTML = (typeof mpListIsDemoOnly === "function" && mpListIsDemoOnly()) ? `
+      <button type="button" data-act="activated">← Activated</button>
+      <button type="button" disabled title="Demo only">View only</button>` : `
       <button type="button" data-act="activated">← Activated</button>
       <button type="button" class="hi" data-act="activate">Activate selected</button>
       <button type="button" class="danger" data-act="unfav">Remove from favorites</button>
@@ -6229,6 +6393,13 @@ function renderLoungePanel() {
 /* Activated view: the bottom bar stays empty until rows are ticked, then
    offers exactly two verbs — Move to Lounge / Remove. */
 function renderActivatedActions() {
+  if (typeof mpListIsDemoOnly === "function" && mpListIsDemoOnly()) {
+    const actions = document.getElementById("lpActions");
+    if (actions) {
+      actions.innerHTML = `<div class="lp-selcount">Multiplayer guest · list is view-only (demo)</div>`;
+    }
+    return;
+  }
   if (loungePanelMode !== "activated") return;
   const actions = document.getElementById("lpActions");
   if (!actions) return;
@@ -6255,6 +6426,13 @@ function handleLoungePanelAction(act) {
   if (act === "close") { closeLoungePanel(); return; }
   if (act === "activated") { openLoungePanel("activated"); return; }
   if (act === "favs") { openLoungePanel("favorites"); return; }
+  /* multiplayer guests: navigate list only — no add/remove */
+  if (typeof mpListIsDemoOnly === "function" && mpListIsDemoOnly()) {
+    if (act === "add" || act === "remove" || act === "tofav" || act === "unfav" || act === "activate") {
+      showMsg("Demo list — multiplayer guests can't add or remove");
+      return;
+    }
+  }
   if (act === "add") { loungeFollowQuery = ""; openLoungePanel("followAdd"); return; }
   if (act === "remove") {
     const hs = selectedLoungeHandles();
@@ -6751,6 +6929,7 @@ const triviaGame = {
   aiTimer: 0,
 };
 function startTriviaGame() {
+  try { if (MP && MP.active && typeof mpSendChat === "function") mpSendChat((MP.displayName||"Guest") + " started trivia"); } catch (_) {}
   if (triviaGame.active) return;
   triviaGame.active = true;
   triviaGame.i = 0;
@@ -6908,6 +7087,7 @@ function mkRaceCar(color) {
   return car;
 }
 function startRaceGame() {
+  try { if (MP && MP.active && typeof mpSendChat === "function") mpSendChat((MP.displayName||"Guest") + " started Timeline GP"); } catch (_) {}
   if (raceGame.active) return;
   if (!loungeDecor || !loungeDecor.userData || !loungeDecor.userData.raceCenter) return;
   raceGame.active = true;
@@ -8639,6 +8819,568 @@ function setLoungeHeroVisible(on) {
   } catch (_) {}
 }
 
+
+/* ============================================================
+   MULTIPLAYER LOUNGE — Playroom Kit (zero-server WebRTC sync)
+   Guests: unverified, name picker, max 30, chat + group chat,
+   sit/sync/games presence, LIST is view-only demo for guests.
+   ============================================================ */
+const MP = {
+  MAX: 30,
+  active: false,
+  connecting: false,
+  displayName: "",
+  roomCode: "",
+  remotes: new Map(), /* id -> { player, mesh, last } */
+  chatLog: [],
+  dockLines: [],
+  syncT: 0,
+  isGuest: true, /* multiplayer joiners are always unverified guests for list permissions */
+  demoListOnly: true,
+};
+
+function mpPR() {
+  return (typeof window !== "undefined" && (window.Playroom || window.playroomkit)) || null;
+}
+
+function mpOpenJoinModal() {
+  const m = document.getElementById("mpJoinModal");
+  if (!m) return;
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden", "false");
+  const name = document.getElementById("mpName");
+  const err = document.getElementById("mpjErr");
+  if (err) err.textContent = "";
+  if (name) {
+    try {
+      name.value = localStorage.getItem("fatidiot_mp_name") || "";
+    } catch (_) {}
+    setTimeout(() => { try { name.focus(); } catch (_) {} }, 50);
+  }
+}
+
+function mpCloseJoinModal() {
+  const m = document.getElementById("mpJoinModal");
+  if (!m) return;
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden", "true");
+}
+
+function mpSetHudVisible(on) {
+  for (const id of ["mpHud", "mpChatDock", "mpChatBar"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.classList.toggle("hidden", !on);
+    el.setAttribute("aria-hidden", on ? "false" : "true");
+  }
+  if (!on) {
+    const g = document.getElementById("mpGroupChat");
+    if (g) { g.classList.add("hidden"); g.setAttribute("aria-hidden", "true"); }
+  }
+}
+
+function mpUpdateRoomChip() {
+  const PR = mpPR();
+  const codeEl = document.getElementById("mpRoomCode");
+  const countEl = document.getElementById("mpCount");
+  if (codeEl) codeEl.textContent = MP.roomCode || (PR && PR.getRoomCode && PR.getRoomCode()) || "····";
+  let n = 1;
+  try {
+    if (PR && PR.getParticipants) n = Object.keys(PR.getParticipants()).length;
+    else n = 1 + MP.remotes.size;
+  } catch (_) { n = 1 + MP.remotes.size; }
+  if (countEl) countEl.textContent = String(Math.min(MP.MAX, n));
+}
+
+function mpNameOf(player) {
+  if (!player) return "Guest";
+  try {
+    const s = player.getState && player.getState("displayName");
+    if (s) return String(s).slice(0, 24);
+  } catch (_) {}
+  try {
+    const p = player.getProfile && player.getProfile();
+    if (p && p.name) return String(p.name).slice(0, 24);
+  } catch (_) {}
+  return "Guest";
+}
+
+function mpColorOf(player) {
+  try {
+    const p = player.getProfile && player.getProfile();
+    if (p && p.color && p.color.hex) return p.color.hex;
+    if (p && p.color && p.color.hexString) return parseInt(String(p.color.hexString).replace("#", ""), 16);
+  } catch (_) {}
+  return 0x1d9bf0;
+}
+
+function buildMpRemoteAvatar(name, colorHex) {
+  const g = new THREE.Group();
+  g.name = "MpGuest";
+  const col = new THREE.Color(colorHex || 0x1d9bf0);
+  const shirt = col.clone().multiplyScalar(0.55);
+  g.add(box(0.55, 0.75, 0.32, shirt.getHex(), 0, 1.15, 0));
+  g.add(box(0.22, 0.65, 0.22, shirt.getHex(), -0.4, 1.12, 0));
+  g.add(box(0.22, 0.65, 0.22, shirt.getHex(), 0.4, 1.12, 0));
+  g.add(box(0.24, 0.65, 0.26, 0x2a3038, -0.16, 0.48, 0));
+  g.add(box(0.24, 0.65, 0.26, 0x2a3038, 0.16, 0.48, 0));
+  /* whole-head letter/PFP style sprite */
+  const letterMap = avatarTex(name, "#" + (colorHex >>> 0).toString(16).padStart(6, "0"));
+  const head = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: letterMap, transparent: true, toneMapped: false, depthTest: true, sizeAttenuation: true,
+  }));
+  head.position.set(0, 1.92, 0);
+  head.scale.set(0.85, 0.85, 1);
+  head.userData.noOutline = true;
+  head.userData.isPfpHead = true;
+  g.add(head);
+  g.userData.pfpHead = head;
+  const nameTag = textSprite(name, { size: 34, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
+  nameTag.position.set(0, 2.58, 0);
+  nameTag.scale.multiplyScalar(0.55);
+  g.add(nameTag);
+  g.userData.nameTag = nameTag;
+  const badge = textSprite("GUEST · UNVERIFIED", { size: 22, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
+  badge.position.set(0, 2.28, 0);
+  badge.scale.multiplyScalar(0.42);
+  g.add(badge);
+  addOutline(g, 1.04);
+  g.traverse(o => { try { o.layers.set(1); } catch (_) {} });
+  return g;
+}
+
+function mpSpawnRemote(player) {
+  if (!player || !MP.active) return;
+  const PR = mpPR();
+  const me = PR && PR.myPlayer && PR.myPlayer();
+  if (me && player.id === me.id) return;
+  if (MP.remotes.has(player.id)) return;
+  if (MP.remotes.size >= MP.MAX - 1) {
+    try { player.kick && player.kick(); } catch (_) {}
+    return;
+  }
+  const name = mpNameOf(player);
+  const col = mpColorOf(player);
+  const mesh = buildMpRemoteAvatar(name, col);
+  const x = Number(player.getState("x"));
+  const z = Number(player.getState("z"));
+  mesh.position.set(Number.isFinite(x) ? x : rand(-4, 4), 0, Number.isFinite(z) ? z : 8 + rand(-2, 2));
+  scene.add(mesh);
+  MP.remotes.set(player.id, {
+    player,
+    mesh,
+    target: mesh.position.clone(),
+    yaw: 0,
+  });
+  mpPushChat({ sys: true, name: "SYSTEM", text: name + " joined the lounge", t: Date.now() });
+  mpUpdateRoomChip();
+  try {
+    player.onQuit(() => {
+      mpRemoveRemote(player.id);
+      mpPushChat({ sys: true, name: "SYSTEM", text: name + " left", t: Date.now() });
+    });
+  } catch (_) {}
+}
+
+function mpRemoveRemote(id) {
+  const r = MP.remotes.get(id);
+  if (!r) return;
+  try { scene.remove(r.mesh); } catch (_) {}
+  MP.remotes.delete(id);
+  mpUpdateRoomChip();
+}
+
+function mpClearRemotes() {
+  for (const id of [...MP.remotes.keys()]) mpRemoveRemote(id);
+}
+
+function mpFormatTime(ts) {
+  try {
+    const d = new Date(ts || Date.now());
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch (_) { return ""; }
+}
+
+function mpPushChat(msg) {
+  MP.chatLog.push(msg);
+  if (MP.chatLog.length > 200) MP.chatLog.shift();
+  /* dock */
+  const dock = document.getElementById("mpChatDock");
+  if (dock) {
+    const line = document.createElement("div");
+    line.className = "mpc-line" + (msg.sys ? " sys" : "");
+    line.innerHTML = msg.sys
+      ? escapeHtml(msg.text)
+      : `<span class="n">${escapeHtml(msg.name)}</span>: ${escapeHtml(msg.text)}`;
+    dock.appendChild(line);
+    while (dock.children.length > 6) dock.removeChild(dock.firstChild);
+    setTimeout(() => { try { line.remove(); } catch (_) {} }, 8000);
+  }
+  /* group log */
+  const log = document.getElementById("mpgLog");
+  if (log) {
+    const PR = mpPR();
+    const me = PR && PR.myPlayer && PR.myPlayer();
+    const mine = me && msg.id && me.id === msg.id;
+    const row = document.createElement("div");
+    row.className = "mpg-msg";
+    row.innerHTML = `<div class="who${mine ? " me" : ""}">${escapeHtml(msg.sys ? "SYSTEM" : msg.name)}</div>
+      <div class="txt">${escapeHtml(msg.text)}</div>
+      <div class="t">${escapeHtml(mpFormatTime(msg.t))}</div>`;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+    while (log.children.length > 120) log.removeChild(log.firstChild);
+  }
+}
+
+function mpSendChat(text) {
+  text = String(text || "").trim().slice(0, 200);
+  if (!text || !MP.active) return;
+  const PR = mpPR();
+  if (!PR) return;
+  const me = PR.myPlayer();
+  const name = MP.displayName || mpNameOf(me);
+  const payload = { text, name, t: Date.now() };
+  mpPushChat({ id: me.id, name, text, t: payload.t });
+  try {
+    if (PR.RPC && PR.RPC.call) {
+      PR.RPC.call("loungeChat", payload, PR.RPC.Mode.OTHERS);
+    }
+  } catch (err) { console.warn("mp chat rpc", err); }
+  /* host keeps durable log */
+  try {
+    if (PR.isHost && PR.isHost()) {
+      const log = (PR.getState("chatLog") || []).slice(-80);
+      log.push({ id: me.id, name, text, t: payload.t });
+      PR.setState("chatLog", log, true);
+    }
+  } catch (_) {}
+}
+
+function mpOpenGroupChat(on) {
+  const g = document.getElementById("mpGroupChat");
+  if (!g) return;
+  const show = on == null ? g.classList.contains("hidden") : !!on;
+  g.classList.toggle("hidden", !show);
+  g.setAttribute("aria-hidden", show ? "false" : "true");
+  if (show) {
+    const log = document.getElementById("mpgLog");
+    if (log) log.scrollTop = log.scrollHeight;
+    try { document.getElementById("mpgInput").focus(); } catch (_) {}
+  }
+}
+
+async function mpStartSession({ name, roomCode }) {
+  const PR = mpPR();
+  if (!PR || !PR.insertCoin) {
+    throw new Error("Playroom Kit failed to load — check network / CDN");
+  }
+  if (MP.connecting || MP.active) return;
+  MP.connecting = true;
+  MP.displayName = String(name || "Guest").trim().slice(0, 24) || "Guest";
+  try { localStorage.setItem("fatidiot_mp_name", MP.displayName); } catch (_) {}
+
+  const opts = {
+    maxPlayersPerRoom: MP.MAX,
+    skipLobby: true,
+    defaultPlayerStates: {
+      displayName: MP.displayName,
+      role: "guest",
+      verified: false,
+      x: 0, y: 0, z: 10, yaw: Math.PI,
+      seated: null,
+      game: null,
+    },
+  };
+  const code = String(roomCode || "").trim().toUpperCase();
+  if (code) opts.roomCode = code;
+
+  try {
+    await PR.insertCoin(opts);
+  } catch (err) {
+    MP.connecting = false;
+    const msg = (err && err.message) || String(err);
+    if (/ROOM_LIMIT|full|limit/i.test(msg)) throw new Error("Room is full (max 30 guests)");
+    throw new Error(msg || "Could not join room");
+  }
+
+  const me = PR.myPlayer();
+  me.setState("displayName", MP.displayName, true);
+  me.setState("role", "guest", true);
+  me.setState("verified", false, true);
+  me.setState("x", 0, true);
+  me.setState("z", 10, true);
+  me.setState("yaw", Math.PI, true);
+
+  try {
+    if (PR.RPC && PR.RPC.register) {
+      PR.RPC.register("loungeChat", async (payload, sender) => {
+        if (!payload || !payload.text) return;
+        mpPushChat({
+          id: sender && sender.id,
+          name: (payload.name) || mpNameOf(sender),
+          text: String(payload.text).slice(0, 200),
+          t: payload.t || Date.now(),
+        });
+      });
+    }
+  } catch (err) { console.warn("rpc register", err); }
+
+  PR.onPlayerJoin((player) => {
+    mpSpawnRemote(player);
+    /* late join: send recent chat snapshot if host */
+    try {
+      if (PR.isHost && PR.isHost() && player.id !== me.id) {
+        /* chat log is in room state */
+      }
+    } catch (_) {}
+  });
+
+  /* seed remotes already present */
+  try {
+    const parts = PR.getParticipants ? PR.getParticipants() : {};
+    for (const id of Object.keys(parts)) {
+      if (id !== me.id) mpSpawnRemote(parts[id]);
+    }
+  } catch (_) {}
+
+  /* hydrate chat from host log */
+  try {
+    const log = PR.getState("chatLog");
+    if (Array.isArray(log)) {
+      for (const m of log.slice(-40)) mpPushChat(m);
+    }
+  } catch (_) {}
+
+  MP.active = true;
+  MP.connecting = false;
+  MP.isGuest = true;
+  MP.demoListOnly = true;
+  MP.roomCode = (PR.getRoomCode && PR.getRoomCode()) || code || "";
+  mpSetHudVisible(true);
+  mpUpdateRoomChip();
+  mpPushChat({ sys: true, name: "SYSTEM", text: "You joined as unverified guest · " + MP.displayName, t: Date.now() });
+  showMsg("MULTIPLAYER · room " + (MP.roomCode || "····") + " · max 30");
+}
+
+function mpStopSession() {
+  if (!MP.active && !MP.connecting) return;
+  try {
+    const PR = mpPR();
+    const me = PR && PR.myPlayer && PR.myPlayer();
+    if (me && me.leaveRoom) me.leaveRoom();
+  } catch (_) {}
+  mpClearRemotes();
+  MP.active = false;
+  MP.connecting = false;
+  MP.roomCode = "";
+  mpSetHudVisible(false);
+  document.body.classList.remove("mp-chat-focus");
+}
+
+function mpPublishLocal(dt) {
+  if (!MP.active) return;
+  const PR = mpPR();
+  if (!PR) return;
+  const me = PR.myPlayer();
+  if (!me) return;
+  MP.syncT += dt;
+  const reliable = MP.syncT >= 0.35;
+  if (MP.syncT < 0.05) return;
+  MP.syncT = reliable ? 0 : MP.syncT - 0.05;
+  try {
+    me.setState("x", +pig.position.x.toFixed(3), reliable);
+    me.setState("z", +pig.position.z.toFixed(3), reliable);
+    me.setState("y", +(pigY || 0).toFixed(3), reliable);
+    me.setState("yaw", +yaw.toFixed(3), reliable);
+    me.setState("seated", seated && seated.seat ? seated.seat.label : null, true);
+    let game = null;
+    if (typeof dartGame !== "undefined" && dartGame.active) game = "darts";
+    else if (typeof raceGame !== "undefined" && raceGame.active) game = "race";
+    else if (typeof triviaGame !== "undefined" && triviaGame.active) game = "trivia";
+    else if (typeof strikerGame !== "undefined" && strikerGame.active) game = "striker";
+    else if (typeof arcadeGame !== "undefined" && arcadeGame.active) game = "arcade";
+    me.setState("game", game, true);
+    me.setState("displayName", MP.displayName, false);
+  } catch (_) {}
+}
+
+function mpUpdateRemotes(dt) {
+  if (!MP.active) return;
+  for (const r of MP.remotes.values()) {
+    try {
+      const p = r.player;
+      const x = Number(p.getState("x"));
+      const z = Number(p.getState("z"));
+      const y = Number(p.getState("y"));
+      const ry = Number(p.getState("yaw"));
+      const seatedLabel = p.getState("seated");
+      const game = p.getState("game");
+      if (Number.isFinite(x) && Number.isFinite(z)) {
+        r.target.set(x, 0, z);
+      }
+      r.mesh.position.x += (r.target.x - r.mesh.position.x) * Math.min(1, dt * 10);
+      r.mesh.position.z += (r.target.z - r.mesh.position.z) * Math.min(1, dt * 10);
+      const wantY = seatedLabel ? 0.28 : (Number.isFinite(y) ? Math.max(0, y) * 0.01 : 0);
+      r.mesh.position.y += (wantY - r.mesh.position.y) * Math.min(1, dt * 8);
+      if (Number.isFinite(ry)) {
+        let dR = ry - r.mesh.rotation.y;
+        while (dR > Math.PI) dR -= Math.PI * 2;
+        while (dR < -Math.PI) dR += Math.PI * 2;
+        r.mesh.rotation.y += dR * Math.min(1, dt * 8);
+      }
+      /* name may change */
+      const nm = mpNameOf(p);
+      if (r.mesh.userData.nameTag && r._name !== nm) {
+        r._name = nm;
+        try {
+          r.mesh.remove(r.mesh.userData.nameTag);
+          const nameTag = textSprite(nm, { size: 34, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
+          nameTag.position.set(0, 2.58, 0);
+          nameTag.scale.multiplyScalar(0.55);
+          r.mesh.add(nameTag);
+          r.mesh.userData.nameTag = nameTag;
+        } catch (_) {}
+      }
+      /* floating game tag */
+      if (game && game !== r._game) {
+        r._game = game;
+        floatText(r.mesh.position.clone().add(new THREE.Vector3(0, 2.9, 0)), "▶ " + String(game).toUpperCase(), {
+          size: 28, color: "#8fd1ff", strokeW: 5, life: 0.9, worldScale: 0.55
+        }, 0.9);
+      } else if (!game) r._game = null;
+      r.mesh.traverse(o => { try { o.layers.set(1); } catch (_) {} });
+      r.mesh.visible = true;
+    } catch (_) {}
+  }
+  mpUpdateRoomChip();
+}
+
+function updateMultiplayer(dt) {
+  if (!MP.active) return;
+  mpPublishLocal(dt);
+  mpUpdateRemotes(dt);
+}
+
+function mpListIsDemoOnly() {
+  return !!(MP.active && MP.demoListOnly);
+}
+
+async function mpEnterFromModal() {
+  const nameEl = document.getElementById("mpName");
+  const roomEl = document.getElementById("mpRoom");
+  const err = document.getElementById("mpjErr");
+  const name = (nameEl && nameEl.value || "").trim();
+  if (!name || name.length < 2) {
+    if (err) err.textContent = "Pick a display name (2+ characters).";
+    return;
+  }
+  if (err) err.textContent = "Connecting…";
+  try {
+    /* enter lounge world first so scene exists */
+    if (typeof startGame === "function") {
+      startGame({ social: true, liveLounge: true, multiplayer: true });
+    } else if (typeof activateSocialLounge === "function") {
+      activateSocialLounge();
+    }
+    await mpStartSession({ name, roomCode: roomEl && roomEl.value });
+    mpCloseJoinModal();
+    if (err) err.textContent = "";
+  } catch (e) {
+    if (err) err.textContent = (e && e.message) || "Join failed";
+    console.error(e);
+  }
+}
+
+function wireMultiplayerUI() {
+  const go = document.getElementById("mpjGo");
+  const cancel = document.getElementById("mpjCancel");
+  const btn = document.getElementById("btnMpLounge");
+  if (btn) btn.addEventListener("click", (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    mpOpenJoinModal();
+  });
+  if (cancel) cancel.addEventListener("click", () => mpCloseJoinModal());
+  if (go) go.addEventListener("click", () => { mpEnterFromModal(); });
+  for (const id of ["mpName", "mpRoom"]) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("keydown", (e) => {
+  if (document.body.classList.contains("mp-chat-focus")) return;
+  if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+      if (e.key === "Enter") { e.preventDefault(); mpEnterFromModal(); }
+      e.stopPropagation();
+    });
+  }
+  const send = () => {
+    const inp = document.getElementById("mpChatInput");
+    if (!inp) return;
+    mpSendChat(inp.value);
+    inp.value = "";
+  };
+  const chatSend = document.getElementById("mpChatSend");
+  if (chatSend) chatSend.addEventListener("click", send);
+  const chatInp = document.getElementById("mpChatInput");
+  if (chatInp) {
+    chatInp.addEventListener("focus", () => document.body.classList.add("mp-chat-focus"));
+    chatInp.addEventListener("blur", () => document.body.classList.remove("mp-chat-focus"));
+    chatInp.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); send(); }
+      if (e.key === "Escape") { chatInp.blur(); }
+    });
+  }
+  const openG = document.getElementById("mpChatOpen");
+  if (openG) openG.addEventListener("click", () => mpOpenGroupChat());
+  const closeG = document.getElementById("mpgClose");
+  if (closeG) closeG.addEventListener("click", () => mpOpenGroupChat(false));
+  const gSend = () => {
+    const inp = document.getElementById("mpgInput");
+    if (!inp) return;
+    mpSendChat(inp.value);
+    inp.value = "";
+  };
+  const mpgSend = document.getElementById("mpgSend");
+  if (mpgSend) mpgSend.addEventListener("click", gSend);
+  const mpgInp = document.getElementById("mpgInput");
+  if (mpgInp) {
+    mpgInp.addEventListener("focus", () => document.body.classList.add("mp-chat-focus"));
+    mpgInp.addEventListener("blur", () => document.body.classList.remove("mp-chat-focus"));
+    mpgInp.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); gSend(); }
+    });
+  }
+  const chip = document.getElementById("mpRoomChip");
+  if (chip) chip.addEventListener("click", async () => {
+    const code = MP.roomCode || (mpPR() && mpPR().getRoomCode && mpPR().getRoomCode()) || "";
+    try {
+      await navigator.clipboard.writeText(code);
+      showMsg("Room code copied: " + code);
+    } catch (_) {
+      showMsg("Room code: " + code);
+    }
+  });
+}
+
+try { wireMultiplayerUI(); } catch (err) { console.warn("mp wire", err); }
+try {
+  addEventListener("keydown", (e) => {
+    if (!MP.active || mode !== "play") return;
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    if (e.code === "KeyT" && !e.repeat) {
+      e.preventDefault();
+      const inp = document.getElementById("mpChatInput");
+      if (inp) { inp.focus(); }
+    }
+    if (e.code === "KeyY" && !e.repeat) {
+      e.preventDefault();
+      try { mpOpenGroupChat(); } catch (_) {}
+    }
+  });
+} catch (_) {}
+try { window.MP = MP; window.mpOpenJoinModal = mpOpenJoinModal; window.updateMultiplayer = updateMultiplayer; } catch (_) {}
+
+
 function activateSocialLounge() {
   socialActive = true;
   liveLoungeMode = true;
@@ -8749,6 +9491,7 @@ function activateSocialLounge() {
 }
 
 function deactivateSocialLounge() {
+  try { if (typeof mpStopSession === "function") mpStopSession(); } catch (_) {}
   try {
     const ui = $("mobileUI");
     if (ui) ui.classList.remove("lounge-mode");
@@ -9915,6 +10658,7 @@ function updateDartHud() {
   if (hud) hud.innerHTML = html;
 }
 function startDartGame() {
+  try { if (MP && MP.active && typeof mpSendChat === "function") mpSendChat((MP.displayName||"Guest") + " started darts"); } catch (_) {}
   const L = loungeDecor && loungeDecor.userData;
   if (!L || !L.dartBoardPos) return;
   dartGame.active = true;
@@ -11639,6 +12383,7 @@ overlay.addEventListener("click", (ev) => {
   bind($("btnPlay"), () => startGame());
   bind($("btnLounge"), () => startGame({ social: true, liveLounge: true }));
   bind($("btnLiveLounge"), () => openCreateLiveLounge());
+  bind($("btnMpLounge"), () => { try { mpOpenJoinModal(); } catch (_) {} });
   bind($("btnStarbase"), () => {
     if (typeof previewLevel2 === "function") previewLevel2();
     else startGame();
@@ -14789,6 +15534,7 @@ renderer.setAnimationLoop(() => {
   safeStep("fx", () => updateFx(dt));
   safeStep("camera", () => updateCamera(dt));
   safeStep("dart", () => updateDartGame(dt));
+  safeStep("mp", () => { try { if (typeof updateMultiplayer === "function") updateMultiplayer(dt); } catch (_) {} });
   safeStep("striker", () => updateStrikerGame(dt));
   safeStep("trivia", () => updateTriviaGame(dt));
   safeStep("race", () => updateRaceGame(dt));
