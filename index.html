@@ -6959,7 +6959,7 @@ const TRIVIA_BANK = [
   { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
   { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
   { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
-  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the SE track", "Behind the bar", "VIP booth couch"], a: 1 },
+  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the compact SE track", "Behind the bar", "VIP booth couch"], a: 1 },
 ];
 
 /* —— TRIVIA (wall bay, 4-player scores) —— */
@@ -7752,22 +7752,22 @@ function buildIndependentLoungeWorld() {
 
   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
-    /* ===== TIMELINE GP — SE corner (clear of bar + west wall) ===== */
-    const rcx = 17.5, rcz = 12.5;
+    /* ===== TIMELINE GP — compact SE corner (away from bar / VIP / dance) ===== */
+    const rcx = 20.5, rcz = -9.5;
     addZone("Timeline GP", rcx, rcz, "#8fd1ff");
-    /* bay flooring */
-    g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
-    /* east-side backboard + neon title (away from Algorithm Bar) */
-    g.add(box(0.2, 3.2, 11, 0x0e121a, W / 2 - 0.45, 2.0, rcz));
-    g.add(box(0.08, 2.6, 10, 0x1a2435, W / 2 - 0.35, 2.0, rcz));
-    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
-    raceBanner.scale.multiplyScalar(0.7);
-    raceBanner.position.set(W / 2 - 0.55, 3.5, rcz);
+    /* compact bay flooring */
+    g.add(box(8.5, 0.05, 9.5, 0x12161e, rcx, 0.02, rcz));
+    /* east-wall backboard */
+    g.add(box(0.18, 2.6, 7.5, 0x0e121a, W / 2 - 0.4, 1.7, rcz));
+    g.add(box(0.06, 2.1, 6.8, 0x1a2435, W / 2 - 0.32, 1.7, rcz));
+    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 30, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+    raceBanner.scale.multiplyScalar(0.55);
+    raceBanner.position.set(W / 2 - 0.5, 3.1, rcz);
     g.add(raceBanner);
-    /* track oval — asphalt + gold lane */
-    const trackR0 = 3.0, trackR1 = 4.6;
+    /* smaller track oval */
+    const trackR0 = 2.15, trackR1 = 3.35;
     const track = new THREE.Mesh(
-      new THREE.RingGeometry(trackR0, trackR1, 72),
+      new THREE.RingGeometry(trackR0, trackR1, 56),
       new THREE.MeshBasicMaterial({ color: 0x1c222c, toneMapped: false, side: THREE.DoubleSide })
     );
     track.rotation.x = -Math.PI / 2;
@@ -7775,41 +7775,39 @@ function buildIndependentLoungeWorld() {
     track.name = "RaceTrack";
     g.add(track);
     const lane = new THREE.Mesh(
-      new THREE.RingGeometry(3.75, 3.9, 72),
+      new THREE.RingGeometry(2.7, 2.82, 56),
       new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false, side: THREE.DoubleSide })
     );
     lane.rotation.x = -Math.PI / 2;
     lane.position.set(rcx, 0.07, rcz);
     g.add(lane);
-    /* curb blocks around oval */
-    for (let i = 0; i < 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      const rr = trackR1 + 0.15;
-      g.add(box(0.35, 0.22, 0.35, 0x3a4048,
-        rcx + Math.cos(a) * rr, 0.14, rcz + Math.sin(a) * rr));
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const rr = trackR1 + 0.12;
+      g.add(box(0.28, 0.18, 0.28, 0x3a4048,
+        rcx + Math.cos(a) * rr, 0.12, rcz + Math.sin(a) * rr));
     }
-    /* start/finish stripe */
-    g.add(box(0.2, 0.04, 1.5, 0xffffff, rcx + 3.85, 0.09, rcz));
-    const sf = textSprite("START / FINISH", { size: 22, color: "#ffffff", strokeW: 4, maxWidth: 0 });
-    sf.scale.multiplyScalar(0.4);
-    sf.position.set(rcx + 4.6, 0.55, rcz);
+    g.add(box(0.16, 0.04, 1.1, 0xffffff, rcx + 2.75, 0.09, rcz));
+    const sf = textSprite("START / FINISH", { size: 18, color: "#ffffff", strokeW: 4, maxWidth: 0 });
+    sf.scale.multiplyScalar(0.34);
+    sf.position.set(rcx + 3.35, 0.5, rcz);
     g.add(sf);
-    /* pit stools — room-side (west of track) so pad faces into the lounge */
+    /* pit stools — room-side (west of track) */
     for (let i = 0; i < 4; i++) {
-      const pz = rcz - 2.2 + i * 2.2;
-      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx - 5.6, 0.85, pz, 12));
-      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx - 5.6, 0.42, pz, 8));
-      registerSeat(g, rcx - 5.6, 0.95, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+      const pz = rcz - 1.6 + i * 1.55;
+      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, rcx - 4.2, 0.8, pz, 12));
+      g.add(cyl(0.05, 0.06, 0.72, BRASS, rcx - 4.2, 0.38, pz, 8));
+      registerSeat(g, rcx - 4.2, 0.9, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
     }
-    /* walk-up pad — stand here to auto-start race */
-    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx - 5.2, 0.04, rcz));
-    const walkRace = textSprite("WALK HERE · START RACE", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
-    walkRace.scale.multiplyScalar(0.48);
-    walkRace.position.set(rcx - 5.2, 1.9, rcz);
+    /* large glowing walk-up pad — approach auto-starts */
+    g.add(box(2.6, 0.07, 2.6, 0x8fd1ff, rcx - 4.0, 0.045, rcz));
+    const walkRace = textSprite("WALK HERE · START RACE", { size: 24, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+    walkRace.scale.multiplyScalar(0.42);
+    walkRace.position.set(rcx - 4.0, 1.75, rcz);
     g.add(walkRace);
     g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
-    g.userData.racePad = new THREE.Vector3(rcx - 5.2, 0, rcz);
-    g.userData.raceRadius = 3.85;
+    g.userData.racePad = new THREE.Vector3(rcx - 4.0, 0, rcz);
+    g.userData.raceRadius = 2.75;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
     /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
@@ -7865,7 +7863,7 @@ function buildIndependentLoungeWorld() {
       g.add(cyl(0.05, 0.05, 0.42, BRASS, sx, 0.22, sz, 8));
       registerSeat(g, sx, 0.55, sz, -Math.PI / 2, "Trivia seat " + (i + 1), "Trivia Bay");
     }
-    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, -W / 2 + 5.1, 0.04, tvZ));
+    g.add(box(2.6, 0.07, 2.6, 0x7CFFB0, -W / 2 + 5.1, 0.045, tvZ));
     const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
     walkT.scale.multiplyScalar(0.45);
     walkT.position.set(-W / 2 + 5.1, 1.7, tvZ);
@@ -8012,7 +8010,7 @@ function buildIndependentLoungeWorld() {
     } catch (err) { console.warn("darts alley build", err); }
   }
 
-  /* dance floor */
+  /* dance floor — lights + music when 3+ people are on it */
   {
     const dx = -2, dz = 18;
     addZone("Dance Floor", dx, dz, "#d48cff");
@@ -8022,44 +8020,67 @@ function buildIndependentLoungeWorld() {
       c.fillRect(w / 2, h / 2, w / 2, h / 2);
     });
     tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(6, 6);
-    const df = new THREE.Mesh(
-      new THREE.PlaneGeometry(12, 10),
-      new THREE.MeshStandardMaterial({ map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4 })
-    );
+    const dfMat = new THREE.MeshStandardMaterial({
+      map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4
+    });
+    const df = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), dfMat);
     df.rotation.x = -Math.PI / 2;
     df.position.set(dx, 0.04, dz);
     g.add(df);
-    const dj = textSprite("♪ DANCE · OPEN FLOOR", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
+    const discoL = new THREE.PointLight(0xff60d0, 0, 16);
+    discoL.position.set(dx, 3.8, dz);
+    g.add(discoL);
+    const dj = textSprite("♪ DANCE · 3+ FOR PARTY", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
     dj.scale.multiplyScalar(0.6);
     dj.position.set(dx, 2.5, dz - 4.5);
     g.add(dj);
+    g.userData.danceFloor = {
+      mesh: df, mat: dfMat, light: discoL, label: dj,
+      center: new THREE.Vector3(dx, 0, dz),
+      halfW: 6, halfD: 5,
+      party: false, beatT: 0, musicT: 0,
+    };
+    g.userData.disco = null;
+    g.userData.discoL = discoL;
   }
 
-  /* fireplace library */
+  /* fireplace library — flush against WEST wall */
   {
-    const fx = -20, fz = 10;
-    addZone("Fireside Library", fx, fz, "#ffb347");
-    g.add(box(0.5, 2.4, 4.5, 0x2a2220, fx, 1.2, fz));
-    g.add(box(0.35, 1.1, 1.8, 0x0c0806, fx + 0.25, 0.8, fz));
+    const fx = -W / 2 + 1.15, fz = 10; /* hard against west plaster */
+    addZone("Fireside Library", fx + 2.2, fz, "#ffb347");
+    /* hearth built into wall */
+    g.add(box(0.55, 2.6, 5.2, 0x2a2220, fx, 1.3, fz));
+    g.add(box(0.38, 1.2, 2.0, 0x0c0806, fx + 0.22, 0.85, fz));
     const fire = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.5, 1.0),
+      new THREE.PlaneGeometry(1.6, 1.1),
       new THREE.MeshBasicMaterial({ color: 0xff7a20, transparent: true, opacity: 0.9 })
     );
-    fire.position.set(fx + 0.4, 0.85, fz);
+    fire.position.set(fx + 0.42, 0.9, fz);
     fire.rotation.y = Math.PI / 2;
     g.add(fire);
-    const fl = new THREE.PointLight(0xff8020, 12, 12);
-    fl.position.set(fx + 1.2, 1.2, fz);
+    g.userData.firePlane = fire;
+    const fl = new THREE.PointLight(0xff8020, 14, 14);
+    fl.position.set(fx + 1.4, 1.25, fz);
     g.add(fl);
-    mkSofa(fx + 3.5, fz, -Math.PI / 2, 0x4a3028);
-    registerSeat(g, fx + 3.2, 0.55, fz, -Math.PI / 2, "Fireside chair", "Fireside Library");
-    /* bookshelves */
+    g.userData.fire = fl;
+    /* sofa faces the fire (into the wall / west) — close to hearth */
+    mkSofa(fx + 2.6, fz, -Math.PI / 2, 0x4a3028);
+    registerSeat(g, fx + 2.4, 0.55, fz, -Math.PI / 2, "Fireside chair", "Fireside Library");
+    registerSeat(g, fx + 2.4, 0.55, fz - 1.4, -Math.PI / 2, "Fireside chair 2", "Fireside Library");
+    registerSeat(g, fx + 2.4, 0.55, fz + 1.4, -Math.PI / 2, "Fireside chair 3", "Fireside Library");
+    /* bookshelves along wall north/south of hearth */
     for (let i = 0; i < 3; i++) {
-      g.add(box(0.4, 2.8, 1.6, WALNUT, fx + 0.3, 1.5, fz - 2.8 + i * 2.8));
+      const bz = fz - 3.0 + i * 3.0;
+      if (Math.abs(bz - fz) < 1.2) continue; /* gap for fireplace */
+      g.add(box(0.42, 2.9, 1.7, WALNUT, fx + 0.15, 1.55, bz));
       for (let r = 0; r < 4; r++)
         for (let b = 0; b < 5; b++)
-          g.add(box(0.18, 0.28, 0.12, pick([0x8a3030, 0x305080, 0x308050, 0xc8a24a]), fx + 0.45, 0.5 + r * 0.6, fz - 3.3 + i * 2.8 + b * 0.28));
+          g.add(box(0.18, 0.28, 0.12, pick([0x8a3030, 0x305080, 0x308050, 0xc8a24a]), fx + 0.35, 0.55 + r * 0.6, bz - 0.55 + b * 0.28));
     }
+    const fLabel = textSprite("FIRESIDE CHAT", { size: 28, color: "#ffb347", strokeW: 5, maxWidth: 0 });
+    fLabel.scale.multiplyScalar(0.5);
+    fLabel.position.set(fx + 0.6, 3.4, fz);
+    g.add(fLabel);
   }
 
   /* ambient fill lights */
@@ -8505,6 +8526,74 @@ function playJukeRiff() {
   const r = pick(riffs);
   r.forEach((f, i) => setTimeout(() => beep(f, 0.12, "square", 0.07), i * 110));
 }
+
+function countPeopleOnDanceFloor(L) {
+  if (!L || !L.danceFloor || !pig) return 0;
+  const d = L.danceFloor;
+  const hw = d.halfW, hd = d.halfD, cx = d.center.x, cz = d.center.z;
+  const on = (x, z) => Math.abs(x - cx) <= hw && Math.abs(z - cz) <= hd;
+  let n = 0;
+  if (on(pig.position.x, pig.position.z)) n++;
+  try {
+    for (const e of enemies) {
+      if (!e || e.type !== "xuser" || !e.mesh) continue;
+      if (on(e.mesh.position.x, e.mesh.position.z)) n++;
+    }
+  } catch (_) {}
+  try {
+    if (typeof MP !== "undefined" && MP && MP.remotes) {
+      for (const r of MP.remotes.values()) {
+        if (r && r.mesh && on(r.mesh.position.x, r.mesh.position.z)) n++;
+      }
+    }
+  } catch (_) {}
+  return n;
+}
+function playDanceBeat() {
+  try {
+    const bass = [110, 110, 165, 110, 98, 110, 131, 110];
+    const lead = [330, 392, 440, 392, 494, 440, 392, 330];
+    bass.forEach((f, i) => setTimeout(() => {
+      try { thump(f, 0.1, 0.12); beep(f * 2, 0.08, "square", 0.035); } catch (_) {}
+    }, i * 140));
+    lead.forEach((f, i) => setTimeout(() => {
+      try { beep(f, 0.1, "triangle", 0.045); } catch (_) {}
+    }, i * 140 + 40));
+  } catch (_) {}
+}
+function updateDanceFloorParty(dt) {
+  const L = loungeDecor && loungeDecor.userData;
+  if (!L || !L.danceFloor) return;
+  const d = L.danceFloor;
+  const n = countPeopleOnDanceFloor(L);
+  const want = n >= 3;
+  if (want && !d.party) {
+    d.party = true;
+    try { showMsg("♪ DANCE PARTY · " + n + " on the floor"); } catch (_) {}
+    try { SFX.wave(); } catch (_) {}
+  } else if (!want && d.party) {
+    d.party = false;
+    if (d.mat) { d.mat.emissiveIntensity = 0.25; d.mat.emissive.setHex(0x2a1050); }
+    if (d.light) d.light.intensity = 0;
+  }
+  if (!d.party) return;
+  d.beatT = (d.beatT || 0) + dt;
+  d.musicT = (d.musicT || 0) - dt;
+  if (d.musicT <= 0) {
+    d.musicT = 1.15;
+    playDanceBeat();
+  }
+  const pulse = 0.55 + 0.55 * Math.abs(Math.sin(d.beatT * 8));
+  if (d.mat) {
+    d.mat.emissiveIntensity = 0.35 + pulse * 1.4;
+    d.mat.emissive.setHSL((d.beatT * 0.15) % 1, 0.85, 0.35);
+  }
+  if (d.light) {
+    d.light.intensity = 4 + pulse * 10;
+    d.light.color.setHSL((d.beatT * 0.22 + 0.4) % 1, 0.9, 0.55);
+  }
+}
+
 
 
 function syncLoungeMobileUI() {
@@ -10213,33 +10302,43 @@ function updateSocialLounge(dt) {
       SFX.pickup();
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
-    /* mini-games: walk-up start (darts, race, trivia) — same approach UX as darts */
+    /* mini-games: walk-up start (darts, race, trivia) — generous radii */
     {
       const sc = L.independent ? 1 : (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1);
       const busy = !!(dartGame.active || strikerGame.active || arcadeGame.active || triviaGame.active || raceGame.active);
-      if (!busy) {
+      if (!busy && pig) {
         if ((dartGame.cool || 0) <= 0 && L.dartTablePos) {
           const dpos = L.dartTablePos;
           const wx = dpos.x * (L.independent ? 1 : sc), wz = dpos.z * (L.independent ? 1 : sc);
-          if (Math.hypot(pig.position.x - wx, pig.position.z - wz) < 2.8) {
-            if (socialActive) startDartLeague(); else startDartGame();
+          if (Math.hypot(pig.position.x - wx, pig.position.z - wz) < 3.2) {
+            try { if (socialActive) startDartLeague(); else startDartGame(); } catch (err) { console.warn("dart start", err); }
           }
         }
         if ((raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
           const rp = L.racePad || L.raceCenter;
+          const rc = L.raceCenter || rp;
           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
-          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 3.2) startRaceGame();
+          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
+          const dPad = Math.hypot(pig.position.x - rx, pig.position.z - rz);
+          const dCtr = Math.hypot(pig.position.x - cx, pig.position.z - cz);
+          const R = (L.raceRadius || 3) + 2.8;
+          if (dPad < 4.8 || dCtr < R) {
+            try { startRaceGame(); } catch (err) { console.warn("race start", err); showMsg("Race failed to start"); }
+          }
         }
         if ((triviaGame.cool || 0) <= 0 && L.triviaPos) {
           const tp = L.triviaPos;
           const tx = tp.x * (L.independent ? 1 : sc), tz = tp.z * (L.independent ? 1 : sc);
-          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 3.0) startTriviaGame();
+          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 4.5) {
+            try { startTriviaGame(); } catch (err) { console.warn("trivia start", err); showMsg("Trivia failed to start"); }
+          }
         }
       }
     }
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
     triviaGame.cool = Math.max(0, (triviaGame.cool || 0) - dt);
     raceGame.cool = Math.max(0, (raceGame.cool || 0) - dt);
+    try { updateDanceFloorParty(dt); } catch (_) {}
     /* clout striker */
     strikerGame.cool = Math.max(0, strikerGame.cool - dt);
     if (!strikerGame.active && !dartGame.active && !arcadeGame.active && strikerGame.cool <= 0 && L.strikerPos) {
@@ -12284,30 +12383,34 @@ addEventListener("keydown", e => {
     e.preventDefault();
     if (e.code === "KeyE") {
       if (seated) { standUp(); return; }
-      const seat = nearestSeat();
-      if (seat) { sitOnSeat(seat); return; }
-      /* game spots */
+      /* game pads FIRST — sitting must not steal race/trivia start */
       const L = loungeDecor && loungeDecor.userData;
       if (L) {
         const sc = L.independent ? 1 : LOUNGE_SCALE;
         if (!triviaGame.active && (triviaGame.cool || 0) <= 0 && L.triviaPos) {
           const tp = L.triviaPos;
           const tx = tp.x * (L.independent ? 1 : sc), tz = tp.z * (L.independent ? 1 : sc);
-          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 2.8) {
+          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 4.5) {
             startTriviaGame(); return;
           }
         }
         if (!raceGame.active && (raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
           const rp = L.racePad || L.raceCenter;
+          const rc = L.raceCenter || rp;
           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
-          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 3.0) {
+          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
+          const R = (L.raceRadius || 3) + 2.8;
+          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 4.8 ||
+              Math.hypot(pig.position.x - cx, pig.position.z - cz) < R) {
             startRaceGame(); return;
           }
         }
-        if (L.dartTablePos && pig.position.distanceTo(new THREE.Vector3(L.dartTablePos.x * sc, 0, L.dartTablePos.z * sc)) < 2.8) {
+        if (L.dartTablePos && pig.position.distanceTo(new THREE.Vector3(L.dartTablePos.x * sc, 0, L.dartTablePos.z * sc)) < 3.2) {
           startDartLeague(); return;
         }
       }
+      const seat = nearestSeat();
+      if (seat) { sitOnSeat(seat); return; }
     }
     if (socialNear) openTweetReader(socialNear);
   }
