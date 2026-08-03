@@ -5299,7 +5299,6 @@ function allChunksForUser(u) {
   return out.length ? out : [{ text: "…", tweetIdx: 0, part: 1, parts: 1, full: "…", isLong: false }];
 }
 
-
 /* Demo PFPs via unavatar (same pipeline as live X avatars) */
 for (const u of DEMO_X_FEED) {
   if (!u.avatarUrl && u.handle) {
@@ -7157,7 +7156,7 @@ function buildIndependentLoungeWorld() {
   g.userData.mediaScreens = [];
   g.userData.hasExtraSeating = 3;
 
-  const W = 48, D = 36, H = 7.8; /* 50% higher ceiling (was 5.2) */
+  const W = 57.6, D = 36, H = 7.8; /* length +20% per request; 50% higher ceiling */
   const WALNUT = 0x3d2818, WALNUT2 = 0x2a1a10, BRASS = 0xc9a24a;
   const VELVET = 0x6b1f38, TEAL = 0x1a4a44, CREAM = 0xf0e6d4, INK = 0x12141c;
 
@@ -7355,7 +7354,7 @@ function buildIndependentLoungeWorld() {
 
     /* Four screens high on the bar (north) wall — above bottles / back bar */
     const wallZ = -D / 2 + 2.25;
-    const screenY = 5.35; /* clearly above bar top (~1.2) and bottle shelves (~3.2) */
+    const screenY = 4.0; /* lowered 25% per request — above the lowered bar/back-bar */
     const ids = ["BAR-1", "BAR-2", "BAR-3", "BAR-4"];
     for (let i = 0; i < 4; i++) {
       mkMediaScreen(ids[i], -15 + i * 10, screenY, wallZ, 7.4, 3.6);
@@ -7404,34 +7403,34 @@ function buildIndependentLoungeWorld() {
   {
     const bx = -10, bz = -12;
     addZone("The Algorithm Bar", bx, bz + 2.2, "#c9a24a");
-    /* bar body */
-    g.add(box(16, 1.15, 1.35, WALNUT, bx, 0.58, bz));
-    g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 1.2, bz)); /* top */
-    g.add(box(16, 0.08, 0.12, BRASS, bx, 1.28, bz + 0.7));
-    /* back bar + bottles */
-    g.add(box(15, 2.4, 0.4, WALNUT2, bx, 2.0, bz - 0.95));
-    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 2.6, bz - 0.95));
-    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 3.2, bz - 0.95));
+    /* bar body — lowered 25% then a further 15% per request */
+    g.add(box(16, 0.73, 1.35, WALNUT, bx, 0.37, bz));
+    g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 0.77, bz)); /* top */
+    g.add(box(16, 0.08, 0.12, BRASS, bx, 0.84, bz + 0.7));
+    /* back bar + bottles (scaled to match) */
+    g.add(box(15, 1.8, 0.4, WALNUT2, bx, 1.5, bz - 0.95));
+    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 1.95, bz - 0.95));
+    g.add(box(14.5, 0.08, 0.45, BRASS, bx, 2.4, bz - 0.95));
     for (let i = 0; i < 18; i++) {
       const col = pick([0x40c8a0, 0xd44a90, 0xe8b040, 0x5a8ad4, 0xffffff, 0xff6a4a]);
-      g.add(cyl(0.07, 0.09, 0.28 + (i % 4) * 0.07, col, bx - 7.5 + i * 0.85, 2.85 + (i % 2) * 0.55, bz - 0.95, 8));
+      g.add(cyl(0.07, 0.09, 0.28 + (i % 4) * 0.07, col, bx - 7.5 + i * 0.85, 2.14 + (i % 2) * 0.41, bz - 0.95, 8));
     }
     /* foot rail */
-    const rail = cyl(0.04, 0.04, 15.5, BRASS, bx, 0.28, bz + 0.85, 8);
+    const rail = cyl(0.04, 0.04, 15.5, BRASS, bx, 0.18, bz + 0.85, 8);
     rail.rotation.z = Math.PI / 2;
     g.add(rail);
-    lb(bx, bz, 8.2, 0.9, 1.4);
-    /* 6 life-scale bar stools */
+    lb(bx, bz, 8.2, 0.9, 0.9);
+    /* 6 bar stools scaled to the lower counter */
     for (let i = 0; i < 6; i++) {
       const sx = bx - 6 + i * 2.4, sz = bz + 1.55;
-      g.add(cyl(0.28, 0.3, 0.08, VELVET, sx, 0.92, sz, 14));
-      g.add(cyl(0.05, 0.07, 0.9, BRASS, sx, 0.45, sz, 8));
+      g.add(cyl(0.28, 0.3, 0.08, VELVET, sx, 0.59, sz, 14));
+      g.add(cyl(0.05, 0.07, 0.58, BRASS, sx, 0.29, sz, 8));
       g.add(cyl(0.22, 0.22, 0.05, 0x222, sx, 0.04, sz, 12));
-      registerSeat(g, sx, 0.95, sz, 0, "Bar stool " + (i + 1), "The Algorithm Bar");
+      registerSeat(g, sx, 0.62, sz, 0, "Bar stool " + (i + 1), "The Algorithm Bar");
     }
     /* espresso station */
-    g.add(box(0.9, 0.75, 0.65, 0x1c1e24, bx + 7.2, 1.6, bz));
-    g.add(box(0.92, 0.08, 0.67, BRASS, bx + 7.2, 2.0, bz));
+    g.add(box(0.9, 0.75, 0.65, 0x1c1e24, bx + 7.2, 1.2, bz));
+    g.add(box(0.92, 0.08, 0.67, BRASS, bx + 7.2, 1.6, bz));
     const esp = textSprite("FREE ESPRESSO", { size: 28, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
     esp.scale.multiplyScalar(0.5);
     esp.position.set(bx + 7.2, 2.45, bz + 0.5);
@@ -7441,18 +7440,37 @@ function buildIndependentLoungeWorld() {
 
   /* —— conversation lounges with detailed sofas —— */
   const mkSofa = (x, z, ry, col) => {
+    /* 25% larger, chesterfield-style: walnut plinth, split seat cushions,
+       tufted back sections, rolled arms, brass piping, satin pillows */
     const s = new THREE.Group();
-    s.add(box(2.6, 0.45, 1.05, col, 0, 0.4, 0));
-    s.add(box(2.6, 0.85, 0.28, col, 0, 0.85, -0.4));
-    s.add(box(0.28, 0.7, 1.05, col, -1.2, 0.65, 0));
-    s.add(box(0.28, 0.7, 1.05, col, 1.2, 0.65, 0));
-    s.add(box(2.6, 0.12, 1.05, WALNUT2, 0, 0.12, 0));
-    s.add(box(0.5, 0.22, 0.35, CREAM, -0.55, 0.72, -0.1));
-    s.add(box(0.5, 0.22, 0.35, 0xd4c4a8, 0.55, 0.72, -0.1));
+    const colD = new THREE.Color(col).multiplyScalar(0.78).getHex();
+    s.add(box(2.75, 0.14, 1.12, WALNUT2, 0, 0.07, 0));                 /* plinth */
+    s.add(box(2.6, 0.3, 1.05, colD, 0, 0.3, 0));                       /* deck */
+    for (const i of [-1, 0, 1]) {                                       /* seat cushions */
+      s.add(box(0.8, 0.18, 1.0, col, i * 0.85, 0.52, 0.02));
+    }
+    s.add(box(2.6, 0.6, 0.24, colD, 0, 0.82, -0.42));                  /* back frame */
+    for (const i of [-1, 0, 1]) {                                       /* tufted back cushions */
+      s.add(box(0.78, 0.52, 0.16, col, i * 0.85, 0.92, -0.32));
+      s.add(sph(0.035, BRASS, i * 0.85, 0.92, -0.23, 6, 5));            /* button */
+    }
+    for (const sd of [-1, 1]) {                                         /* rolled arms */
+      s.add(box(0.28, 0.5, 1.05, colD, sd * 1.28, 0.52, 0));
+      const roll = cyl(0.16, 0.16, 1.05, col, sd * 1.28, 0.82, 0, 12);
+      roll.rotation.x = Math.PI / 2;
+      s.add(roll);
+    }
+    s.add(box(2.62, 0.03, 0.03, BRASS, 0, 0.44, 0.54));                /* brass piping, seat front */
+    s.add(box(2.62, 0.03, 0.03, BRASS, 0, 1.18, -0.41));               /* brass piping, back top */
+    const p1 = box(0.5, 0.42, 0.16, CREAM, -0.6, 0.82, -0.18);         /* satin pillows */
+    p1.rotation.z = 0.18; s.add(p1);
+    const p2 = box(0.5, 0.42, 0.16, 0xd4c4a8, 0.6, 0.82, -0.18);
+    p2.rotation.z = -0.14; s.add(p2);
     s.position.set(x, 0, z);
     s.rotation.y = ry;
+    s.scale.setScalar(1.25);
     g.add(s);
-    lb(x, z, 1.4, 0.7, 1.1);
+    lb(x, z, 1.75, 0.9, 1.4);
   };
   for (const [zx, zz, name, col] of [
     [-14, 4, "Conversation Pocket A", "#ff8ab0"],
@@ -7460,47 +7478,59 @@ function buildIndependentLoungeWorld() {
   ]) {
     addZone(name, zx, zz, col);
     const rug = new THREE.Mesh(
-      new THREE.CircleGeometry(3.2, 32),
+      new THREE.CircleGeometry(4.1, 32),
       new THREE.MeshStandardMaterial({ color: 0x3a1528, roughness: 0.9 })
     );
     rug.rotation.x = -Math.PI / 2;
     rug.position.set(zx, 0.02, zz);
     g.add(rug);
-    mkSofa(zx, zz - 2.2, 0, VELVET);
-    mkSofa(zx - 2.4, zz + 0.6, Math.PI / 2, TEAL);
-    mkSofa(zx + 2.4, zz + 0.6, -Math.PI / 2, VELVET);
-    g.add(cyl(0.7, 0.7, 0.12, WALNUT, zx, 0.45, zz, 16));
-    g.add(cyl(0.12, 0.16, 0.4, WALNUT2, zx, 0.2, zz));
-    registerSeat(g, zx, 0.55, zz - 1.9, 0, name + " sofa C", name);
-    registerSeat(g, zx - 2.0, 0.55, zz + 0.6, Math.PI / 2, name + " sofa L", name);
-    registerSeat(g, zx + 2.0, 0.55, zz + 0.6, -Math.PI / 2, name + " sofa R", name);
+    mkSofa(zx, zz - 2.8, 0, VELVET);
+    mkSofa(zx - 3.0, zz + 0.8, Math.PI / 2, TEAL);
+    mkSofa(zx + 3.0, zz + 0.8, -Math.PI / 2, VELVET);
+    /* marble-top drinks table with brass ring */
+    g.add(cyl(0.88, 0.88, 0.1, 0xe8e2d4, zx, 0.52, zz, 20));
+    g.add(cyl(0.9, 0.9, 0.04, BRASS, zx, 0.45, zz, 20));
+    g.add(cyl(0.14, 0.2, 0.45, WALNUT2, zx, 0.22, zz));
+    registerSeat(g, zx, 0.69, zz - 2.4, 0, name + " sofa C", name);
+    registerSeat(g, zx - 2.5, 0.69, zz + 0.8, Math.PI / 2, name + " sofa L", name);
+    registerSeat(g, zx + 2.5, 0.69, zz + 0.8, -Math.PI / 2, name + " sofa R", name);
   }
 
   /* —— VIP booths —— */
   for (const [bx, bz, name] of [[-12, 16, "VIP Booth 1"], [12, 16, "VIP Booth 2"]]) {
     addZone(name, bx, bz, "#ffd94a");
-    g.add(box(6.2, 0.06, 5.2, 0x241018, bx, 0.03, bz));
-    g.add(box(6.2, 1.25, 0.22, 0x4a2030, bx, 0.7, bz - 2.4));
-    g.add(box(0.22, 1.25, 5.0, 0x4a2030, bx - 3.0, 0.7, bz));
-    g.add(box(0.22, 1.25, 5.0, 0x4a2030, bx + 3.0, 0.7, bz));
-    g.add(box(1.8, 0.5, 1.8, WALNUT, bx, 0.45, bz));
-    /* banquette seats */
-    g.add(box(5.4, 0.4, 0.9, VELVET, bx, 0.35, bz + 1.7));
-    g.add(box(5.4, 0.75, 0.25, VELVET, bx, 0.75, bz + 2.05));
+    g.add(box(7.75, 0.06, 6.5, 0x241018, bx, 0.03, bz));
+    g.add(box(7.75, 1.56, 0.24, 0x4a2030, bx, 0.85, bz - 3.0));
+    g.add(box(7.77, 0.05, 0.28, BRASS, bx, 1.66, bz - 3.0));           /* brass cap rails */
+    g.add(box(0.24, 1.56, 6.25, 0x4a2030, bx - 3.75, 0.85, bz));
+    g.add(box(0.28, 0.05, 6.27, BRASS, bx - 3.75, 1.66, bz));
+    g.add(box(0.24, 1.56, 6.25, 0x4a2030, bx + 3.75, 0.85, bz));
+    g.add(box(0.28, 0.05, 6.27, BRASS, bx + 3.75, 1.66, bz));
+    /* marble-top table with brass base + a bottle in an ice bucket */
+    g.add(box(2.25, 0.12, 2.25, 0xe8e2d4, bx, 0.62, bz));
+    g.add(box(2.3, 0.5, 2.3, WALNUT, bx, 0.32, bz));
+    g.add(cyl(0.22, 0.18, 0.28, 0xd8dde2, bx + 0.6, 0.82, bz + 0.4, 12));
+    g.add(cyl(0.07, 0.09, 0.4, 0x1a3a24, bx + 0.6, 1.05, bz + 0.4, 8));
+    /* deep tufted banquette */
+    g.add(box(6.75, 0.5, 1.12, VELVET, bx, 0.4, bz + 2.1));
+    g.add(box(6.75, 0.95, 0.3, VELVET, bx, 0.95, bz + 2.55));
+    for (const i of [-2, -1, 0, 1, 2]) {
+      g.add(sph(0.04, BRASS, bx + i * 1.3, 1.1, bz + 2.38, 6, 5));      /* tuft buttons */
+    }
     for (let i = 0; i < 4; i++) {
-      registerSeat(g, bx - 1.8 + i * 1.2, 0.55, bz + 1.55, Math.PI, name + " seat " + (i + 1), name);
+      registerSeat(g, bx - 2.25 + i * 1.5, 0.69, bz + 1.95, Math.PI, name + " seat " + (i + 1), name);
     }
     const neon = textSprite(name + " · INVITE", { size: 30, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
     neon.scale.multiplyScalar(0.55);
     neon.position.set(bx, 2.15, bz - 2.2);
     g.add(neon);
-    lb(bx, bz, 3.2, 2.7, 1.3);
+    lb(bx, bz, 4.0, 3.4, 1.7);
   }
 
   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
     /* ===== TIMELINE GP — WEST WALL race bay ===== */
-    const rcx = -17.5, rcz = 1.5;
+    const rcx = -22, rcz = -8; /* empty NW corner, clear of all furniture */
     addZone("Timeline GP", rcx, rcz, "#8fd1ff");
     /* bay flooring */
     g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
@@ -7543,7 +7573,7 @@ function buildIndependentLoungeWorld() {
     g.add(sf);
     /* pit stools — 4 multiplayer seats */
     for (let i = 0; i < 4; i++) {
-      const pz = rcz - 4.2 + i * 2.4;
+      const pz = rcz - 2.2 + i * 2.2;
       g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx + 5.6, 0.85, pz, 12));
       g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx + 5.6, 0.42, pz, 8));
       registerSeat(g, rcx + 5.6, 0.95, pz, -Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
@@ -7559,18 +7589,22 @@ function buildIndependentLoungeWorld() {
     g.userData.raceRadius = 3.85;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
-    /* ===== TRIVIA — NORTH WALL open bay (east of bar center) ===== */
-    const tqx = 8, tqz = -D / 2 + 3.2; /* against north wall */
-    addZone("Trivia Bay", tqx, tqz + 2.5, "#7CFFB0");
-    /* wall screen frame */
-    g.add(box(5.5, 3.2, 0.18, 0x0c1018, tqx, 2.2, -D / 2 + 2.35));
-    g.add(box(5.0, 2.7, 0.1, 0x101820, tqx, 2.2, -D / 2 + 2.25));
+    /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
+       screens stay unobstructed) ===== */
+    const tvZ = 6; /* along the west wall, south of the hero portrait */
+    addZone("Trivia Bay", -W / 2 + 4.5, tvZ, "#7CFFB0");
+    /* wall screen frame — rotated onto the west wall, facing +x into the room */
+    const tf1 = box(5.5, 3.2, 0.18, 0x0c1018, -W / 2 + 2.3, 2.2, tvZ);
+    tf1.rotation.y = Math.PI / 2; g.add(tf1);
+    const tf2 = box(5.0, 2.7, 0.1, 0x101820, -W / 2 + 2.42, 2.2, tvZ);
+    tf2.rotation.y = Math.PI / 2; g.add(tf2);
     /* glowing quiz face */
     const triviaFace = new THREE.Mesh(
       new THREE.PlaneGeometry(4.6, 2.4),
       new THREE.MeshBasicMaterial({ color: 0x0a1a14, toneMapped: false })
     );
-    triviaFace.position.set(tqx, 2.25, -D / 2 + 2.18);
+    triviaFace.position.set(-W / 2 + 2.52, 2.25, tvZ);
+    triviaFace.rotation.y = Math.PI / 2;
     g.add(triviaFace);
     /* live quiz canvas texture */
     const tCanvas = document.createElement("canvas");
@@ -7596,23 +7630,24 @@ function buildIndependentLoungeWorld() {
     g.userData.triviaScreen = { mesh: triviaFace, canvas: tCanvas, ctx: tCtx, tex: tTex, paintIdle: paintTriviaIdle };
     const qt = textSprite("TRIVIA · 4 PLAYERS", { size: 32, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
     qt.scale.multiplyScalar(0.55);
-    qt.position.set(tqx, 4.0, -D / 2 + 2.5);
+    qt.position.set(-W / 2 + 2.6, 4.0, tvZ);
     g.add(qt);
-    /* 4 chairs facing the wall screen */
+    /* 4 chairs east of the screen, facing WEST toward it */
     for (let i = 0; i < 4; i++) {
-      const sx = tqx - 2.4 + i * 1.6;
-      const sz = tqz + 2.8;
+      const sz = tvZ - 2.4 + i * 1.6;
+      const sx = -W / 2 + 5.1;
       g.add(box(0.7, 0.12, 0.7, WALNUT, sx, 0.45, sz));
-      g.add(box(0.7, 0.55, 0.12, TEAL, sx, 0.75, sz - 0.28));
+      const back = box(0.7, 0.55, 0.12, TEAL, sx + 0.28, 0.75, sz);
+      back.rotation.y = Math.PI / 2; g.add(back);
       g.add(cyl(0.05, 0.05, 0.42, BRASS, sx, 0.22, sz, 8));
-      registerSeat(g, sx, 0.55, sz, Math.PI, "Trivia seat " + (i + 1), "Trivia Bay");
+      registerSeat(g, sx, 0.55, sz, -Math.PI / 2, "Trivia seat " + (i + 1), "Trivia Bay");
     }
-    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, tqx, 0.04, tqz + 2.8));
+    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, -W / 2 + 5.1, 0.04, tvZ));
     const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
     walkT.scale.multiplyScalar(0.45);
-    walkT.position.set(tqx, 1.7, tqz + 2.8);
+    walkT.position.set(-W / 2 + 5.1, 1.7, tvZ);
     g.add(walkT);
-    g.userData.triviaPos = new THREE.Vector3(tqx, 0, tqz + 2.8);
+    g.userData.triviaPos = new THREE.Vector3(-W / 2 + 5.1, 0, tvZ);
     g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
 
     /* darts remain on EAST WALL (built below in same block historically — keep darts section after) */
@@ -7821,7 +7856,7 @@ function buildIndependentLoungeWorld() {
   g.add(welcome);
 
   g.userData.liveLounge = true;
-  g.userData.walkBounds = { xMin: -22.2, xMax: 22.2, zMin: -14.4, zMax: 20.6 };
+  g.userData.walkBounds = { xMin: -27.0, xMax: 27.0, zMin: -14.4, zMax: 20.6 };
   g.layers.set(1);
   g.traverse(o => o.layers.set(1));
   scene.add(g);
@@ -7838,6 +7873,351 @@ function getLoungeMediaScreens() {
   return (loungeDecor && loungeDecor.userData && loungeDecor.userData.mediaScreens) || [];
 }
 try { window.getLoungeMediaScreens = getLoungeMediaScreens; } catch (_) {}
+
+/* ============================== LOUNGE LIVE TV ==============================
+ * Four independent TVs on the bar wall, one tuner each.
+ * Lineup (iptv-org database, main US feeds): CBS News 24/7 - ABC News Live -
+ * CNBC - LiveNOW from FOX. TV n starts on channel n.
+ * - REMOTES: four remotes sit on the bar, one per TV. Walk up to grab one;
+ *   while holding it, T changes THAT TV's channel.
+ * - CAPTIONS: on by default (C toggles). Uses embedded CEA-608/708 cues via
+ *   hls.js when the stream carries them.
+ * - SOUND: walk up to a TV and press V — that TV unmutes (others mute).
+ *   Walk away and it mutes itself.
+ * Dead/geo-blocked/CORS-poisoned streams auto-skip. Failure never breaks
+ * the game — screens fall back to their idle art. */
+const LIVE_TV_CHANNELS = [
+  { name: "CBS News 24/7", urls: [
+    "https://jmp2.uk/plu-6350fdd266e9ea0007bedec5.m3u8",
+    "https://jmp2.uk/plu-6231ede1be5b460007f91bc1.m3u8",
+    "https://jmp2.uk/plu-62441d6ded1827000763dcda.m3u8",
+  ]},
+  { name: "ABC News Live", urls: [
+    "https://pb-0n3n2ej0w8pl9.akamaized.net/ABCNewsLive_Disney.m3u8",
+    "https://aegis-cloudfront-1.tubi.video/d6cbb0de-68e4-4f3b-82f9-bf5d526e0bde/index.m3u8",
+    "https://jmp2.uk/plu-6508be683a0d700008c534e4.m3u8",
+  ]},
+  { name: "CNBC", urls: [
+    "https://gpuserver3.tier1streams.com/CNBC/index.m3u8",
+  ]},
+  { name: "LiveNOW from FOX", urls: [
+    "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-livenowbyfox-lgus/playlist.m3u8",
+    "https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8",
+    "https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8",
+  ]},
+];
+const liveTV = {
+  active: false, tuners: [], remotes: [], heldRemote: null,
+  captions: true, audioTV: null, frameSkip: 0,
+};
+function ensureHlsJs() {
+  return new Promise((resolve, reject) => {
+    if (window.Hls) { resolve(window.Hls); return; }
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+    sc.onload = () => window.Hls ? resolve(window.Hls) : reject(new Error("no Hls global"));
+    sc.onerror = () => reject(new Error("hls.js CDN load failed"));
+    document.head.appendChild(sc);
+  });
+}
+function liveTVActiveCue(t) {
+  try {
+    const tracks = t.video.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      const tr = tracks[i];
+      if (tr.kind !== "captions" && tr.kind !== "subtitles") continue;
+      if (tr.mode === "disabled") tr.mode = "hidden";
+      const cues = tr.activeCues;
+      if (cues && cues.length) {
+        let txt = "";
+        for (let c = 0; c < cues.length; c++) txt += (c ? " " : "") + (cues[c].text || "");
+        return txt.replace(/<[^>]+>/g, "").trim();
+      }
+    }
+  } catch (_) {}
+  return "";
+}
+function liveTVDrawFrame(t) {
+  return (ctx2, w, h) => {
+    const v = t.video;
+    ctx2.fillStyle = "#000"; ctx2.fillRect(0, 0, w, h);
+    if (v && v.readyState >= 2 && v.videoWidth) {
+      const ar = v.videoWidth / v.videoHeight, tar = w / h;
+      let dw = w, dh = h, dx = 0, dy = 0;
+      if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
+      ctx2.drawImage(v, dx, dy, dw, dh);
+    }
+    /* closed captions */
+    if (liveTV.captions) {
+      const cue = liveTVActiveCue(t);
+      if (cue) {
+        ctx2.font = "bold 18px system-ui, sans-serif";
+        ctx2.textAlign = "center"; ctx2.textBaseline = "bottom";
+        /* naive 2-line wrap */
+        const words = cue.split(/\s+/);
+        const lines = [];
+        let cur = "";
+        for (const wd of words) {
+          const trial = cur ? cur + " " + wd : wd;
+          if (ctx2.measureText(trial).width > w - 60 && cur) { lines.push(cur); cur = wd; }
+          else cur = trial;
+        }
+        if (cur) lines.push(cur);
+        const show = lines.slice(-2);
+        let yy = h - 44;
+        for (let li = show.length - 1; li >= 0; li--) {
+          const tw = ctx2.measureText(show[li]).width;
+          ctx2.fillStyle = "rgba(0,0,0,0.75)";
+          ctx2.fillRect(w / 2 - tw / 2 - 8, yy - 22, tw + 16, 26);
+          ctx2.fillStyle = "#fff";
+          ctx2.fillText(show[li], w / 2, yy);
+          yy -= 28;
+        }
+      }
+    }
+    /* status strip */
+    ctx2.fillStyle = "rgba(0,0,0,0.62)";
+    ctx2.fillRect(0, h - 30, w, 30);
+    ctx2.fillStyle = "#ff3b3b";
+    ctx2.beginPath(); ctx2.arc(18, h - 15, 6, 0, Math.PI * 2); ctx2.fill();
+    ctx2.fillStyle = "#fff";
+    ctx2.font = "bold 15px system-ui, sans-serif";
+    ctx2.textAlign = "left"; ctx2.textBaseline = "middle";
+    ctx2.fillText("LIVE \u00b7 " + t.name + (liveTV.audioTV === t.idx ? "  \ud83d\udd0a" : ""), 32, h - 14);
+    ctx2.textAlign = "right";
+    ctx2.fillStyle = "#9ec4e0";
+    ctx2.font = "600 12px system-ui, sans-serif";
+    ctx2.fillText("TV-" + (t.idx + 1), w - 10, h - 14);
+  };
+}
+function liveTVTuneTV(idx, nextChannel, manual = false) {
+  const t = liveTV.tuners[idx];
+  if (!t || !liveTV.active) return;
+  t.playing = false;
+  if (nextChannel) {
+    t.chIdx = (t.chIdx + 1) % LIVE_TV_CHANNELS.length;
+    t.urlIdx = 0;
+  } else {
+    t.urlIdx++;
+    if (t.urlIdx >= LIVE_TV_CHANNELS[Math.max(0, t.chIdx)].urls.length) {
+      t.chIdx = (t.chIdx + 1) % LIVE_TV_CHANNELS.length;
+      t.urlIdx = 0;
+      t.hopCount = (t.hopCount || 0) + 1;
+      if (t.hopCount > LIVE_TV_CHANNELS.length) { t.dead = true; return; } /* full loop failed — rest */
+    }
+  }
+  const ch = LIVE_TV_CHANNELS[t.chIdx];
+  const url = ch.urls[t.urlIdx];
+  t.name = ch.name;
+  if (manual) { t.hopCount = 0; t.dead = false; try { showMsg("\ud83d\udcfa TV-" + (idx + 1) + " tuning: " + ch.name); } catch (_) {} }
+  const v = t.video;
+  try { if (t.hls) { t.hls.destroy(); t.hls = null; } } catch (_) {}
+  clearTimeout(t.watchdog);
+  const tick = () => {
+    if (document.hidden) { t.watchdog = setTimeout(tick, 4000); return; }
+    if (liveTV.active && !t.playing) liveTVTuneTV(idx, false);
+  };
+  t.watchdog = setTimeout(tick, 9000);
+  try {
+    if (v.canPlayType("application/vnd.apple.mpegurl")) {
+      v.src = url;
+      v.play().catch(() => {});
+    } else if (window.Hls && window.Hls.isSupported()) {
+      const h = new window.Hls({ enableWorker: true, maxBufferLength: 10 });
+      t.hls = h;
+      h.on(window.Hls.Events.MANIFEST_PARSED, () => {
+        /* cap quality ~480p per TV — four streams at once must stay light */
+        try {
+          let capIdx = -1;
+          (h.levels || []).forEach((lv, li) => { if (lv.height && lv.height <= 480) capIdx = li; });
+          if (capIdx >= 0) h.autoLevelCapping = capIdx;
+        } catch (_) {}
+      });
+      h.on(window.Hls.Events.ERROR, (_ev, data) => {
+        if (data && data.fatal && liveTV.active && !t.playing) {
+          try { h.destroy(); } catch (_) {}
+          if (t.hls === h) { t.hls = null; liveTVTuneTV(idx, false); }
+        }
+      });
+      h.loadSource(url);
+      h.attachMedia(v);
+      v.play().catch(() => {});
+    }
+  } catch (e) { liveTVTuneTV(idx, false); }
+}
+function liveTVBuildRemotes() {
+  if (liveTV.remotes.length || !loungeDecor) return;
+  /* four remotes along the (lowered) bar top: one per TV */
+  const spots = [[-16.5, -11.3], [-12.2, -11.3], [-7.8, -11.3], [-3.4, -11.3]];
+  for (let i = 0; i < 4; i++) {
+    const grp = new THREE.Group();
+    grp.name = "TVRemote_" + (i + 1);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.045, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.5 }));
+    grp.add(body);
+    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.015, 8),
+      new THREE.MeshBasicMaterial({ color: 0xd02020 }));
+    btn.position.set(0, 0.03, -0.1);
+    grp.add(btn);
+    for (let b = 0; b < 6; b++) {
+      const k = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0x3a3f48 }));
+      k.position.set((b % 2) ? 0.03 : -0.03, 0.028, 0.02 + Math.floor(b / 2) * 0.07);
+      grp.add(k);
+    }
+    const tag = textSprite("TV-" + (i + 1), { size: 26, color: "#9ec4e0", strokeW: 5, maxWidth: 0 });
+    tag.scale.multiplyScalar(0.35);
+    tag.position.set(0, 0.35, 0);
+    tag.userData.maxDist = 10;
+    grp.add(tag);
+    grp.position.set(spots[i][0], 0.87, spots[i][1]);
+    grp.rotation.y = 0.4 - i * 0.25;
+    loungeDecor.add(grp);
+    liveTV.remotes.push({ idx: i, mesh: grp, tag, held: false });
+  }
+}
+async function startLoungeLiveTV() {
+  if (liveTV.active) return;
+  liveTV.active = true;
+  try {
+    try { await ensureHlsJs(); } catch (e) { console.warn("liveTV:", e.message); }
+    if (!liveTV.tuners.length) {
+      for (let i = 0; i < 4; i++) {
+        const v = document.createElement("video");
+        v.muted = true; v.playsInline = true; v.autoplay = true;
+        v.width = 640; v.height = 360;
+        v.crossOrigin = "anonymous";
+        v.style.display = "none";
+        document.body.appendChild(v);
+        const t = { idx: i, video: v, hls: null, chIdx: i - 1, urlIdx: 0, name: "", playing: false, watchdog: 0, hopCount: 0, dead: false };
+        v.addEventListener("playing", () => {
+          if (!liveTV.active) return;
+          t.playing = true;
+          t.hopCount = 0;
+          clearTimeout(t.watchdog);
+          /* audio-only trap: no video frames means useless on a screen */
+          setTimeout(() => {
+            if (liveTV.active && t.playing && v.videoWidth === 0 && !document.hidden) {
+              t.playing = false;
+              liveTVTuneTV(i, false);
+            }
+          }, 5000);
+        });
+        v.addEventListener("error", () => { if (liveTV.active && !t.playing) liveTVTuneTV(i, false); });
+        liveTV.tuners.push(t);
+      }
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden || !liveTV.active) return;
+        for (const t of liveTV.tuners) {
+          if (t.playing) { t.video.play().catch(() => {}); continue; }
+          if (t.dead) continue;
+          /* hls may have been destroyed while hidden — reload the SAME url
+             (tune(false) pre-increments, so step back one first) */
+          t.urlIdx--;
+          liveTVTuneTV(t.idx, false);
+        }
+      });
+    }
+    liveTVBuildRemotes();
+    /* TV n starts on channel n */
+    for (let i = 0; i < liveTV.tuners.length; i++) liveTVTuneTV(i, true);
+  } catch (e) {
+    console.warn("liveTV start failed", e);
+    liveTV.active = false;
+  }
+}
+function stopLoungeLiveTV() {
+  liveTV.active = false;
+  liveTV.audioTV = null;
+  liveTV.heldRemote = null;
+  for (const t of liveTV.tuners) {
+    t.playing = false;
+    clearTimeout(t.watchdog);
+    try { if (t.hls) { t.hls.destroy(); t.hls = null; } } catch (_) {}
+    try { t.video.muted = true; t.video.pause(); t.video.removeAttribute("src"); t.video.load(); } catch (_) {}
+  }
+  for (const r of liveTV.remotes) { r.held = false; try { r.mesh.visible = true; } catch (_) {} }
+  try { for (const s of getLoungeMediaScreens()) s.clear(); } catch (_) {}
+}
+function liveTVScreenWorldX(i) {
+  const scr = getLoungeMediaScreens()[i];
+  if (!scr) return 0;
+  const p = new THREE.Vector3();
+  scr.mesh.getWorldPosition(p);
+  return p;
+}
+function liveTVNearestTV(maxDist = 8) {
+  let best = null, bd = maxDist;
+  const screens = getLoungeMediaScreens();
+  for (let i = 0; i < screens.length; i++) {
+    const p = new THREE.Vector3();
+    screens[i].mesh.getWorldPosition(p);
+    const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+function liveTVSetAudio(idx) {
+  liveTV.audioTV = idx;
+  for (const t of liveTV.tuners) t.video.muted = (t.idx !== idx);
+  if (idx != null) {
+    const t = liveTV.tuners[idx];
+    t.video.play().catch(() => {});
+    try { showMsg("\ud83d\udd0a TV-" + (idx + 1) + " (" + t.name + ") sound ON \u00b7 V again to mute \u00b7 mutes as you walk away"); } catch (_) {}
+  }
+}
+function updateLoungeLiveTV() {
+  if (!liveTV.active) return;
+  /* remote pickup by proximity */
+  for (const r of liveTV.remotes) {
+    if (r.held || !r.mesh.visible) continue;
+    const p = new THREE.Vector3();
+    r.mesh.getWorldPosition(p);
+    if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) < 1.5) {
+      /* return any held remote to the bar first */
+      if (liveTV.heldRemote != null) {
+        const old = liveTV.remotes[liveTV.heldRemote];
+        old.held = false; old.mesh.visible = true;
+      }
+      r.held = true;
+      r.mesh.visible = false;
+      liveTV.heldRemote = r.idx;
+      try { showMsg("\ud83d\udcfa Remote TV-" + (r.idx + 1) + " grabbed \u00b7 T: change channel \u00b7 C: captions \u00b7 V: sound"); } catch (_) {}
+      try { SFX.pickup(); } catch (_) {}
+    }
+  }
+  /* audio follows proximity: mute when you leave the TV you unmuted */
+  if (liveTV.audioTV != null) {
+    const p = new THREE.Vector3();
+    const scr = getLoungeMediaScreens()[liveTV.audioTV];
+    if (scr) {
+      scr.mesh.getWorldPosition(p);
+      if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) > 11) {
+        liveTVSetAudio(null);
+        try { showMsg("\ud83d\udd07 TV sound off (out of range)"); } catch (_) {}
+      }
+    }
+  }
+  /* paint frames ~20fps */
+  liveTV.frameSkip = (liveTV.frameSkip + 1) % 3;
+  if (liveTV.frameSkip) return;
+  const screens = getLoungeMediaScreens();
+  for (let i = 0; i < liveTV.tuners.length && i < screens.length; i++) {
+    const t = liveTV.tuners[i];
+    if (!t.playing) continue;
+    try {
+      screens[i].setMedia(liveTVDrawFrame(t));
+    } catch (e) {
+      t.playing = false;
+      liveTVTuneTV(i, false);
+    }
+  }
+}
+try {
+  window.__liveTV = liveTV;
+  window.__liveTVTune = liveTVTuneTV;
+} catch (_) {}
+
 /* legacy builder retained below but unused when independent path active */
 /* old office-overlay lounge builder removed — use buildIndependentLoungeWorld */
 
@@ -7996,14 +8376,18 @@ function buildBondPig() {
   const lapelMat = shiny(SATIN, 240, 0xffffff, { polyOff: -1 });
   add(g, new THREE.BoxGeometry(0.58 * S, 0.66 * S, 0.28 * S), jacketMat, 0, 1.13 * S, -0.01 * S);
   add(g, new THREE.BoxGeometry(0.62 * S, 0.16 * S, 0.3 * S), jacketMat, 0, 1.4 * S, -0.01 * S);
-  add(g, new THREE.BoxGeometry(0.11 * S, 0.42 * S, 0.04 * S), shirtMat, 0, 1.12 * S, 0.175 * S);
+  /* white shirt V: WIDEST at the neck, stepping narrower to the waist */
+  add(g, new THREE.BoxGeometry(0.2 * S, 0.16 * S, 0.04 * S), shirtMat, 0, 1.34 * S, 0.175 * S);
+  add(g, new THREE.BoxGeometry(0.14 * S, 0.16 * S, 0.04 * S), shirtMat, 0, 1.19 * S, 0.175 * S);
+  add(g, new THREE.BoxGeometry(0.08 * S, 0.2 * S, 0.04 * S), shirtMat, 0, 1.02 * S, 0.175 * S);
   for (const s of [-1, 1]) {
-    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.05 * s * S, 1.36 * S, 0.185 * S);
+    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.055 * s * S, 1.4 * S, 0.185 * S);
     col.rotation.z = 0.4 * s;
   }
+  /* lapels CONVERGE downward (tops flared apart at the collar) */
   for (const s of [-1, 1]) {
-    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.12 * s * S, 1.2 * S, 0.2 * S);
-    lap.rotation.z = 0.28 * s;
+    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.14 * s * S, 1.19 * S, 0.2 * S);
+    lap.rotation.z = -0.32 * s;
     lap.rotation.y = -0.12 * s;
   }
   /* classic black bow tie */
@@ -8158,20 +8542,22 @@ function setLoungeBondMode(on) {
 function buildLoungeHero() {
   const g = new THREE.Group();
   g.name = "LoungeBondHero";
-  /* framed wall piece behind the lobby welcome */
+  /* Framed portrait on the empty WEST wall (between the bar and the
+     Fireside Library) — 1:1, one third the old size, no floating text.
+     A brass plaque above reads the house motto. */
+  const px = -28.3, py = 2.5, pz = 0;
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(6.4, 4.0, 0.12),
+    new THREE.BoxGeometry(2.3, 2.3, 0.12),
     new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
   );
-  frame.position.set(0, 2.6, -12.4);
+  frame.position.set(0, 0, 0);
   g.add(frame);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x334455,
-    side: THREE.DoubleSide,
     toneMapped: false
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.5), mat);
-  plane.position.set(0, 2.6, -12.32);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), mat);
+  plane.position.set(0, 0, 0.08);
   g.add(plane);
   try {
     const loader = new THREE.TextureLoader();
@@ -8179,24 +8565,48 @@ function buildLoungeHero() {
       try {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
+        /* square-crop the source: center-crop the wider axis */
+        const img = tex.image;
+        if (img && img.width && img.height) {
+          const side = Math.min(img.width, img.height);
+          tex.repeat.set(side / img.width, side / img.height);
+          tex.offset.set((1 - side / img.width) / 2, (1 - side / img.height) / 2);
+        }
         plane.material.map = tex;
         plane.material.color.set(0xffffff);
         plane.material.needsUpdate = true;
       } catch (_) {}
-    }, undefined, () => { /* keep placeholder color if missing */ });
+    }, undefined, () => {});
   } catch (_) {}
-  const cap = (typeof textSprite === "function")
-    ? textSprite("TIMELINE LOUNGE · BOND", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 })
-    : null;
-  if (cap) {
-    cap.scale.multiplyScalar(0.55);
-    cap.position.set(0, 4.7, -12.2);
-    g.add(cap);
-  }
+  /* brass plaque: "We will purge them all" */
+  const plaqueTex = canvasTex(512, 128, (c2, w, h) => {
+    const grad = c2.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "#d8b25e"); grad.addColorStop(0.5, "#b8923e"); grad.addColorStop(1, "#96742c");
+    c2.fillStyle = grad; c2.fillRect(0, 0, w, h);
+    c2.strokeStyle = "#6a4f1c"; c2.lineWidth = 6; c2.strokeRect(10, 10, w - 20, h - 20);
+    c2.fillStyle = "#3a2c10";
+    c2.font = "italic bold 44px Georgia, 'Times New Roman', serif";
+    c2.textAlign = "center"; c2.textBaseline = "middle";
+    c2.fillText("We will purge them all", w / 2, h / 2 + 2);
+  });
+  const plaque = new THREE.Mesh(
+    new THREE.BoxGeometry(2.0, 0.5, 0.06),
+    [null, null, null, null,
+      new THREE.MeshBasicMaterial({ map: plaqueTex }),
+      new THREE.MeshStandardMaterial({ color: 0x96742c })
+    ].map(m => m || new THREE.MeshStandardMaterial({ color: 0x96742c, metalness: 0.6, roughness: 0.4 }))
+  );
+  plaque.position.set(0, 1.55, 0.02);
+  g.add(plaque);
+  /* a soft picture light over the portrait */
+  const lamp = new THREE.PointLight(0xffe0b0, 3, 6);
+  lamp.position.set(0, 1.9, 0.8);
+  g.add(lamp);
+  g.position.set(px, py, pz);
+  g.rotation.y = Math.PI / 2; /* on the west wall, facing into the room */
   g.visible = false;
   g.userData.isLoungeHero = true;
   g.userData.keepInLounge = true;
-  /* Prefer parenting under loungeDecor so combat-world hide never eats it */
   if (loungeDecor) loungeDecor.add(g);
   else scene.add(g);
   loungeHero = g;
@@ -8336,6 +8746,7 @@ function activateSocialLounge() {
       pigOwnParts = null;
     }
     setLoungeBondMode(true);
+    try { startLoungeLiveTV(); } catch (_) {}
   } catch (_) {}
 }
 
@@ -8351,6 +8762,7 @@ function deactivateSocialLounge() {
   } catch (_) {}
   try { setLoungeHeroVisible(false); } catch (_) {}
   try { setLoungeBondMode(false); } catch (_) {}
+  try { stopLoungeLiveTV(); } catch (_) {}
   try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
   try {
     if (loungeHero) {
@@ -10899,6 +11311,26 @@ addEventListener("keydown", e => {
   /* typing a reply in the tweet reader must not drive the game */
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
+  /* lounge TV controls: T channel (needs held remote), C captions, V sound */
+  if (socialActive && typeof liveTV !== "undefined" && liveTV.active) {
+    if (e.code === "KeyT") {
+      if (liveTV.heldRemote != null) liveTVTuneTV(liveTV.heldRemote, true, true);
+      else { try { showMsg("\ud83d\udcfa Grab a remote from the bar to change channels"); } catch (_) {} }
+      return;
+    }
+    if (e.code === "KeyC") {
+      liveTV.captions = !liveTV.captions;
+      try { showMsg("Closed captions " + (liveTV.captions ? "ON" : "OFF")); } catch (_) {}
+      return;
+    }
+    if (e.code === "KeyV") {
+      const near = liveTVNearestTV(9);
+      if (liveTV.audioTV != null) liveTVSetAudio(null);
+      else if (near != null) liveTVSetAudio(near);
+      else { try { showMsg("Walk up to a TV first, then press V for sound"); } catch (_) {} }
+      return;
+    }
+  }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
   keys[e.code] = true;
@@ -14381,6 +14813,7 @@ renderer.setAnimationLoop(() => {
       }
     } catch (_) {}
   });
+  safeStep("liveTV", () => updateLoungeLiveTV());
   /* keep office suppressed — some systems re-show shell meshes */
   if (socialActive && liveLoungeMode) {
     try {
@@ -14972,6 +15405,16 @@ window.__game = {
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
   get marsState() { return marsState; },
+  /* headless screenshot: force one render, downscale, return data URL */
+  snap(w = 420) {
+    renderer.render(scene, camera);
+    const src = renderer.domElement;
+    const c = document.createElement("canvas");
+    const h = Math.round(w * src.height / src.width);
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(src, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.65);
+  },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
