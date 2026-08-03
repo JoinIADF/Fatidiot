@@ -1,0 +1,183 @@
+ hud = document.getElementById("raceHud");
+   if (hud) { hud.classList.remove("hidden"); hud.setAttribute("aria-hidden", "false"); }
+-  showMsg("🏎️ TIMELINE GP — 3 laps · WASD/stick · beat 3 rivals");
++  const cv = document.getElementById("raceCanvas");
++  raceGame.canvas = cv;
++  raceGame.ctx = cv ? cv.getContext("2d") : null;
++  try {
++    const btn = document.getElementById("raceQuitBtn");
++    if (btn) btn.onclick = () => endRaceGame(false);
++  } catch (_) {}
++  raceResizeCanvas();
++  showMsg("🏎️ ARCADE GP — same screen · WASD you · arrows P2 · 2 laps");
+   try { SFX.pickup(); } catch (_) {}
+ }
++function raceResizeCanvas() {
++  const cv = raceGame.canvas;
++  if (!cv) return;
++  const w = Math.min(1280, Math.max(640, window.innerWidth || 960));
++  const h = Math.min(720, Math.max(360, Math.floor((window.innerHeight || 600) * 0.72)));
++  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
++}
+ function endRaceGame(won) {
++  if (!raceGame.active && !raceGame.finished) return;
+   raceGame.active = false;
+-  raceGame.cool = 10;
++  raceGame.cool = 8;
++  raceGame.finished = false;
++  raceGame.racers = [];
++  raceGame.segments = [];
+   socialReading = false;
+   document.body.classList.remove("darts-active", "reading-tweets");
+-  setHeroForMiniGame(false);
++  try { setHeroForMiniGame(false); } catch (_) {}
+   try { syncLoungeMobileUI(); } catch (_) {}
+-  if (raceGame.car) {
+-    try { if (raceGame.car.parent) raceGame.car.parent.remove(raceGame.car); } catch (_) {}
+-    raceGame.car = null;
+-  }
+-  for (const g of raceGame.ghostCars) {
+-    try { if (g.parent) g.parent.remove(g); } catch (_) {}
+-  }
+-  raceGame.ghostCars = [];
++  try { if (pig) pig.visible = true; } catch (_) {}
+   const hud = document.getElementById("raceHud");
+   if (hud) { hud.classList.add("hidden"); hud.setAttribute("aria-hidden", "true"); }
+-  const bonus = won ? 500 : Math.floor(raceGame.lap * 80);
+-  score += bonus;
+-  updateHud();
+-  showMsg(won ? "🏎️ YOU WIN TIMELINE GP · +" + bonus : "🏎️ Race over · +" + bonus + " · " + (raceGame.standings || []).join(", "));
++  const you = (raceGame.standings || [])[0];
++  const bonus = won ? 500 : 120;
++  try { score += bonus; } catch (_) {}
++  showMsg(won
++    ? "🏎️ YOU WIN ARCADE GP · +" + bonus + " · " + (raceGame.standings || []).join(" → ")
++    : "🏎️ Race over · +" + bonus + " · " + (raceGame.standings || []).join(" → "));
++}
++function raceRacerProgress(r) {
++  return (r.lap - 1) * raceGame.trackLength + r.z;
+ }
+ function updateRaceGame(dt) {
+-  if (!raceGame.active || !loungeDecor || !loungeDecor.userData.raceCenter) return;
+-  raceGame.tLeft -= dt;
+-  const rc = loungeDecor.userData.raceCenter;
+-  const c = new THREE.Vector3(rc.x, 0, rc.z);
+-  const r = loungeDecor.userData.raceRadius || 3.85;
+-  const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
+-  const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
+-  const throttle = keys["KeyW"] || keys["ArrowUp"] || stickY < -0.25;
+-  const brake = keys["KeyS"] || keys["ArrowDown"] || stickY > 0.25;
+-  const steer = (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0) + (keys["KeyD"] || keys["ArrowRight"] ? -1 : 0) + (-stickX);
+-  if (throttle) raceGame.speed = Math.min(3.2, raceGame.speed + dt * 2.4);
+-  else raceGame.speed = Math.max(0.5, raceGame.speed - dt * 1.1);
+-  if (brake) raceGame.speed = Math.max(0.15, raceGame.speed - dt * 3.2);
+-  /* progress around oval */
+-  const prev = raceGame.progress || 0;
+-  raceGame.progress = prev + raceGame.speed * dt * 0.38;
+-  if (Math.floor(raceGame.progress / (Math.PI * 2)) > Math.floor(prev / (Math.PI * 2))) {
+-    raceGame.lap++;
+-    try { beep(660, 0.08, "square", 0.07); } catch (_) {}
+-    if (raceGame.lap > raceGame.laps) { endRaceGame(true); return; }
+-  }
+-  const ang = raceGame.progress;
+-  const x = c.x + Math.cos(ang) * r;
+-  const z = c.z + Math.sin(ang) * r;
+-  if (raceGame.car) {
+-    raceGame.car.position.set(x, 0.05, z);
+-    raceGame.car.rotation.y = -ang + Math.PI / 2;
+-    raceGame.car.visible = true;
+-    raceGame.car.traverse(o => { o.layers.set(1); o.visible = true; });
+-  }
+-  /* park pig under car / hide */
+-  pig.position.set(x, 0, z);
+-  pig.visible = false;
+-  pigY = 0.1;
+-  yaw = -ang + Math.PI / 2;
+-  const placements = [{ name: "You", prog: raceGame.progress + (raceGame.lap - 1) * Math.PI * 2 }];
+-  for (const g of raceGame.ghostCars) {
+-    g.userData.ang += g.userData.spd * dt * 0.38;
+-    const a = g.userData.ang;
+-    g.position.set(c.x + Math.cos(a) * r, 0.05, c.z + Math.sin(a) * r);
+-    g.rotation.y = -a + Math.PI / 2;
+-    g.visible = true;
+-    g.traverse(o => { o.layers.set(1); o.visible = true; });
+-    placements.push({ name: g.userData.racerName || "AI", prog: a });
+-  }
+-  placements.sort((a, b) => b.prog - a.prog);
+-  raceGame.standings = placements.map(p => p.name);
+-  /* chase cam */
+-  const camX = x - Math.sin(yaw) * 7;
+-  const camZ = z - Math.cos(yaw) * 7;
+-  camera.position.lerp(new THREE.Vector3(camX, 5.2, camZ), Math.min(1, dt * 5));
+-  camera.lookAt(x, 0.5, z);
+-  camera.layers.set(1);
+-  const m = Math.max(0, Math.floor(raceGame.tLeft / 60));
+-  const sec = Math.max(0, Math.floor(raceGame.tLeft % 60));
++  if (!raceGame.active) return;
++  raceGame.t += dt;
++  raceResizeCanvas();
++  const maxS = raceGame.maxSpeed;
++  const accel = maxS / 4.5;
++  const braking = -maxS;
++  const decel = -maxS / 5.5;
++  const offDecel = -maxS / 2.2;
++
++  for (const r of raceGame.racers) {
++    if (r.finished) continue;
++    const seg = raceFindSegment(r.z) || raceGame.segments[0];
++    const sp = r.speed / maxS;
++    const dx = dt * 2.1 * Math.max(0.15, sp);
++    let left = false, right = false, faster = false, slower = false;
++    if (r.isYou) {
++      const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
++      const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
++      /* P1: WASD / stick only — arrows reserved for same-screen P2 */
++      left = !!(keys["KeyA"]) || stickX < -0.25;
++      right = !!(keys["KeyD"]) || stickX > 0.25;
++      faster = !!(keys["KeyW"]) || stickY < -0.25 || !!keys["Space"];
++      slower = !!(keys["KeyS"]) || stickY > 0.25;
++    } else if (r.isP2) {
++      left = !!keys["ArrowLeft"];
++      right = !!keys["ArrowRight"];
++      faster = !!keys["ArrowUp"];
++      slower = !!keys["ArrowDown"];
++      /* if P2 never touches controls, fall back to light AI so race isn't empty */
++      if (!left && !right && !faster && !slower) r.ai = true;
++      else r.ai = false;
++    }
++    if (r.ai) {
++      /* simple AI: stay in lane, ease into curves, keep pace */
++      const targetX = Math.sin(r.z * 0.00035 + (r.name.length)) * 0.55;
++      if (r.x > targetX + 0.05) left = true;
++      if (r.x < targetX - 0.05) right = true;
++      faster = r.speed < maxS * (0.72 + (r.name.charCodeAt(0) % 5) * 0.04);
++      if (Math.abs(seg.curve) > 2.5 && r.speed > maxS * 0.7) slower = true;
++    }
++    if (left) r.x -= dx;
++    if (right) r.x += dx;
++    r.x -= dx * sp * (seg.curve || 0) * raceGame.centrifugal;
++    if (faster) r.speed = raceUtilAccel(r.speed, accel, dt);
++    else if (slower) r.speed = raceUtilAccel(r.speed, braking, dt);
++    else r.speed = raceUtilAccel(r.speed, decel, dt);
++    if (Math.abs(r.x) > 1) {
++      if (r.speed > maxS / 4) r.speed = raceUtilAccel(r.speed, offDecel, dt);
++    }
++    r.x = raceUtilLimit(r.x, -2.2, 2.2);
++    r.speed = raceUtilLimit(r.speed, 0, maxS);
++    const prevZ = r.z;
++    r.z = raceUtilIncrease(r.z, dt * r.speed, raceGame.trackLength);
++    if (prevZ > r.z) {
++      /* crossed start/finish */
++      r.lap++;
++      if (r.lap > 2) {
++        r.finished = true;
++        r.place = raceGame.racers.filter(x => x.finished).length;
++        r.speed = 0;
++        try { beep(720, 0.08, "square", 0.07); } catch (_) {}
++      } else {
++        try { beep(520, 0.06, "square", 0.05); } catch (_) {}
++      }
++    }
++  }
++
++  /* standings by progre

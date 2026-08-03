@@ -1,0 +1,81 @@
++ 0.35)); /* control shelf */
++      g.add(cyl(0.06, 0.06, 0.08, 0xd02020, cx - 0.25, 0.86, cz + 0.4, 8));
++      g.add(cyl(0.06, 0.06, 0.08, 0x1d9bf0, cx + 0.25, 0.86, cz + 0.4, 8));
++    }
++    /* stools facing cabinets */
+     for (let i = 0; i < 4; i++) {
+-      const pz = rcz - 1.6 + i * 1.55;
+-      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, rcx - 4.2, 0.8, pz, 12));
+-      g.add(cyl(0.05, 0.06, 0.72, BRASS, rcx - 4.2, 0.38, pz, 8));
+-      registerSeat(g, rcx - 4.2, 0.9, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+-    }
+-    /* large glowing walk-up pad — approach auto-starts */
+-    g.add(box(2.6, 0.07, 2.6, 0x8fd1ff, rcx - 4.0, 0.045, rcz));
+-    const walkRace = textSprite("WALK HERE · START RACE", { size: 24, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+-    walkRace.scale.multiplyScalar(0.42);
+-    walkRace.position.set(rcx - 4.0, 1.75, rcz);
++      const sx = rcx - 3.4 + i * 1.7, sz = rcz + 0.6;
++      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, sx, 0.72, sz, 12));
++      g.add(cyl(0.05, 0.06, 0.65, BRASS, sx, 0.34, sz, 8));
++      registerSeat(g, sx, 0.82, sz, Math.PI, "Arcade seat " + (i + 1), "Arcade GP");
++    }
++    /* walk-up pad in front of middle cabinet */
++    g.add(box(2.4, 0.07, 2.0, 0x8fd1ff, rcx - 1.2, 0.045, rcz + 1.5));
++    const walkRace = textSprite("WALK HERE · ARCADE RACE", { size: 22, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
++    walkRace.scale.multiplyScalar(0.4);
++    walkRace.position.set(rcx - 1.2, 1.65, rcz + 1.5);
+     g.add(walkRace);
+-    g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
+-    g.userData.racePad = new THREE.Vector3(rcx - 4.0, 0, rcz);
+-    g.userData.raceRadius = 2.75;
++    g.userData.raceCenter = new THREE.Vector3(rcx - 1.2, 0, rcz - 1.0);
++    g.userData.racePad = new THREE.Vector3(rcx - 1.2, 0, rcz + 1.5);
++    g.userData.raceRadius = 1.6;
+     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
+ 
+     /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
+@@ -10314,15 +10566,10 @@
+             try { if (socialActive) startDartLeague(); else startDartGame(); } catch (err) { console.warn("dart start", err); }
+           }
+         }
+-        if ((raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
+-          const rp = L.racePad || L.raceCenter;
+-          const rc = L.raceCenter || rp;
++        if ((raceGame.cool || 0) <= 0 && L.racePad) {
++          const rp = L.racePad;
+           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
+-          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
+-          const dPad = Math.hypot(pig.position.x - rx, pig.position.z - rz);
+-          const dCtr = Math.hypot(pig.position.x - cx, pig.position.z - cz);
+-          const R = (L.raceRadius || 3) + 2.8;
+-          if (dPad < 4.8 || dCtr < R) {
++          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 2.6) {
+             try { startRaceGame(); } catch (err) { console.warn("race start", err); showMsg("Race failed to start"); }
+           }
+         }
+@@ -12332,6 +12579,7 @@
+   /* typing a reply in the tweet reader must not drive the game */
+   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
+   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
++  if (raceGame.active && e.code === "Escape") { endRaceGame(false); return; }
+   /* lounge TV: V near a screen = engage (volume for you only). No remotes/T/C. */
+   if (socialActive && typeof liveTV !== "undefined" && liveTV.active && e.code === "KeyV") {
+     e.preventDefault();
+@@ -12394,14 +12642,10 @@
+             startTriviaGame(); return;
+           }
+         }
+-        if (!raceGame.active && (raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
+-          const rp = L.racePad || L.raceCenter;
+-          const rc = L.raceCenter || rp;
++        if (!raceGame.active && (raceGame.cool || 0) <= 0 && L.racePad) {
++          const rp = L.racePad;
+           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
+-          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
+-          const R = (L.raceRadius || 3) + 2.8;
+-          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 4.8 ||
+-              Math.hypot(pig.position.x - cx, pig.position.z - cz) < R) {
++          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 2.8) {
+             startRaceGame(); return;
+           }
+         }

@@ -1,0 +1,170 @@
+ss */
++  const ordered = [...raceGame.racers].sort((a, b) => raceRacerProgress(b) - raceRacerProgress(a));
++  raceGame.standings = ordered.map(r => r.name + (r.finished ? " ✓" : ""));
++  const st = document.getElementById("raceStandings");
++  if (st) st.textContent = ordered.map((r, i) => (i + 1) + ". " + r.name).join("  ·  ");
++  const you = raceGame.racers.find(r => r.isYou);
+   const line = document.getElementById("raceLine");
+-  if (line) {
+-    line.textContent = `LAP ${Math.min(raceGame.lap, raceGame.laps)}/${raceGame.laps} · ${m}:${String(sec).padStart(2, "0")} · ${raceGame.speed.toFixed(1)}u`;
++  if (line && you) {
++    const mph = Math.round((you.speed / maxS) * 220);
++    line.textContent = "LAP " + Math.min(you.lap, 2) + "/2 · " + mph + " km/h · " + Math.floor(raceGame.t) + "s";
+   }
+   const sub = document.getElementById("raceSub");
+-  if (sub) sub.textContent = "Standings: " + raceGame.standings.join(" → ") + " · WASD / stick";
+-  if (raceGame.tLeft <= 0) endRaceGame(false);
++  if (sub) sub.textContent = "You: WASD/stick · P2: arrows · same screen · ESC quit";
++
++  /* camera follows you (or lead if you finished) */
++  const camR = (you && !you.finished) ? you : ordered[0];
++  if (camR) raceGame.position = raceUtilIncrease(camR.z, -raceGame.camH * raceGame.camDepth * 0.35, raceGame.trackLength);
++
++  raceRender();
++
++  /* end when all finished or you finished + 2s grace, or timeout */
++  const allDone = raceGame.racers.every(r => r.finished);
++  if (allDone || (you && you.finished && raceGame.t > 3) || raceGame.t > 120) {
++    const won = you && you.place === 1;
++    endRaceGame(!!won);
++  }
++}
++function raceRender() {
++  const cv = raceGame.canvas, ctx = raceGame.ctx;
++  if (!cv || !ctx || !raceGame.segments.length) return;
++  const width = cv.width, height = cv.height;
++  const baseSeg = raceFindSegment(raceGame.position);
++  if (!baseSeg) return;
++  const camZ = raceGame.position;
++  /* follow player's x for camera */
++  const you = raceGame.racers.find(r => r.isYou) || raceGame.racers[0];
++  const playerX = you ? you.x : 0;
++  const maxy = height;
++  let x = 0, dx = 0;
++
++  /* sky + hills */
++  const g = ctx.createLinearGradient(0, 0, 0, height * 0.55);
++  g.addColorStop(0, "#1a3a6a"); g.addColorStop(0.55, "#4a90c8"); g.addColorStop(1, "#7ec8e8");
++  ctx.fillStyle = g;
++  ctx.fillRect(0, 0, width, height);
++  ctx.fillStyle = "#2d6a3e";
++  ctx.fillRect(0, height * 0.55, width, height * 0.45);
++
++  const startIdx = baseSeg.index;
++  for (let n = 0; n < raceGame.drawDist; n++) {
++    const seg = raceGame.segments[(startIdx + n) % raceGame.segments.length];
++    raceUtilProject(seg.p1, playerX * raceGame.roadW - x, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
++    raceUtilProject(seg.p2, playerX * raceGame.roadW - x - dx, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
++    x += dx;
++    dx += seg.curve;
++    if (seg.p1.camera.z <= raceGame.camDepth || seg.p2.screen.y >= maxy || seg.p2.screen.y >= seg.p1.screen.y) continue;
++    raceSegment(ctx, width, raceGame.lanes,
++      seg.p1.screen.x, seg.p1.screen.y, seg.p1.screen.w,
++      seg.p2.screen.x, seg.p2.screen.y, seg.p2.screen.w,
++      seg.color);
++  }
++
++  /* draw racers (far to near) sorted by z distance from camera */
++  const drawList = raceGame.racers.map(r => {
++    let rel = r.z - camZ;
++    if (rel < -raceGame.trackLength / 2) rel += raceGame.trackLength;
++    if (rel > raceGame.trackLength / 2) rel -= raceGame.trackLength;
++    return { r, rel };
++  }).filter(o => o.rel > -raceGame.segLen * 2 && o.rel < raceGame.segLen * raceGame.drawDist)
++    .sort((a, b) => b.rel - a.rel);
++
++  for (const { r, rel } of drawList) {
++    const seg = raceFindSegment(r.z);
++    if (!seg) continue;
++    /* approximate screen pos from segment projection */
++    const p = { world: { x: r.x * raceGame.roadW, y: seg.p1.world.y, z: r.z }, camera: {}, screen: {} };
++    raceUtilProject(p, playerX * raceGame.roadW, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
++    if (p.camera.z <= raceGame.camDepth) continue;
++    const scale = p.screen.scale * 2200;
++    if (scale < 0.08) continue;
++    raceDrawCar(ctx, p.screen.x, p.screen.y, Math.min(2.2, Math.max(0.15, scale)), r.color, r.name, 0);
++  }
++
++  /* speed stripe HUD bottom of canvas */
++  ctx.fillStyle = "rgba(0,0,0,0.45)";
++  ctx.fillRect(0, height - 36, width, 36);
++  ctx.fillStyle = "#8fd1ff";
++  ctx.font = "bold 14px system-ui";
++  ctx.textAlign = "left";
++  ctx.fillText("TIMELINE ARCADE · same-screen multiplayer", 12, height - 14);
++  ctx.textAlign = "right";
++  ctx.fillStyle = "#ffd94a";
++  ctx.fillText((raceGame.standings || []).slice(0, 4).join("  "), width - 12, height - 14);
+ }
++try {
++  window.startRaceGame = startRaceGame;
++  window.endRaceGame = endRaceGame;
++} catch (_) {}
+ 
+ /* enhance darts for longer 4-player session */
+ function startDartLeague() {
+@@ -7752,62 +8019,47 @@
+ 
+   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
+   {
+-    /* ===== TIMELINE GP — compact SE corner (away from bar / VIP / dance) ===== */
++    /* ===== TIMELINE ARCADE GP — compact cabinet bank (no floor track) ===== */
+     const rcx = 20.5, rcz = -9.5;
+-    addZone("Timeline GP", rcx, rcz, "#8fd1ff");
+-    /* compact bay flooring */
+-    g.add(box(8.5, 0.05, 9.5, 0x12161e, rcx, 0.02, rcz));
+-    /* east-wall backboard */
+-    g.add(box(0.18, 2.6, 7.5, 0x0e121a, W / 2 - 0.4, 1.7, rcz));
+-    g.add(box(0.06, 2.1, 6.8, 0x1a2435, W / 2 - 0.32, 1.7, rcz));
+-    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 30, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+-    raceBanner.scale.multiplyScalar(0.55);
+-    raceBanner.position.set(W / 2 - 0.5, 3.1, rcz);
++    addZone("Arcade GP", rcx - 1.5, rcz, "#8fd1ff");
++    g.add(box(7.5, 0.04, 6.5, 0x10141c, rcx - 1.2, 0.02, rcz));
++    /* neon marquee */
++    const raceBanner = textSprite("ARCADE GP · SAME SCREEN", { size: 28, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
++    raceBanner.scale.multiplyScalar(0.52);
++    raceBanner.position.set(rcx - 1.2, 3.15, rcz - 2.4);
+     g.add(raceBanner);
+-    /* smaller track oval */
+-    const trackR0 = 2.15, trackR1 = 3.35;
+-    const track = new THREE.Mesh(
+-      new THREE.RingGeometry(trackR0, trackR1, 56),
+-      new THREE.MeshBasicMaterial({ color: 0x1c222c, toneMapped: false, side: THREE.DoubleSide })
+-    );
+-    track.rotation.x = -Math.PI / 2;
+-    track.position.set(rcx, 0.06, rcz);
+-    track.name = "RaceTrack";
+-    g.add(track);
+-    const lane = new THREE.Mesh(
+-      new THREE.RingGeometry(2.7, 2.82, 56),
+-      new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false, side: THREE.DoubleSide })
+-    );
+-    lane.rotation.x = -Math.PI / 2;
+-    lane.position.set(rcx, 0.07, rcz);
+-    g.add(lane);
+-    for (let i = 0; i < 16; i++) {
+-      const a = (i / 16) * Math.PI * 2;
+-      const rr = trackR1 + 0.12;
+-      g.add(box(0.28, 0.18, 0.28, 0x3a4048,
+-        rcx + Math.cos(a) * rr, 0.12, rcz + Math.sin(a) * rr));
+-    }
+-    g.add(box(0.16, 0.04, 1.1, 0xffffff, rcx + 2.75, 0.09, rcz));
+-    const sf = textSprite("START / FINISH", { size: 18, color: "#ffffff", strokeW: 4, maxWidth: 0 });
+-    sf.scale.multiplyScalar(0.34);
+-    sf.position.set(rcx + 3.35, 0.5, rcz);
+-    g.add(sf);
+-    /* pit stools — room-side (west of track) */
++    /* three arcade cabinets along SE wall */
++    for (let i = 0; i < 3; i++) {
++      const cx = rcx - 3.2 + i * 2.1, cz = rcz - 1.8;
++      g.add(box(1.1, 1.7, 0.85, 0x12161e, cx, 0.95, cz));
++      g.add(box(1.0, 0.12, 0.7, 0x1d9bf0, cx, 1.55, cz + 0.05));
++      /* glowing screen */
++      const scr = new THREE.Mesh(
++        new THREE.PlaneGeometry(0.85, 0.55),
++        new THREE.MeshBasicMaterial({ color: i === 1 ? 0x1d9bf0 : 0x0a2035, toneMapped: false })
++      );
++      scr.position.set(cx, 1.35, cz + 0.44);
++      g.add(scr);
++      g.add(box(1.15, 0.08, 0.5, 0x2a2e38, cx, 0.78, cz 
