@@ -1,0 +1,163 @@
+-  const sleeve = new THREE.MeshBasicMaterial({ color: 0x0d0f14, toneMapped: false });
+-  const shirt = new THREE.MeshBasicMaterial({ color: 0xf6f7fa, toneMapped: false });
+-  /* upper arm / sleeve */
+-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.42, 12), sleeve);
+-  upper.position.set(0, -0.15, 0);
+-  arm.add(upper);
+-  const elbow = new THREE.Group();
+-  elbow.position.set(0, -0.36, 0);
+-  arm.add(elbow);
+-  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.38, 12), sleeve);
+-  fore.position.set(0, -0.16, 0.04);
+-  elbow.add(fore);
+-  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.07, 0.06, 12), shirt);
+-  cuff.position.set(0, -0.34, 0.04);
+-  elbow.add(cuff);
++  const skin = new THREE.MeshBasicMaterial({ color: 0xe8b898, toneMapped: false, depthTest: true });
++  const sleeve = new THREE.MeshBasicMaterial({ color: 0x1a1520, toneMapped: false, depthTest: true });
++  const cuffM = new THREE.MeshBasicMaterial({ color: 0xf4f0e8, toneMapped: false, depthTest: true });
++  /* forearm (main visible mass) */
++  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.28, 12), sleeve);
++  fore.rotation.z = Math.PI / 2;
++  fore.position.set(-0.06, 0, 0);
++  arm.add(fore);
++  /* white cuff */
++  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12), cuffM);
++  cuff.rotation.z = Math.PI / 2;
++  cuff.position.set(0.1, 0, 0);
++  arm.add(cuff);
++  /* hand */
+   const hand = new THREE.Group();
+-  hand.position.set(0, -0.42, 0.06);
+-  elbow.add(hand);
+-  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), skin);
+-  palm.scale.set(1, 0.75, 1.15);
++  hand.position.set(0.16, 0, 0.01);
++  arm.add(hand);
++  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10), skin);
++  palm.scale.set(1.15, 0.7, 0.95);
+   hand.add(palm);
+-  /* fingers curled around dart */
+   for (let i = 0; i < 4; i++) {
+-    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.01, 0.08, 6), skin);
+-    f.position.set(-0.02 + i * 0.022, -0.05, 0.04);
+-    f.rotation.x = 0.9;
++    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.008, 0.07, 6), skin);
++    f.position.set(0.04, 0.03 - i * 0.02, 0.03);
++    f.rotation.z = Math.PI / 2;
++    f.rotation.y = -0.35;
+     hand.add(f);
+   }
+-  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.06, 6), skin);
+-  thumb.position.set(-0.05, -0.02, 0.03);
+-  thumb.rotation.z = 0.8;
++  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.01, 0.05, 6), skin);
++  thumb.position.set(0.02, 0.045, 0.02);
++  thumb.rotation.z = Math.PI / 2;
++  thumb.rotation.y = 0.6;
+   hand.add(thumb);
+-  arm.userData.elbow = elbow;
++  arm.userData.elbow = arm; /* no separate elbow — compact */
+   arm.userData.hand = hand;
++  arm.userData.fore = fore;
++  /* depth-friendly render order */
++  arm.traverse(o => { if (o.isMesh) { o.renderOrder = 10; o.frustumCulled = false; } });
+   return arm;
+ }
+ function ensureDartUI() {
+@@ -8913,15 +9026,17 @@
+     bar = document.createElement("div");
+     bar.id = "dartPower";
+     bar.innerHTML = `
+-      <div class="dp-label" id="dartTitle">DARTS</div>
++      <div class="dp-brand"><span class="dp-pip"></span><div class="dp-label" id="dartTitle">Private Darts</div><span class="dp-pip"></span></div>
+       <div class="dp-modes" id="dartModes">
+-        <button type="button" class="dp-mode on" data-mode="201">201</button>
+-        <button type="button" class="dp-mode" data-mode="cricket">Cricket</button>
+-        <button type="button" class="dp-mode" data-mode="practice">Practice</button>
++        <button type="button" class="dp-mode on" data-mode="201">201<small>Countdown</small></button>
++        <button type="button" class="dp-mode" data-mode="cricket">Cricket<small>Marks 15–20</small></button>
++        <button type="button" class="dp-mode" data-mode="practice">Practice<small>9 free darts</small></button>
+       </div>
+-      <div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div>
+-      <div class="dp-score" id="dartScoreLine"></div>
+-      <div class="dp-hint" id="dartHint">Pick a mode · walk to oche</div>`;
++      <div class="dp-power-row">
++        <div class="dp-power-cap">Throw power <span id="dartPowerPct">—</span></div>
++        <div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div>
++      </div>
++      <div class="dp-hint" id="dartHint">Aim with mouse · hold LMB · release to throw · Esc exits</div>`;
+     document.body.appendChild(bar);
+     bar.querySelectorAll(".dp-mode").forEach(btn => {
+       btn.addEventListener("click", (ev) => {
+@@ -8964,7 +9079,6 @@
+ }
+ function updateDartHud() {
+   const hud = document.getElementById("dartHud");
+-  const line = document.getElementById("dartScoreLine");
+   if (!dartGame.active) {
+     if (hud) hud.classList.remove("show");
+     return;
+@@ -8972,24 +9086,26 @@
+   if (hud) hud.classList.add("show");
+   let html = "";
+   if (dartGame.mode === "201") {
+-    html = `<b>201</b> · remaining <b>${dartGame.score201}</b> · turn darts ${dartGame.dartsThisTurn}`;
++    html = `<div class="dh-mode">201 · Double-out</div>
++      <div class="dh-main">${dartGame.score201}<em>LEFT</em></div>
++      <div class="dh-sub">Turn darts ${dartGame.dartsThisTurn} · session ${dartGame.total} pts scored</div>`;
+   } else if (dartGame.mode === "cricket") {
+     const m = dartGame.cricket.marks;
+     const bits = [20,19,18,17,16,15,25].map(n => {
+       const v = m[n] || 0;
+       const dots = "●".repeat(Math.min(3, v)) + "○".repeat(Math.max(0, 3 - v));
+-      return `${n === 25 ? "B" : n}:${dots}`;
+-    });
+-    html = `<b>CRICKET</b> · pts <b>${dartGame.cricket.points}</b><br>${bits.join(" · ")}`;
+-  } else {
+-    html = `<b>PRACTICE</b> · score <b>${dartGame.total}</b> · left ${dartGame.throwsLeft}`;
++      const closed = v >= 3 ? " closed" : "";
++      return `<span class="dh-mark${closed}">${n === 25 ? "BULL" : n} ${dots}</span>`;
++    }).join("");
++    html = `<div class="dh-mode">Cricket</div>
++      <div class="dh-main">${dartGame.cricket.points}<em>PTS</em></div>
++      <div class="dh-marks">${bits}</div>`;
++  } else {
++    html = `<div class="dh-mode">Practice</div>
++      <div class="dh-main">${dartGame.total}<em>PTS</em></div>
++      <div class="dh-sub">${dartGame.throwsLeft} darts remaining</div>`;
+   }
+   if (hud) hud.innerHTML = html;
+-  if (line) line.textContent = dartGame.mode === "201"
+-    ? `${dartGame.score201} left`
+-    : dartGame.mode === "cricket"
+-      ? `${dartGame.cricket.points} pts`
+-      : `${dartGame.total} pts`;
+ }
+ function startDartGame() {
+   const L = loungeDecor && loungeDecor.userData;
+@@ -9018,23 +9134,32 @@
+     try { scene.remove(dartGame.arm); } catch (_) {}
+   }
+   /* first-person arm parented to camera so it never z-fights the world */
++  document.body.classList.add("darts-active");
++  try { document.body.classList.add("reading-tweets"); } catch (_) {}
+   dartGame.arm = mkThrowingArm();
+-  /* lower-right FOV — large enough to read as "your arm" */
+-  dartGame.arm.position.set(0.22, -0.22, -0.38);
+-  dartGame.arm.rotation.set(0.15, 0.05, -0.55);
+-  dartGame.arm.scale.setScalar(1.15);
++  /* lower-right, fully inside frustum (cam looks -Z; FOV ~52) */
++  dartGame.arm.position.set(0.18, -0.14, -0.42);
++  dartGame.arm.rotation.set(0.05, 0.55, 0.15);
++  dartGame.arm.scale.setScalar(1.0);
+   camera.add(dartGame.arm);
+   dartGame.heldDart = mkDartMesh(0x1d9bf0);
+   dartGame.arm.userData.hand.add(dartGame.heldDart);
+-  dartGame.heldDart.position.set(0.04, -0.02, 0.1);
+-  dartGame.heldDart.rotation.set(0.1, 0.15, -Math.PI / 2);
+-  dartGame.heldDart.scale.setScalar(1.2);
++  /* dart tip points toward board (camera -Z → world after cam rot) */
++  dartGame.heldDart.position.set(0.06, 0.0, 0.02);
++  dartGame.heldDart.rotation.set(0, Math.PI / 2, 0);
++  dartGame.heldDart.scale.setScalar(1.1);
