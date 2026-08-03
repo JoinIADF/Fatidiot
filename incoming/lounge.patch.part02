@@ -1,0 +1,170 @@
+-  dartGame.heldDart.traverse(o => { if (o.isMesh) { o.renderOrder = 12; o.frustumCulled = false; } });
++  dartGame.heldDart.scale.setScalar(1.35);
++  dartOnLoungeLayer(dartGame.heldDart);
+   if (!dartGame.reticle) {
+     const r = new THREE.Mesh(
+       new THREE.RingGeometry(0.035, 0.05, 28),
+@@ -9346,6 +9219,7 @@
+     dartGame.reticle = r;
+     scene.add(r);
+   }
++  dartOnLoungeLayer(dartGame.reticle);
+   dartGame.reticle.visible = true;
+   const bar = ensureDartUI();
+   bar.classList.add("show", "interactive");
+@@ -9363,7 +9237,22 @@
+   socialReading = false;
+   document.body.classList.remove("darts-active");
+   try { document.body.classList.remove("reading-tweets"); } catch (_) {}
++  /* clear forced inline hides so lounge chrome can return */
++  try {
++    ["mobileUI","loungeMobBar","stickBase","stickZone","btnCol","mJump","mAdd",
++     "stickLockLabel","mobileHint","socialHint","crosshair","guestChip","zoneTag",
++     "sitHint","wave","score","weapon","portalHint"].forEach(id => {
++      const el = document.getElementById(id);
++      if (!el) return;
++      el.style.removeProperty("display");
++      el.style.removeProperty("visibility");
++      el.style.removeProperty("opacity");
++      el.style.removeProperty("pointer-events");
++      el.style.removeProperty("z-index");
++    });
++  } catch (_) {}
+   setHeroForMiniGame(false);
++  try { syncLoungeMobileUI(); } catch (_) {}
+   try { setMiniTouch(false); } catch (_) {}
+   if (dartGame.reticle) dartGame.reticle.visible = false;
+   if (dartGame.arm) {
+@@ -9497,15 +9386,19 @@
+       dartGame.heldDart.getWorldPosition(start);
+       dartGame.arm.userData.hand.remove(dartGame.heldDart);
+       scene.add(dartGame.heldDart);
++      dartOnLoungeLayer(dartGame.heldDart);
+     } catch (_) {
+       start.set(tp.x + 0.25, tp.y + 0.05, tp.z);
+     }
+   } else {
+     start.set(tp.x + 0.25, tp.y + 0.05, tp.z);
+   }
+-  const mesh = dartGame.heldDart || mkDartMesh();
++  const mesh = dartGame.heldDart || mkDartMesh(0xff4a8a);
+   dartGame.heldDart = null;
+   mesh.position.copy(start);
++  dartOnLoungeLayer(mesh);
++  mesh.visible = true;
++  mesh.scale.setScalar(1.5);
+   const end = new THREE.Vector3(hitX, targetY, targetZ);
+   const dist = start.distanceTo(end);
+   /* flight time from power: harder throw = faster */
+@@ -9562,12 +9455,12 @@
+         dartGame.darts = [];
+       }, 700);
+     }
+-    dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a, 0xe8eef8]));
++    dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xff4a8a, 0x7CFFB0, 0xffd94a, 0xe8eef8]));
+     dartGame.arm.userData.hand.add(dartGame.heldDart);
+-    dartGame.heldDart.position.set(0.06, 0.0, 0.02);
++    dartGame.heldDart.position.set(0.07, 0.0, 0.02);
+     dartGame.heldDart.rotation.set(0, Math.PI / 2, 0);
+-    dartGame.heldDart.scale.setScalar(1.1);
+-    dartGame.heldDart.traverse(o => { if (o.isMesh) { o.renderOrder = 12; o.frustumCulled = false; } });
++    dartGame.heldDart.scale.setScalar(1.35);
++    dartOnLoungeLayer(dartGame.heldDart);
+   }
+   if (dartGame.mode === "201" && dartGame.score201 === 0) {
+     setTimeout(endDartGame, 1400);
+@@ -9581,6 +9474,7 @@
+ }
+ function updateDartGame(dt) {
+   if (!dartGame.active) return;
++  forceHideLoungeControls();
+   const L = loungeDecor && loungeDecor.userData;
+   if (!L || !L.dartBoardPos) return;
+   const bp = L.dartBoardPos;
+@@ -9634,7 +9528,7 @@
+   camera.up.set(0, 1, 0);
+   camera.lookAt(look);
+ 
+-  /* FP arm: compact, always in FOV — aim tilts, charge pulls back, throw punches forward */
++  /* FP arm on layer 1 (lounge camera) — aim / charge / throw */
+   if (dartGame.arm) {
+     dartGame.throwAnim = Math.max(0, (dartGame.throwAnim || 0) - dt * 3.2);
+     const sh = dartGame.shake * Math.sin(t * 38) * 0.01;
+@@ -9643,22 +9537,28 @@
+     const pull = dartGame.charging ? dartGame.power * 0.9 : 0;
+     const thr = dartGame.throwAnim || 0;
+     dartGame.arm.position.set(
+-      0.18 + sh + nz * 0.05,
+-      -0.14 + sh * 0.3 - ny * 0.05 + thr * 0.02,
+-      -0.42 + pull * 0.1 - thr * 0.18
++      0.22 + sh + nz * 0.05,
++      -0.16 + sh * 0.3 - ny * 0.05 + thr * 0.02,
++      -0.48 + pull * 0.1 - thr * 0.2
+     );
+     dartGame.arm.rotation.set(
+-      0.05 - ny * 0.4 - pull * 0.15 + thr * 0.35,
+-      0.55 + nz * 0.45,
+-      0.12 - pull * 0.1
++      0.1 - ny * 0.4 - pull * 0.15 + thr * 0.4,
++      0.65 + nz * 0.45,
++      0.2 - pull * 0.1
+     );
+-    if (dartGame.heldDart) dartGame.heldDart.visible = true;
+     dartGame.arm.visible = true;
+-    /* keep parented to camera every frame (safety) */
++    dartOnLoungeLayer(dartGame.arm);
++    if (dartGame.heldDart) {
++      dartGame.heldDart.visible = true;
++      dartOnLoungeLayer(dartGame.heldDart);
++    }
+     if (dartGame.arm.parent !== camera) {
+       try { camera.add(dartGame.arm); } catch (_) {}
+     }
+   }
++  if (dartGame.reticle) dartOnLoungeLayer(dartGame.reticle);
++  for (const d of dartGame.darts) dartOnLoungeLayer(d);
++  for (const f of dartGame.flying) if (f.mesh) dartOnLoungeLayer(f.mesh);
+ 
+   for (const f of dartGame.flying) {
+     if (!f.alive) continue;
+@@ -10667,11 +10567,6 @@
+   /* typing a reply in the tweet reader must not drive the game */
+   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
+   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
+-  /* T = next live TV channel while in the lounge */
+-  if (socialActive && e.code === "KeyT" && typeof liveTV !== "undefined" && liveTV.active) {
+-    liveTVNext(true);
+-    return;
+-  }
+   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
+   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
+   keys[e.code] = true;
+@@ -14146,7 +14041,6 @@
+       }
+     } catch (_) {}
+   });
+-  safeStep("liveTV", () => updateLoungeLiveTV());
+   /* keep office suppressed — some systems re-show shell meshes */
+   if (socialActive && liveLoungeMode) {
+     try {
+@@ -14195,7 +14089,19 @@
+       camera.layers.set(L);
+       loungeDecor.layers.set(L);
+       loungeDecor.traverse(o => { o.layers.set(L); o.visible = true; });
+-      if (pig) { pig.layers.set(L); pig.traverse(o => o.layers.set(L)); pig.visible = true; }
++      /* during darts: hide pig, keep arm/darts on layer 1 (camera children + flying) */
++      if (typeof dartGame !== "undefined" && dartGame.active) {
++        if (pig) { pig.visible = false; }
++        try {
++          if (dartGame.arm) dartOnLoungeLayer(dartGame.arm);
++          if (dartGame.heldDart) dartOnLoungeLayer(dartGame.heldDart);
++          if (dartGame.reticle) dartOnLoungeLayer(dartGame.reticle);
++          for (const d of dartGame.darts || []) dartOnLoungeLayer(d);
++          for (const f of dartGame.flying || []) if (f && f.mesh) dartOnLoungeLayer(f.mesh);
++        } catch (_) {}
++      } else if (pig) {
++        pig.layers.set(L); pig.traverse(o => o.layers.set(L)); pig.visible = true;
++      }
+       try {
+         for (const e of enemies) {
+           if (e && e.mesh) { e.mesh.layers.set(L); e.mesh.traverse(o => o.layers.set(L)); e.mesh.visible = true; }
