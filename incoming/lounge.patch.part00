@@ -1,0 +1,158 @@
+--- a/index.html
++++ b/index.html
+@@ -6959,7 +6959,7 @@
+   { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
+   { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
+   { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
+-  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the SE track", "Behind the bar", "VIP booth couch"], a: 1 },
++  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the compact SE track", "Behind the bar", "VIP booth couch"], a: 1 },
+ ];
+ 
+ /* —— TRIVIA (wall bay, 4-player scores) —— */
+@@ -7752,22 +7752,22 @@
+ 
+   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
+   {
+-    /* ===== TIMELINE GP — SE corner (clear of bar + west wall) ===== */
+-    const rcx = 17.5, rcz = 12.5;
++    /* ===== TIMELINE GP — compact SE corner (away from bar / VIP / dance) ===== */
++    const rcx = 20.5, rcz = -9.5;
+     addZone("Timeline GP", rcx, rcz, "#8fd1ff");
+-    /* bay flooring */
+-    g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
+-    /* east-side backboard + neon title (away from Algorithm Bar) */
+-    g.add(box(0.2, 3.2, 11, 0x0e121a, W / 2 - 0.45, 2.0, rcz));
+-    g.add(box(0.08, 2.6, 10, 0x1a2435, W / 2 - 0.35, 2.0, rcz));
+-    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
+-    raceBanner.scale.multiplyScalar(0.7);
+-    raceBanner.position.set(W / 2 - 0.55, 3.5, rcz);
++    /* compact bay flooring */
++    g.add(box(8.5, 0.05, 9.5, 0x12161e, rcx, 0.02, rcz));
++    /* east-wall backboard */
++    g.add(box(0.18, 2.6, 7.5, 0x0e121a, W / 2 - 0.4, 1.7, rcz));
++    g.add(box(0.06, 2.1, 6.8, 0x1a2435, W / 2 - 0.32, 1.7, rcz));
++    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 30, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
++    raceBanner.scale.multiplyScalar(0.55);
++    raceBanner.position.set(W / 2 - 0.5, 3.1, rcz);
+     g.add(raceBanner);
+-    /* track oval — asphalt + gold lane */
+-    const trackR0 = 3.0, trackR1 = 4.6;
++    /* smaller track oval */
++    const trackR0 = 2.15, trackR1 = 3.35;
+     const track = new THREE.Mesh(
+-      new THREE.RingGeometry(trackR0, trackR1, 72),
++      new THREE.RingGeometry(trackR0, trackR1, 56),
+       new THREE.MeshBasicMaterial({ color: 0x1c222c, toneMapped: false, side: THREE.DoubleSide })
+     );
+     track.rotation.x = -Math.PI / 2;
+@@ -7775,41 +7775,39 @@
+     track.name = "RaceTrack";
+     g.add(track);
+     const lane = new THREE.Mesh(
+-      new THREE.RingGeometry(3.75, 3.9, 72),
++      new THREE.RingGeometry(2.7, 2.82, 56),
+       new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false, side: THREE.DoubleSide })
+     );
+     lane.rotation.x = -Math.PI / 2;
+     lane.position.set(rcx, 0.07, rcz);
+     g.add(lane);
+-    /* curb blocks around oval */
+-    for (let i = 0; i < 24; i++) {
+-      const a = (i / 24) * Math.PI * 2;
+-      const rr = trackR1 + 0.15;
+-      g.add(box(0.35, 0.22, 0.35, 0x3a4048,
+-        rcx + Math.cos(a) * rr, 0.14, rcz + Math.sin(a) * rr));
+-    }
+-    /* start/finish stripe */
+-    g.add(box(0.2, 0.04, 1.5, 0xffffff, rcx + 3.85, 0.09, rcz));
+-    const sf = textSprite("START / FINISH", { size: 22, color: "#ffffff", strokeW: 4, maxWidth: 0 });
+-    sf.scale.multiplyScalar(0.4);
+-    sf.position.set(rcx + 4.6, 0.55, rcz);
++    for (let i = 0; i < 16; i++) {
++      const a = (i / 16) * Math.PI * 2;
++      const rr = trackR1 + 0.12;
++      g.add(box(0.28, 0.18, 0.28, 0x3a4048,
++        rcx + Math.cos(a) * rr, 0.12, rcz + Math.sin(a) * rr));
++    }
++    g.add(box(0.16, 0.04, 1.1, 0xffffff, rcx + 2.75, 0.09, rcz));
++    const sf = textSprite("START / FINISH", { size: 18, color: "#ffffff", strokeW: 4, maxWidth: 0 });
++    sf.scale.multiplyScalar(0.34);
++    sf.position.set(rcx + 3.35, 0.5, rcz);
+     g.add(sf);
+-    /* pit stools — room-side (west of track) so pad faces into the lounge */
++    /* pit stools — room-side (west of track) */
+     for (let i = 0; i < 4; i++) {
+-      const pz = rcz - 2.2 + i * 2.2;
+-      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx - 5.6, 0.85, pz, 12));
+-      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx - 5.6, 0.42, pz, 8));
+-      registerSeat(g, rcx - 5.6, 0.95, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+-    }
+-    /* walk-up pad — stand here to auto-start race */
+-    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx - 5.2, 0.04, rcz));
+-    const walkRace = textSprite("WALK HERE · START RACE", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+-    walkRace.scale.multiplyScalar(0.48);
+-    walkRace.position.set(rcx - 5.2, 1.9, rcz);
++      const pz = rcz - 1.6 + i * 1.55;
++      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, rcx - 4.2, 0.8, pz, 12));
++      g.add(cyl(0.05, 0.06, 0.72, BRASS, rcx - 4.2, 0.38, pz, 8));
++      registerSeat(g, rcx - 4.2, 0.9, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
++    }
++    /* large glowing walk-up pad — approach auto-starts */
++    g.add(box(2.6, 0.07, 2.6, 0x8fd1ff, rcx - 4.0, 0.045, rcz));
++    const walkRace = textSprite("WALK HERE · START RACE", { size: 24, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
++    walkRace.scale.multiplyScalar(0.42);
++    walkRace.position.set(rcx - 4.0, 1.75, rcz);
+     g.add(walkRace);
+     g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
+-    g.userData.racePad = new THREE.Vector3(rcx - 5.2, 0, rcz);
+-    g.userData.raceRadius = 3.85;
++    g.userData.racePad = new THREE.Vector3(rcx - 4.0, 0, rcz);
++    g.userData.raceRadius = 2.75;
+     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
+ 
+     /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
+@@ -7865,7 +7863,7 @@
+       g.add(cyl(0.05, 0.05, 0.42, BRASS, sx, 0.22, sz, 8));
+       registerSeat(g, sx, 0.55, sz, -Math.PI / 2, "Trivia seat " + (i + 1), "Trivia Bay");
+     }
+-    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, -W / 2 + 5.1, 0.04, tvZ));
++    g.add(box(2.6, 0.07, 2.6, 0x7CFFB0, -W / 2 + 5.1, 0.045, tvZ));
+     const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
+     walkT.scale.multiplyScalar(0.45);
+     walkT.position.set(-W / 2 + 5.1, 1.7, tvZ);
+@@ -8012,7 +8010,7 @@
+     } catch (err) { console.warn("darts alley build", err); }
+   }
+ 
+-  /* dance floor */
++  /* dance floor — lights + music when 3+ people are on it */
+   {
+     const dx = -2, dz = 18;
+     addZone("Dance Floor", dx, dz, "#d48cff");
+@@ -8022,44 +8020,67 @@
+       c.fillRect(w / 2, h / 2, w / 2, h / 2);
+     });
+     tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(6, 6);
+-    const df = new THREE.Mesh(
+-      new THREE.PlaneGeometry(12, 10),
+-      new THREE.MeshStandardMaterial({ map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4 })
+-    );
++    const dfMat = new THREE.MeshStandardMaterial({
++      map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4
++    });
++    const df = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), dfMat);
+     df.rotation.x = -Math.PI / 2;
+     df.position.set(dx, 0.04, dz);
+     g.add(df);
+-    const dj = textSprite("♪ DANCE · OPEN FLOOR", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
++    const discoL = new THREE.PointLight(0xff60d0, 0, 16);
++    discoL.position.set(dx, 3.8, dz);
++    g.add(discoL);
++    const dj = textSprite("♪ DANCE · 3+ FOR PARTY", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
+     dj.scale.multiplyScalar(0.6);
+     dj.position.set(dx, 2.5, dz - 4.5);
+     g.add(dj);
++    g.userData.danceFloor = {
++      mesh: df, mat: dfMat, light: discoL, label: dj,
++      center: new THREE.Vector3(dx, 0, dz),
++      hal
