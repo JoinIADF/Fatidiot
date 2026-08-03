@@ -7275,10 +7275,10 @@ function buildIndependentLoungeWorld() {
   {
     const bx = -10, bz = -12;
     addZone("The Algorithm Bar", bx, bz + 2.2, "#c9a24a");
-    /* bar body — 25% lower per request */
-    g.add(box(16, 0.86, 1.35, WALNUT, bx, 0.43, bz));
-    g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 0.9, bz)); /* top */
-    g.add(box(16, 0.08, 0.12, BRASS, bx, 0.98, bz + 0.7));
+    /* bar body — lowered 25% then a further 15% per request */
+    g.add(box(16, 0.73, 1.35, WALNUT, bx, 0.37, bz));
+    g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 0.77, bz)); /* top */
+    g.add(box(16, 0.08, 0.12, BRASS, bx, 0.84, bz + 0.7));
     /* back bar + bottles (scaled to match) */
     g.add(box(15, 1.8, 0.4, WALNUT2, bx, 1.5, bz - 0.95));
     g.add(box(14.5, 0.08, 0.45, BRASS, bx, 1.95, bz - 0.95));
@@ -7288,17 +7288,17 @@ function buildIndependentLoungeWorld() {
       g.add(cyl(0.07, 0.09, 0.28 + (i % 4) * 0.07, col, bx - 7.5 + i * 0.85, 2.14 + (i % 2) * 0.41, bz - 0.95, 8));
     }
     /* foot rail */
-    const rail = cyl(0.04, 0.04, 15.5, BRASS, bx, 0.21, bz + 0.85, 8);
+    const rail = cyl(0.04, 0.04, 15.5, BRASS, bx, 0.18, bz + 0.85, 8);
     rail.rotation.z = Math.PI / 2;
     g.add(rail);
-    lb(bx, bz, 8.2, 0.9, 1.05);
+    lb(bx, bz, 8.2, 0.9, 0.9);
     /* 6 bar stools scaled to the lower counter */
     for (let i = 0; i < 6; i++) {
       const sx = bx - 6 + i * 2.4, sz = bz + 1.55;
-      g.add(cyl(0.28, 0.3, 0.08, VELVET, sx, 0.69, sz, 14));
-      g.add(cyl(0.05, 0.07, 0.68, BRASS, sx, 0.34, sz, 8));
+      g.add(cyl(0.28, 0.3, 0.08, VELVET, sx, 0.59, sz, 14));
+      g.add(cyl(0.05, 0.07, 0.58, BRASS, sx, 0.29, sz, 8));
       g.add(cyl(0.22, 0.22, 0.05, 0x222, sx, 0.04, sz, 12));
-      registerSeat(g, sx, 0.72, sz, 0, "Bar stool " + (i + 1), "The Algorithm Bar");
+      registerSeat(g, sx, 0.62, sz, 0, "Bar stool " + (i + 1), "The Algorithm Bar");
     }
     /* espresso station */
     g.add(box(0.9, 0.75, 0.65, 0x1c1e24, bx + 7.2, 1.2, bz));
@@ -7430,18 +7430,22 @@ function buildIndependentLoungeWorld() {
     g.userData.raceRadius = 3.85;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
-    /* ===== TRIVIA — NORTH WALL open bay (east of bar center) ===== */
-    const tqx = 8, tqz = -D / 2 + 3.2; /* against north wall */
-    addZone("Trivia Bay", tqx, tqz + 2.5, "#7CFFB0");
-    /* wall screen frame */
-    g.add(box(5.5, 3.2, 0.18, 0x0c1018, tqx, 2.2, -D / 2 + 2.35));
-    g.add(box(5.0, 2.7, 0.1, 0x101820, tqx, 2.2, -D / 2 + 2.25));
+    /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
+       screens stay unobstructed) ===== */
+    const tvZ = 6; /* along the west wall, south of the hero portrait */
+    addZone("Trivia Bay", -W / 2 + 4.5, tvZ, "#7CFFB0");
+    /* wall screen frame — rotated onto the west wall, facing +x into the room */
+    const tf1 = box(5.5, 3.2, 0.18, 0x0c1018, -W / 2 + 2.3, 2.2, tvZ);
+    tf1.rotation.y = Math.PI / 2; g.add(tf1);
+    const tf2 = box(5.0, 2.7, 0.1, 0x101820, -W / 2 + 2.42, 2.2, tvZ);
+    tf2.rotation.y = Math.PI / 2; g.add(tf2);
     /* glowing quiz face */
     const triviaFace = new THREE.Mesh(
       new THREE.PlaneGeometry(4.6, 2.4),
       new THREE.MeshBasicMaterial({ color: 0x0a1a14, toneMapped: false })
     );
-    triviaFace.position.set(tqx, 2.25, -D / 2 + 2.18);
+    triviaFace.position.set(-W / 2 + 2.52, 2.25, tvZ);
+    triviaFace.rotation.y = Math.PI / 2;
     g.add(triviaFace);
     /* live quiz canvas texture */
     const tCanvas = document.createElement("canvas");
@@ -7467,23 +7471,24 @@ function buildIndependentLoungeWorld() {
     g.userData.triviaScreen = { mesh: triviaFace, canvas: tCanvas, ctx: tCtx, tex: tTex, paintIdle: paintTriviaIdle };
     const qt = textSprite("TRIVIA · 4 PLAYERS", { size: 32, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
     qt.scale.multiplyScalar(0.55);
-    qt.position.set(tqx, 4.0, -D / 2 + 2.5);
+    qt.position.set(-W / 2 + 2.6, 4.0, tvZ);
     g.add(qt);
-    /* 4 chairs facing the wall screen */
+    /* 4 chairs east of the screen, facing WEST toward it */
     for (let i = 0; i < 4; i++) {
-      const sx = tqx - 2.4 + i * 1.6;
-      const sz = tqz + 2.8;
+      const sz = tvZ - 2.4 + i * 1.6;
+      const sx = -W / 2 + 5.1;
       g.add(box(0.7, 0.12, 0.7, WALNUT, sx, 0.45, sz));
-      g.add(box(0.7, 0.55, 0.12, TEAL, sx, 0.75, sz - 0.28));
+      const back = box(0.7, 0.55, 0.12, TEAL, sx + 0.28, 0.75, sz);
+      back.rotation.y = Math.PI / 2; g.add(back);
       g.add(cyl(0.05, 0.05, 0.42, BRASS, sx, 0.22, sz, 8));
-      registerSeat(g, sx, 0.55, sz, Math.PI, "Trivia seat " + (i + 1), "Trivia Bay");
+      registerSeat(g, sx, 0.55, sz, -Math.PI / 2, "Trivia seat " + (i + 1), "Trivia Bay");
     }
-    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, tqx, 0.04, tqz + 2.8));
+    g.add(box(2.0, 0.06, 2.0, 0x7CFFB0, -W / 2 + 5.1, 0.04, tvZ));
     const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
     walkT.scale.multiplyScalar(0.45);
-    walkT.position.set(tqx, 1.7, tqz + 2.8);
+    walkT.position.set(-W / 2 + 5.1, 1.7, tvZ);
     g.add(walkT);
-    g.userData.triviaPos = new THREE.Vector3(tqx, 0, tqz + 2.8);
+    g.userData.triviaPos = new THREE.Vector3(-W / 2 + 5.1, 0, tvZ);
     g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
 
     /* darts remain on EAST WALL (built below in same block historically — keep darts section after) */
@@ -7906,7 +7911,7 @@ function liveTVBuildRemotes() {
     tag.position.set(0, 0.35, 0);
     tag.userData.maxDist = 10;
     grp.add(tag);
-    grp.position.set(spots[i][0], 1.0, spots[i][1]);
+    grp.position.set(spots[i][0], 0.87, spots[i][1]);
     grp.rotation.y = 0.4 - i * 0.25;
     loungeDecor.add(grp);
     liveTV.remotes.push({ idx: i, mesh: grp, tag, held: false });
@@ -8212,14 +8217,18 @@ function buildBondPig() {
   const lapelMat = shiny(SATIN, 240, 0xffffff, { polyOff: -1 });
   add(g, new THREE.BoxGeometry(0.58 * S, 0.66 * S, 0.28 * S), jacketMat, 0, 1.13 * S, -0.01 * S);
   add(g, new THREE.BoxGeometry(0.62 * S, 0.16 * S, 0.3 * S), jacketMat, 0, 1.4 * S, -0.01 * S);
-  add(g, new THREE.BoxGeometry(0.11 * S, 0.42 * S, 0.04 * S), shirtMat, 0, 1.12 * S, 0.175 * S);
+  /* white shirt V: WIDEST at the neck, stepping narrower to the waist */
+  add(g, new THREE.BoxGeometry(0.2 * S, 0.16 * S, 0.04 * S), shirtMat, 0, 1.34 * S, 0.175 * S);
+  add(g, new THREE.BoxGeometry(0.14 * S, 0.16 * S, 0.04 * S), shirtMat, 0, 1.19 * S, 0.175 * S);
+  add(g, new THREE.BoxGeometry(0.08 * S, 0.2 * S, 0.04 * S), shirtMat, 0, 1.02 * S, 0.175 * S);
   for (const s of [-1, 1]) {
-    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.05 * s * S, 1.36 * S, 0.185 * S);
+    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.055 * s * S, 1.4 * S, 0.185 * S);
     col.rotation.z = 0.4 * s;
   }
+  /* lapels CONVERGE downward (tops flared apart at the collar) */
   for (const s of [-1, 1]) {
-    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.12 * s * S, 1.2 * S, 0.2 * S);
-    lap.rotation.z = 0.28 * s;
+    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.14 * s * S, 1.19 * S, 0.2 * S);
+    lap.rotation.z = -0.32 * s;
     lap.rotation.y = -0.12 * s;
   }
   /* classic black bow tie */
@@ -8374,20 +8383,22 @@ function setLoungeBondMode(on) {
 function buildLoungeHero() {
   const g = new THREE.Group();
   g.name = "LoungeBondHero";
-  /* framed wall piece behind the lobby welcome */
+  /* Framed portrait on the empty WEST wall (between the bar and the
+     Fireside Library) — 1:1, one third the old size, no floating text.
+     A brass plaque above reads the house motto. */
+  const px = -23.6, py = 2.5, pz = -8;
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(6.4, 4.0, 0.12),
+    new THREE.BoxGeometry(2.3, 2.3, 0.12),
     new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
   );
-  frame.position.set(0, 2.6, -12.4);
+  frame.position.set(0, 0, 0);
   g.add(frame);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x334455,
-    side: THREE.DoubleSide,
     toneMapped: false
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.5), mat);
-  plane.position.set(0, 2.6, -12.32);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), mat);
+  plane.position.set(0, 0, 0.08);
   g.add(plane);
   try {
     const loader = new THREE.TextureLoader();
@@ -8395,24 +8406,48 @@ function buildLoungeHero() {
       try {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
+        /* square-crop the source: center-crop the wider axis */
+        const img = tex.image;
+        if (img && img.width && img.height) {
+          const side = Math.min(img.width, img.height);
+          tex.repeat.set(side / img.width, side / img.height);
+          tex.offset.set((1 - side / img.width) / 2, (1 - side / img.height) / 2);
+        }
         plane.material.map = tex;
         plane.material.color.set(0xffffff);
         plane.material.needsUpdate = true;
       } catch (_) {}
-    }, undefined, () => { /* keep placeholder color if missing */ });
+    }, undefined, () => {});
   } catch (_) {}
-  const cap = (typeof textSprite === "function")
-    ? textSprite("TIMELINE LOUNGE · BOND", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 })
-    : null;
-  if (cap) {
-    cap.scale.multiplyScalar(0.55);
-    cap.position.set(0, 4.7, -12.2);
-    g.add(cap);
-  }
+  /* brass plaque: "We will purge them all" */
+  const plaqueTex = canvasTex(512, 128, (c2, w, h) => {
+    const grad = c2.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, "#d8b25e"); grad.addColorStop(0.5, "#b8923e"); grad.addColorStop(1, "#96742c");
+    c2.fillStyle = grad; c2.fillRect(0, 0, w, h);
+    c2.strokeStyle = "#6a4f1c"; c2.lineWidth = 6; c2.strokeRect(10, 10, w - 20, h - 20);
+    c2.fillStyle = "#3a2c10";
+    c2.font = "italic bold 44px Georgia, 'Times New Roman', serif";
+    c2.textAlign = "center"; c2.textBaseline = "middle";
+    c2.fillText("We will purge them all", w / 2, h / 2 + 2);
+  });
+  const plaque = new THREE.Mesh(
+    new THREE.BoxGeometry(2.0, 0.5, 0.06),
+    [null, null, null, null,
+      new THREE.MeshBasicMaterial({ map: plaqueTex }),
+      new THREE.MeshStandardMaterial({ color: 0x96742c })
+    ].map(m => m || new THREE.MeshStandardMaterial({ color: 0x96742c, metalness: 0.6, roughness: 0.4 }))
+  );
+  plaque.position.set(0, 1.55, 0.02);
+  g.add(plaque);
+  /* a soft picture light over the portrait */
+  const lamp = new THREE.PointLight(0xffe0b0, 3, 6);
+  lamp.position.set(0, 1.9, 0.8);
+  g.add(lamp);
+  g.position.set(px, py, pz);
+  g.rotation.y = Math.PI / 2; /* on the west wall, facing into the room */
   g.visible = false;
   g.userData.isLoungeHero = true;
   g.userData.keepInLounge = true;
-  /* Prefer parenting under loungeDecor so combat-world hide never eats it */
   if (loungeDecor) loungeDecor.add(g);
   else scene.add(g);
   loungeHero = g;
