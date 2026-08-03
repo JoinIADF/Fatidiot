@@ -6959,7 +6959,7 @@ const TRIVIA_BANK = [
   { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
   { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
   { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
-  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the west-wall track", "Behind the bar", "VIP booth couch"], a: 1 },
+  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the SE track", "Behind the bar", "VIP booth couch"], a: 1 },
 ];
 
 /* —— TRIVIA (wall bay, 4-player scores) —— */
@@ -7752,17 +7752,17 @@ function buildIndependentLoungeWorld() {
 
   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
-    /* ===== TIMELINE GP — WEST WALL race bay ===== */
-    const rcx = -22, rcz = -8; /* empty NW corner, clear of all furniture */
+    /* ===== TIMELINE GP — SE corner (clear of bar + west wall) ===== */
+    const rcx = 17.5, rcz = 12.5;
     addZone("Timeline GP", rcx, rcz, "#8fd1ff");
     /* bay flooring */
     g.add(box(12, 0.05, 14, 0x12161e, rcx, 0.02, rcz));
-    /* west-wall backboard + neon title */
-    g.add(box(0.2, 3.2, 11, 0x0e121a, -W / 2 + 0.45, 2.0, rcz));
-    g.add(box(0.08, 2.6, 10, 0x1a2435, -W / 2 + 0.35, 2.0, rcz));
+    /* east-side backboard + neon title (away from Algorithm Bar) */
+    g.add(box(0.2, 3.2, 11, 0x0e121a, W / 2 - 0.45, 2.0, rcz));
+    g.add(box(0.08, 2.6, 10, 0x1a2435, W / 2 - 0.35, 2.0, rcz));
     const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 36, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
     raceBanner.scale.multiplyScalar(0.7);
-    raceBanner.position.set(-W / 2 + 0.55, 3.5, rcz);
+    raceBanner.position.set(W / 2 - 0.55, 3.5, rcz);
     g.add(raceBanner);
     /* track oval — asphalt + gold lane */
     const trackR0 = 3.0, trackR1 = 4.6;
@@ -7794,21 +7794,21 @@ function buildIndependentLoungeWorld() {
     sf.scale.multiplyScalar(0.4);
     sf.position.set(rcx + 4.6, 0.55, rcz);
     g.add(sf);
-    /* pit stools — 4 multiplayer seats */
+    /* pit stools — room-side (west of track) so pad faces into the lounge */
     for (let i = 0; i < 4; i++) {
       const pz = rcz - 2.2 + i * 2.2;
-      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx + 5.6, 0.85, pz, 12));
-      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx + 5.6, 0.42, pz, 8));
-      registerSeat(g, rcx + 5.6, 0.95, pz, -Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+      g.add(cyl(0.28, 0.3, 0.08, 0x1d9bf0, rcx - 5.6, 0.85, pz, 12));
+      g.add(cyl(0.06, 0.07, 0.82, BRASS, rcx - 5.6, 0.42, pz, 8));
+      registerSeat(g, rcx - 5.6, 0.95, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
     }
-    /* walk-up pad in front of track */
-    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx + 5.2, 0.04, rcz));
+    /* walk-up pad — stand here to auto-start race */
+    g.add(box(2.2, 0.06, 2.2, 0x8fd1ff, rcx - 5.2, 0.04, rcz));
     const walkRace = textSprite("WALK HERE · START RACE", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
     walkRace.scale.multiplyScalar(0.48);
-    walkRace.position.set(rcx + 5.2, 1.9, rcz);
+    walkRace.position.set(rcx - 5.2, 1.9, rcz);
     g.add(walkRace);
     g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
-    g.userData.racePad = new THREE.Vector3(rcx + 5.2, 0, rcz);
+    g.userData.racePad = new THREE.Vector3(rcx - 5.2, 0, rcz);
     g.userData.raceRadius = 3.85;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
@@ -8098,17 +8098,11 @@ function getLoungeMediaScreens() {
 try { window.getLoungeMediaScreens = getLoungeMediaScreens; } catch (_) {}
 
 /* ============================== LOUNGE LIVE TV ==============================
- * Four independent TVs on the bar wall, one tuner each.
- * Lineup (iptv-org database, main US feeds): CBS News 24/7 - ABC News Live -
- * CNBC - LiveNOW from FOX. TV n starts on channel n.
- * - REMOTES: four remotes sit on the bar, one per TV. Walk up to grab one;
- *   while holding it, T changes THAT TV's channel.
- * - CAPTIONS: on by default (C toggles). Uses embedded CEA-608/708 cues via
- *   hls.js when the stream carries them.
- * - SOUND: walk up to a TV and press V — that TV unmutes (others mute).
- *   Walk away and it mutes itself.
- * Dead/geo-blocked/CORS-poisoned streams auto-skip. Failure never breaks
- * the game — screens fall back to their idle art. */
+ * Four TVs always on, one fixed channel each (TV n = channel n).
+ * Closed captions always on. No remotes / no T/C channel hotkeys.
+ * Walk up to a screen and press V to engage — focuses that channel and
+ * unmutes volume for this user only. Walk away or V again to disengage.
+ * Dead/geo-blocked streams auto-skip. Failure never breaks the game. */
 const LIVE_TV_CHANNELS = [
   { name: "CBS News 24/7", urls: [
     "https://jmp2.uk/plu-6350fdd266e9ea0007bedec5.m3u8",
@@ -8131,7 +8125,7 @@ const LIVE_TV_CHANNELS = [
 ];
 const liveTV = {
   active: false, tuners: [], remotes: [], heldRemote: null,
-  captions: true, audioTV: null, frameSkip: 0,
+  captions: true, audioTV: null, focused: null, frameSkip: 0,
 };
 function ensureHlsJs() {
   return new Promise((resolve, reject) => {
@@ -8170,8 +8164,8 @@ function liveTVDrawFrame(t) {
       if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
       ctx2.drawImage(v, dx, dy, dw, dh);
     }
-    /* closed captions */
-    if (liveTV.captions) {
+    /* closed captions — always on */
+    {
       const cue = liveTVActiveCue(t);
       if (cue) {
         ctx2.font = "bold 18px system-ui, sans-serif";
@@ -8288,6 +8282,7 @@ function liveTVTuneTV(idx, nextChannel, manual = false) {
   } catch (e) { liveTVTuneTV(idx, false); }
 }
 function liveTVBuildRemotes() {
+  return; /* remotes removed — engage TVs with V near a screen */
   if (liveTV.remotes.length || !loungeDecor) return;
   /* four remotes along the (lowered) bar top: one per TV */
   const spots = [[-16.5, -11.3], [-12.2, -11.3], [-7.8, -11.3], [-3.4, -11.3]];
@@ -8371,6 +8366,7 @@ async function startLoungeLiveTV() {
 function stopLoungeLiveTV() {
   liveTV.active = false;
   liveTV.audioTV = null;
+  liveTV.focused = null;
   liveTV.heldRemote = null;
   for (const t of liveTV.tuners) {
     t.playing = false;
@@ -8401,42 +8397,47 @@ function liveTVNearestTV(maxDist = 8) {
 }
 function liveTVSetAudio(idx) {
   liveTV.audioTV = idx;
-  for (const t of liveTV.tuners) t.video.muted = (t.idx !== idx);
+  for (const t of liveTV.tuners) {
+    try { t.video.muted = (idx == null || t.idx !== idx); } catch (_) {}
+  }
   if (idx != null) {
     const t = liveTV.tuners[idx];
-    t.video.play().catch(() => {});
-    try { showMsg("\ud83d\udd0a TV-" + (idx + 1) + " (" + t.name + ") sound ON \u00b7 V again to mute \u00b7 mutes as you walk away"); } catch (_) {}
+    try { t.video.volume = 1; t.video.play().catch(() => {}); } catch (_) {}
   }
+}
+function liveTVEngage(idx) {
+  if (idx == null || !liveTV.active) return;
+  if (liveTV.focused === idx) {
+    liveTV.focused = null;
+    liveTVSetAudio(null);
+    try { showMsg("TV disengaged · muted"); } catch (_) {}
+    return;
+  }
+  liveTV.focused = idx;
+  liveTVSetAudio(idx);
+  const t = liveTV.tuners[idx];
+  try { showMsg("Watching " + ((t && t.name) || ("TV-" + (idx + 1))) + " · CC on · V to leave"); } catch (_) {}
+  try {
+    const scr = getLoungeMediaScreens()[idx];
+    if (scr && scr.mesh) {
+      const p = new THREE.Vector3();
+      scr.mesh.getWorldPosition(p);
+      yaw = Math.atan2(p.x - pig.position.x, p.z - pig.position.z);
+    }
+  } catch (_) {}
 }
 function updateLoungeLiveTV() {
   if (!liveTV.active) return;
-  /* remote pickup by proximity */
-  for (const r of liveTV.remotes) {
-    if (r.held || !r.mesh.visible) continue;
+  /* engaged TV: mute when player walks away (volume only while focused) */
+  if (liveTV.focused != null) {
     const p = new THREE.Vector3();
-    r.mesh.getWorldPosition(p);
-    if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) < 1.5) {
-      /* return any held remote to the bar first */
-      if (liveTV.heldRemote != null) {
-        const old = liveTV.remotes[liveTV.heldRemote];
-        old.held = false; old.mesh.visible = true;
-      }
-      r.held = true;
-      r.mesh.visible = false;
-      liveTV.heldRemote = r.idx;
-      try { showMsg("\ud83d\udcfa Remote TV-" + (r.idx + 1) + " grabbed \u00b7 T: change channel \u00b7 C: captions \u00b7 V: sound"); } catch (_) {}
-      try { SFX.pickup(); } catch (_) {}
-    }
-  }
-  /* audio follows proximity: mute when you leave the TV you unmuted */
-  if (liveTV.audioTV != null) {
-    const p = new THREE.Vector3();
-    const scr = getLoungeMediaScreens()[liveTV.audioTV];
+    const scr = getLoungeMediaScreens()[liveTV.focused];
     if (scr) {
       scr.mesh.getWorldPosition(p);
-      if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) > 11) {
+      if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) > 9) {
+        liveTV.focused = null;
         liveTVSetAudio(null);
-        try { showMsg("\ud83d\udd07 TV sound off (out of range)"); } catch (_) {}
+        try { showMsg("Left the TV · muted"); } catch (_) {}
       }
     }
   }
@@ -8451,7 +8452,7 @@ function updateLoungeLiveTV() {
   const i = liveTV.frame % Math.max(1, Math.min(liveTV.tuners.length, screens.length));
   const t = liveTV.tuners[i];
   if (t && t.playing) {
-    const period = (i === nearTV || i === liveTV.audioTV) ? 3 : 9;
+    const period = (i === nearTV || i === liveTV.audioTV || i === liveTV.focused) ? 3 : 9;
     t.paintAge = (t.paintAge || 0) + 1;
     const vt = t.video ? t.video.currentTime : 0;
     if (t.paintAge >= period && (vt !== t.lastVT || t.paintAge >= 60)) {
@@ -8481,7 +8482,7 @@ function liveTVAdaptQuality() {
       const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
       maxH = d < 10 ? 480 : d < 20 ? 360 : 240;
     } catch (_) {}
-    if (liveTV.audioTV === i) maxH = 480;
+    if (liveTV.audioTV === i || liveTV.focused === i) maxH = 480;
     const cap = t.caps[maxH];
     if (cap != null && cap >= 0 && t.hls.autoLevelCapping !== cap) t.hls.autoLevelCapping = cap;
   }
@@ -8816,21 +8817,29 @@ function buildLoungeHero() {
   const g = new THREE.Group();
   g.name = "LoungeBondHero";
   /* Framed portrait on the empty WEST wall (between the bar and the
-     Fireside Library) — 1:1, one third the old size, no floating text.
-     A brass plaque above reads the house motto. */
+     Fireside Library). Photo fills the frame opening; plaque above
+     holds the house motto on two lines so nothing clips. */
   const px = -28.3, py = 2.5, pz = 0;
+  const frameOuter = 2.55, photoSide = 2.12; /* photo nearly fills frame */
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(2.3, 2.3, 0.12),
+    new THREE.BoxGeometry(frameOuter, frameOuter, 0.12),
     new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
   );
   frame.position.set(0, 0, 0);
   g.add(frame);
+  /* gold liner so the photo edge reads as matted into the frame */
+  const liner = new THREE.Mesh(
+    new THREE.BoxGeometry(photoSide + 0.08, photoSide + 0.08, 0.04),
+    new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.65, roughness: 0.35 })
+  );
+  liner.position.set(0, 0, 0.05);
+  g.add(liner);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x334455,
     toneMapped: false
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), mat);
-  plane.position.set(0, 0, 0.08);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(photoSide, photoSide), mat);
+  plane.position.set(0, 0, 0.09);
   g.add(plane);
   try {
     const loader = new THREE.TextureLoader();
@@ -8838,12 +8847,17 @@ function buildLoungeHero() {
       try {
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
-        /* square-crop the source: center-crop the wider axis */
+        /* cover-crop into square so photo fills frame (no letterbox bars) */
         const img = tex.image;
         if (img && img.width && img.height) {
           const side = Math.min(img.width, img.height);
-          tex.repeat.set(side / img.width, side / img.height);
-          tex.offset.set((1 - side / img.width) / 2, (1 - side / img.height) / 2);
+          /* slight zoom so edges tuck under the liner */
+          const zoom = 1.06;
+          tex.repeat.set((side / img.width) * zoom, (side / img.height) * zoom);
+          tex.offset.set(
+            (1 - (side / img.width) * zoom) / 2,
+            (1 - (side / img.height) * zoom) / 2
+          );
         }
         plane.material.map = tex;
         plane.material.color.set(0xffffff);
@@ -8851,25 +8865,26 @@ function buildLoungeHero() {
       } catch (_) {}
     }, undefined, () => {});
   } catch (_) {}
-  /* brass plaque: "We will purge them all" */
-  const plaqueTex = canvasTex(512, 128, (c2, w, h) => {
+  /* brass plaque: two-line motto so text fits inside plaque bounds */
+  const plaqueTex = canvasTex(768, 200, (c2, w, h) => {
     const grad = c2.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#d8b25e"); grad.addColorStop(0.5, "#b8923e"); grad.addColorStop(1, "#96742c");
     c2.fillStyle = grad; c2.fillRect(0, 0, w, h);
-    c2.strokeStyle = "#6a4f1c"; c2.lineWidth = 6; c2.strokeRect(10, 10, w - 20, h - 20);
+    c2.strokeStyle = "#6a4f1c"; c2.lineWidth = 8; c2.strokeRect(12, 12, w - 24, h - 24);
     c2.fillStyle = "#3a2c10";
-    c2.font = "italic bold 44px Georgia, 'Times New Roman', serif";
+    c2.font = "italic bold 48px Georgia, 'Times New Roman', serif";
     c2.textAlign = "center"; c2.textBaseline = "middle";
-    c2.fillText("We will purge them all", w / 2, h / 2 + 2);
+    c2.fillText("We will purge", w / 2, h * 0.38);
+    c2.fillText("them all", w / 2, h * 0.68);
   });
   const plaque = new THREE.Mesh(
-    new THREE.BoxGeometry(2.0, 0.5, 0.06),
+    new THREE.BoxGeometry(2.4, 0.62, 0.06),
     [null, null, null, null,
       new THREE.MeshBasicMaterial({ map: plaqueTex }),
       new THREE.MeshStandardMaterial({ color: 0x96742c })
     ].map(m => m || new THREE.MeshStandardMaterial({ color: 0x96742c, metalness: 0.6, roughness: 0.4 }))
   );
-  plaque.position.set(0, 1.55, 0.02);
+  plaque.position.set(0, 1.72, 0.04);
   g.add(plaque);
   /* a soft picture light over the portrait */
   const lamp = new THREE.PointLight(0xffe0b0, 3, 6);
@@ -10198,13 +10213,28 @@ function updateSocialLounge(dt) {
       SFX.pickup();
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
-    /* dart table: walk up to start the mini-game */
-    if (!dartGame.active && !strikerGame.active && !arcadeGame.active && !triviaGame.active && !raceGame.active && (dartGame.cool || 0) <= 0 && L.dartTablePos) {
-      const dpos = L.dartTablePos;
+    /* mini-games: walk-up start (darts, race, trivia) — same approach UX as darts */
+    {
       const sc = L.independent ? 1 : (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1);
-      const wx = dpos.x * (L.independent ? 1 : sc), wz = dpos.z * (L.independent ? 1 : sc);
-      if (Math.hypot(pig.position.x - wx, pig.position.z - wz) < 2.8) {
-        if (socialActive) startDartLeague(); else startDartGame();
+      const busy = !!(dartGame.active || strikerGame.active || arcadeGame.active || triviaGame.active || raceGame.active);
+      if (!busy) {
+        if ((dartGame.cool || 0) <= 0 && L.dartTablePos) {
+          const dpos = L.dartTablePos;
+          const wx = dpos.x * (L.independent ? 1 : sc), wz = dpos.z * (L.independent ? 1 : sc);
+          if (Math.hypot(pig.position.x - wx, pig.position.z - wz) < 2.8) {
+            if (socialActive) startDartLeague(); else startDartGame();
+          }
+        }
+        if ((raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
+          const rp = L.racePad || L.raceCenter;
+          const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
+          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 3.2) startRaceGame();
+        }
+        if ((triviaGame.cool || 0) <= 0 && L.triviaPos) {
+          const tp = L.triviaPos;
+          const tx = tp.x * (L.independent ? 1 : sc), tz = tp.z * (L.independent ? 1 : sc);
+          if (Math.hypot(pig.position.x - tx, pig.position.z - tz) < 3.0) startTriviaGame();
+        }
       }
     }
     dartGame.cool = Math.max(0, (dartGame.cool || 0) - dt);
@@ -12203,25 +12233,14 @@ addEventListener("keydown", e => {
   /* typing a reply in the tweet reader must not drive the game */
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
-  /* lounge TV controls: T channel (needs held remote), C captions, V sound */
-  if (socialActive && typeof liveTV !== "undefined" && liveTV.active) {
-    if (e.code === "KeyT") {
-      if (liveTV.heldRemote != null) liveTVTuneTV(liveTV.heldRemote, true, true);
-      else { try { showMsg("\ud83d\udcfa Grab a remote from the bar to change channels"); } catch (_) {} }
-      return;
-    }
-    if (e.code === "KeyC") {
-      liveTV.captions = !liveTV.captions;
-      try { showMsg("Closed captions " + (liveTV.captions ? "ON" : "OFF")); } catch (_) {}
-      return;
-    }
-    if (e.code === "KeyV") {
-      const near = liveTVNearestTV(9);
-      if (liveTV.audioTV != null) liveTVSetAudio(null);
-      else if (near != null) liveTVSetAudio(near);
-      else { try { showMsg("Walk up to a TV first, then press V for sound"); } catch (_) {} }
-      return;
-    }
+  /* lounge TV: V near a screen = engage (volume for you only). No remotes/T/C. */
+  if (socialActive && typeof liveTV !== "undefined" && liveTV.active && e.code === "KeyV") {
+    e.preventDefault();
+    const near = liveTVNearestTV(9);
+    if (near != null) liveTVEngage(near);
+    else if (liveTV.focused != null) liveTVEngage(liveTV.focused);
+    else { try { showMsg("Walk up to a TV, then press V to watch"); } catch (_) {} }
+    return;
   }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
