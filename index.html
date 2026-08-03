@@ -1291,7 +1291,7 @@
   #overlay .modeBtn.star { border-color: #ffb06a; color: #ffb06a; }
 
 
-  /* hide lounge controls while tweet reader is open */
+  /* hide ALL in-game controls while tweet reader is open */
   body.reading-tweets #loungeMobBar,
   body.reading-tweets #loungeMobBar.show,
   body.lounge-ui.reading-tweets #loungeMobBar,
@@ -1300,6 +1300,14 @@
   body:has(#tweetReader:not(.hidden)) #loungeMobBar.show,
   body.reading-tweets #mobileUI,
   body.reading-tweets #mobileUI.show,
+  body:has(#tweetReader:not(.hidden)) #mobileUI,
+  body:has(#tweetReader:not(.hidden)) #mobileUI.show,
+  body.reading-tweets #socialHint,
+  body.reading-tweets #crosshair,
+  body.reading-tweets #btnCol,
+  body.reading-tweets #stickBase,
+  body.reading-tweets #stickZone,
+  body.reading-tweets #mobileHint,
   #loungeMobBar.reading-hidden {
     display: none !important;
     visibility: hidden !important;
@@ -7277,6 +7285,14 @@ function syncLoungeMobileUI() {
       bar.style.setProperty("opacity", "0", "important");
       if (reading) bar.style.setProperty("z-index", "-1", "important");
     }
+    if (ui && reading) {
+      ui.classList.remove("show");
+      ui.style.setProperty("display", "none", "important");
+      ui.style.setProperty("pointer-events", "none", "important");
+    } else if (ui && !reading) {
+      ui.style.removeProperty("display");
+      ui.style.removeProperty("pointer-events");
+    }
   }
   if (hint) {
     if (on && mob) hint.style.display = "none";
@@ -7543,6 +7559,7 @@ function openTweetReader(e) {
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try {
     document.body.classList.add("reading-tweets");
+    socialReading = true;
     const bar = document.getElementById("loungeMobBar");
     if (bar) {
       bar.classList.remove("show");
@@ -7553,6 +7570,12 @@ function openTweetReader(e) {
       bar.style.setProperty("opacity", "0", "important");
       bar.style.setProperty("z-index", "-1", "important");
       bar.setAttribute("aria-hidden", "true");
+    }
+    const ui = document.getElementById("mobileUI");
+    if (ui) {
+      ui.classList.remove("show");
+      ui.style.setProperty("display", "none", "important");
+      ui.style.setProperty("pointer-events", "none", "important");
     }
   } catch (_) {}
   const head = $("trHead");
@@ -7694,6 +7717,11 @@ function closeTweetReader(silent = false) {
       bar.style.removeProperty("pointer-events");
       bar.style.removeProperty("opacity");
       bar.style.removeProperty("z-index");
+    }
+    const ui = document.getElementById("mobileUI");
+    if (ui) {
+      ui.style.removeProperty("display");
+      ui.style.removeProperty("pointer-events");
     }
   } catch (_) {}
   if (!silent && was && mode === "play" && socialActive) {
