@@ -1,0 +1,129 @@
+-  const sn = add(new THREE.CylinderGeometry(0.085, 0.095, 0.12, 14), shiny(SNOUT, 45), 0, 1.63, 0.2);
++  /* round pink snout */
++  const sn = add(headG, new THREE.CylinderGeometry(0.09 * S, 0.1 * S, 0.13 * S, 16), shiny(SNOUT, 45), 0, -0.02 * S, 0.18 * S);
+   sn.rotation.x = Math.PI / 2;
+-  const cap = add(new THREE.CylinderGeometry(0.088, 0.088, 0.02, 14), shiny(0xd08a94, 45), 0, 1.63, 0.265);
++  const cap = add(headG, new THREE.CylinderGeometry(0.092 * S, 0.092 * S, 0.025 * S, 16), shiny(0xd08a94, 45), 0, -0.02 * S, 0.25 * S);
+   cap.rotation.x = Math.PI / 2;
+   for (const s of [-1, 1]) {
+-    const n = add(new THREE.CylinderGeometry(0.02, 0.02, 0.03, 8), shiny(0x6e3a44, 30), 0.032 * s, 1.63, 0.275);
++    const n = add(headG, new THREE.CylinderGeometry(0.022 * S, 0.022 * S, 0.03 * S, 8), shiny(0x6e3a44, 30), 0.035 * s * S, -0.02 * S, 0.26 * S);
+     n.rotation.x = Math.PI / 2;
+   }
++  g.add(headG);
++  g.userData.head = headG;
+   g.visible = false;
++  /* overall scale safety (geometry already *S; keep group scale 1) */
++  g.scale.setScalar(1);
+   return g;
+ }
+ function setLoungeBondMode(on) {
+@@ -7506,7 +7536,22 @@
+     }
+     bondSuit.visible = !!on;
+     if (bondSuit.userData.gun) bondSuit.userData.gun.visible = !!on;
+-    for (const c of pigOwnParts) c.visible = !on;
++    for (const c of pigOwnParts) {
++      c.visible = !on;
++      /* hard-disable weapon meshes so per-frame weapon code can't flash them */
++      if (on) {
++        try { c.traverse(o => { if (o.isMesh) o.visible = false; }); } catch (_) {}
++      } else {
++        try { c.traverse(o => { if (o.isMesh) o.visible = true; }); } catch (_) {}
++      }
++    }
++    if (on) {
++      try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
++      try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
++      try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
++      /* neutralize outline flash / hog scale pops while tuxedo is up */
++      try { pig.scale.set(1, 1, 1); } catch (_) {}
++    }
+   } catch (_) {}
+ }
+ 
+@@ -7683,7 +7728,15 @@
+   });
+   try { syncLoungeMobileUI(); } catch (_) {}
+   try { setLoungeHeroVisible(true); } catch (_) {}
+-  try { setLoungeBondMode(true); } catch (_) {}
++  try {
++    /* rebuild tuxedo each lounge entry so size/leg/face fixes always apply */
++    if (bondSuit) {
++      try { pig.remove(bondSuit); } catch (_) {}
++      bondSuit = null;
++      pigOwnParts = null;
++    }
++    setLoungeBondMode(true);
++  } catch (_) {}
+ }
+ 
+ function deactivateSocialLounge() {
+@@ -12703,15 +12756,22 @@
+   /* waddle + squash-stretch */
+   const waddle = moving ? Math.sin(t * 11) : 0;
+   pig.rotation.z = waddle * 0.09;
+-  pig.scale.set(1 / Math.sqrt(squash), squash * (onGround ? 1 : 1.12), 1 / Math.sqrt(squash));
+-  pig.position.y = pigY + (moving && onGround ? Math.abs(Math.sin(t * 11)) * 0.09 : 0);
+-  for (const [k, dir] of [["fl", 1], ["fr", -1], ["bl", -1], ["br", 1]])
+-    if (pigParts[k]) pigParts[k].rotation.x = waddle * 0.55 * dir;
+-  /* breathing + ear flick idle */
+-  if (!moving && onGround) pig.scale.multiplyScalar(1 + Math.sin(t * 2.4) * 0.01);
+-  pigParts.earL.rotation.x = 0.5 + (Math.sin(t * 0.9) > 0.985 ? 0.5 : 0);
+-  pigParts.earR.rotation.x = 0.5 + (Math.sin(t * 1.1 + 3) > 0.985 ? 0.5 : 0);
+-  pigParts.head.rotation.x += (0 - pigParts.head.rotation.x) * dt * 6;
++  const bondOn = !!(typeof bondSuit !== "undefined" && bondSuit && bondSuit.visible);
++  if (bondOn) {
++    /* tuxedo: keep uniform scale — squash/stretch was clipping chest/head and flashing with overlays */
++    pig.scale.set(1, 1, 1);
++    pig.position.y = pigY + (moving && onGround ? Math.abs(Math.sin(t * 11)) * 0.06 : 0);
++  } else {
++    pig.scale.set(1 / Math.sqrt(squash), squash * (onGround ? 1 : 1.12), 1 / Math.sqrt(squash));
++    pig.position.y = pigY + (moving && onGround ? Math.abs(Math.sin(t * 11)) * 0.09 : 0);
++    for (const [k, dir] of [["fl", 1], ["fr", -1], ["bl", -1], ["br", 1]])
++      if (pigParts[k]) pigParts[k].rotation.x = waddle * 0.55 * dir;
++    /* breathing + ear flick idle */
++    if (!moving && onGround) pig.scale.multiplyScalar(1 + Math.sin(t * 2.4) * 0.01);
++    if (pigParts.earL) pigParts.earL.rotation.x = 0.5 + (Math.sin(t * 0.9) > 0.985 ? 0.5 : 0);
++    if (pigParts.earR) pigParts.earR.rotation.x = 0.5 + (Math.sin(t * 1.1 + 3) > 0.985 ? 0.5 : 0);
++    if (pigParts.head) pigParts.head.rotation.x += (0 - pigParts.head.rotation.x) * dt * 6;
++  }
+   invuln = Math.max(0, invuln - dt);
+   if (miniGameActive()) {
+     pig.visible = false;
+@@ -13449,11 +13509,32 @@
+   safeStep("trivia", () => updateTriviaGame(dt));
+   safeStep("race", () => updateRaceGame(dt));
+   safeStep("loungeHUD", () => { if (socialActive) { updateSitHint(); updateLoungeZoneHUD(); } });
+-  /* weapon code re-shows slung models every frame; keep the tuxedo clean */
++  /* weapon code re-shows slung models every frame; keep the tuxedo clean + animate legs */
+   safeStep("bondMode", () => {
+-    if (bondSuit && bondSuit.visible && pigOwnParts) {
+-      for (const c of pigOwnParts) if (c.visible) c.visible = false;
++    if (!(bondSuit && bondSuit.visible)) return;
++    if (pigOwnParts) {
++      for (const c of pigOwnParts) {
++        if (c.visible) c.visible = false;
++        try { c.traverse(o => { if (o.isMesh && o.visible) o.visible = false; }); } catch (_) {}
++      }
+     }
++    try { if (rifleSlung) rifleSlung.visible = false; } catch (_) {}
++    try { if (rifleHeld) rifleHeld.visible = false; } catch (_) {}
++    try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
++    /* walk cycle on tuxedo legs / light arm sway — hog pigParts legs stay hidden */
++    try {
++      const movingNow = !!(typeof pigVel !== "undefined" && pigVel && pigVel.lengthSq() > 0.05);
++      const w = movingNow ? Math.sin((typeof t === "number" ? t : 0) * 11) : 0;
++      const legs = bondSuit.userData.legs || [];
++      if (legs[0]) legs[0].rotation.x = w * 0.55;
++      if (legs[1]) legs[1].rotation.x = -w * 0.55;
++      const arms = bondSuit.userData.arms || [];
++      if (arms[0]) arms[0].rotation.x = -w * 0.25;
++      if (arms[1]) arms[1].rotation.x = w * 0.25;
++      if (bondSuit.userData.head && !movingNow) {
++        bondSuit.userData.head.position.y = 1.68 * 1.3 + Math.sin((typeof t === "number" ? t : 0) * 2.2) * 0.012;
++      }
++    } catch (_) {}
+   });
+   /* keep office suppressed — some systems re-show shell meshes */
+   if (socialActive && liveLoungeMode) {
