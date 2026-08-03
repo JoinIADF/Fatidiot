@@ -8246,14 +8246,33 @@ function liveTVTuneTV(idx, nextChannel, manual = false) {
       v.src = url;
       v.play().catch(() => {});
     } else if (window.Hls && window.Hls.isSupported()) {
-      const h = new window.Hls({ enableWorker: true, maxBufferLength: 10 });
+      /* generous forward buffer — live news feeds stall badly on the 10s default
+         when four tuners share the pipe; start ABR conservative so first frames
+         come up fast instead of over-reaching then rebuffering */
+      const h = new window.Hls({
+        enableWorker: true,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        backBufferLength: 10,
+        abrEwmaDefaultEstimate: 800000,
+        fragLoadingMaxRetry: 6,
+        levelLoadingMaxRetry: 6,
+      });
       t.hls = h;
       h.on(window.Hls.Events.MANIFEST_PARSED, () => {
-        /* cap quality ~480p per TV — four streams at once must stay light */
+        /* remember per-height caps; actual cap is applied dynamically by
+           liveTVAdaptQuality() based on how close the player is */
         try {
-          let capIdx = -1;
-          (h.levels || []).forEach((lv, li) => { if (lv.height && lv.height <= 480) capIdx = li; });
-          if (capIdx >= 0) h.autoLevelCapping = capIdx;
+          t.caps = { 480: -1, 360: -1, 240: -1 };
+          (h.levels || []).forEach((lv, li) => {
+            if (!lv.height) return;
+            for (const k of [480, 360, 240]) if (lv.height <= k) t.caps[k] = li;
+          });
+          /* fallback: if no level fits a bucket, use the lowest video level */
+          let lowest = -1;
+          (h.levels || []).forEach((lv, li) => { if (lv.height && lowest < 0) lowest = li; });
+          for (const k of [480, 360, 240]) if (t.caps[k] < 0) t.caps[k] = lowest;
+          if (t.caps[480] >= 0) h.autoLevelCapping = t.caps[480];
         } catch (_) {}
       });
       h.on(window.Hls.Events.ERROR, (_ev, data) => {
@@ -8421,19 +8440,50 @@ function updateLoungeLiveTV() {
       }
     }
   }
-  /* paint frames ~20fps */
-  liveTV.frameSkip = (liveTV.frameSkip + 1) % 3;
-  if (liveTV.frameSkip) return;
+  /* paint frames — staggered so only ONE canvas→GPU texture upload happens
+     per rendered frame (all four on the same frame caused visible hitches).
+     Nearest TV repaints every 3rd frame (~20fps), the rest every 9th (~7fps),
+     and a tuner whose video hasn't advanced skips the upload entirely. */
+  liveTV.frame = (liveTV.frame || 0) + 1;
+  const screens = getLoungeMediaScreens();
+  if (liveTV.nearTV === undefined || liveTV.frame % 30 === 0) liveTV.nearTV = liveTVNearestTV(14);
+  const nearTV = liveTV.nearTV;
+  const i = liveTV.frame % Math.max(1, Math.min(liveTV.tuners.length, screens.length));
+  const t = liveTV.tuners[i];
+  if (t && t.playing) {
+    const period = (i === nearTV || i === liveTV.audioTV) ? 3 : 9;
+    t.paintAge = (t.paintAge || 0) + 1;
+    const vt = t.video ? t.video.currentTime : 0;
+    if (t.paintAge >= period && (vt !== t.lastVT || t.paintAge >= 60)) {
+      t.paintAge = 0;
+      t.lastVT = vt;
+      try {
+        screens[i].setMedia(liveTVDrawFrame(t));
+      } catch (e) {
+        t.playing = false;
+        liveTVTuneTV(i, false);
+      }
+    }
+  }
+  /* every ~2s: re-cap stream quality by proximity — far TVs drop to 240p so
+     four streams stop fighting for bandwidth (the main cause of stalls) */
+  if (liveTV.frame % 120 === 0) liveTVAdaptQuality();
+}
+function liveTVAdaptQuality() {
   const screens = getLoungeMediaScreens();
   for (let i = 0; i < liveTV.tuners.length && i < screens.length; i++) {
     const t = liveTV.tuners[i];
-    if (!t.playing) continue;
+    if (!t.hls || !t.caps) continue;
+    let maxH = 240;
     try {
-      screens[i].setMedia(liveTVDrawFrame(t));
-    } catch (e) {
-      t.playing = false;
-      liveTVTuneTV(i, false);
-    }
+      const p = new THREE.Vector3();
+      screens[i].mesh.getWorldPosition(p);
+      const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
+      maxH = d < 10 ? 480 : d < 20 ? 360 : 240;
+    } catch (_) {}
+    if (liveTV.audioTV === i) maxH = 480;
+    const cap = t.caps[maxH];
+    if (cap != null && cap >= 0 && t.hls.autoLevelCapping !== cap) t.hls.autoLevelCapping = cap;
   }
 }
 try {
