@@ -1057,14 +1057,32 @@
   #triviaGame .tg-opts button:hover { border-color: #7CFFB0; }
   #triviaGame .tg-opts button.good { border-color: #7CFFB0; background: rgba(124,255,176,0.15); }
   #triviaGame .tg-opts button.bad { border-color: #ff6a4a; background: rgba(255,80,60,0.12); }
+  /* Arcade racer overlay — pseudo-3D OutRun style (jakesgordon/javascript-racer) */
   #raceHud {
-    z-index: 110;
-    position: fixed; top: 56px; left: 50%; transform: translateX(-50%);
-    z-index: 80; pointer-events: none;
-    background: rgba(8,12,20,0.78); border: 1px solid #1d9bf0;
-    color: #e8eef8; font: 800 14px/1.3 system-ui; padding: 10px 16px;
-    border-radius: 12px; text-align: center; min-width: 220px;
+    position: fixed; inset: 0; z-index: 120;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: stretch;
+    background: #05070c; pointer-events: auto;
   }
+  #raceHud .race-chrome {
+    flex: 0 0 auto; display: flex; justify-content: space-between; align-items: center;
+    gap: 10px; padding: 10px 14px; background: linear-gradient(180deg,#141a28,#0a0e16);
+    border-bottom: 2px solid #1d9bf0; color: #e8eef8; font: 800 13px/1.2 system-ui;
+  }
+  #raceHud .race-chrome .title { color: #8fd1ff; letter-spacing: 0.04em; }
+  #raceHud .race-chrome .credit { font: 600 11px system-ui; opacity: 0.7; }
+  #raceHud .race-chrome button {
+    pointer-events: auto; border: 1px solid #3a4558; background: #1a2230; color: #e8eef8;
+    border-radius: 10px; padding: 8px 12px; font: 800 12px system-ui; cursor: pointer;
+  }
+  #raceCanvas {
+    flex: 1 1 auto; width: 100%; height: 100%; display: block;
+    image-rendering: pixelated; background: #0a1020; touch-action: none;
+  }
+  #raceHud .race-foot {
+    flex: 0 0 auto; padding: 8px 14px; background: #0a0e16; border-top: 1px solid #1a2435;
+    color: #9ec4e0; font: 600 12px/1.35 system-ui; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  }
+  #raceStandings { font: 800 12px system-ui; color: #ffd94a; }
   #sitHint {
     position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
     z-index: 56; display: none;
@@ -1863,8 +1881,19 @@
   </div>
 </div>
 <div id="raceHud" class="hidden" aria-hidden="true">
-  <div id="raceLine">LAP 1/3 · 2:00</div>
-  <div id="raceSub" style="font-weight:600;opacity:.85;font-size:12px;margin-top:4px">WASD / stick to race</div>
+  <div class="race-chrome">
+    <div>
+      <div class="title">TIMELINE ARCADE GP</div>
+      <div class="credit">arcade engine adapted from jakesgordon/javascript-racer (MIT)</div>
+    </div>
+    <div id="raceLine">LAP 1/2 · 0:00</div>
+    <button type="button" id="raceQuitBtn">ESC · QUIT</button>
+  </div>
+  <canvas id="raceCanvas" width="960" height="540"></canvas>
+  <div class="race-foot">
+    <span id="raceSub">You: WASD / stick · P2: arrows · same screen</span>
+    <span id="raceStandings">Standings…</span>
+  </div>
 </div>
 <script src="https://unpkg.com/playroomkit@0.0.97/multiplayer.full.umd.js" crossorigin="anonymous"></script>
 <script type="importmap">
@@ -6951,7 +6980,7 @@ const TRIVIA_BANK = [
   { q: "What does the X in X.com stand for historically?", opts: ["Twitter rebrand only", "Everything app ambition", "A Roman numeral", "Elon’s middle initial"], a: 1 },
   { q: "Grok is developed by which lab?", opts: ["OpenAI", "DeepMind", "xAI", "Anthropic"], a: 2 },
   { q: "In this lounge, what does walking to the OCHE start?", opts: ["Trivia", "Darts", "Racing", "Dance"], a: 1 },
-  { q: "Timeline GP is best described as…", opts: ["A card game", "An oval racer for 4", "A cooking sim", "A boss fight"], a: 1 },
+  { q: "Timeline Arcade GP is best described as…", opts: ["A card game", "A same-screen arcade racer", "A cooking sim", "A boss fight"], a: 1 },
   { q: "Which zone is for freestyle movement and music vibes?", opts: ["VIP Booth", "Dance Floor", "Library", "Darts Alley"], a: 1 },
   { q: "A double-out in 201 darts means…", opts: ["Any finish", "Finish on a double or bull", "Only triple 20", "Three misses"], a: 1 },
   { q: "Cricket darts focuses on which numbers?", opts: ["1–10", "15–20 and bull", "Only bull", "Evens only"], a: 1 },
@@ -6959,7 +6988,7 @@ const TRIVIA_BANK = [
   { q: "What camera layer does the live lounge use?", opts: ["Layer 0 only", "Layer 1 for lounge world", "No layers", "Layer 7"], a: 1 },
   { q: "Holding LMB in darts primarily controls…", opts: ["Camera zoom", "Throw power", "Guest invites", "Music volume"], a: 1 },
   { q: "Who is the tuxedo operator with the snout?", opts: ["A pure human spy", "The lounge hero pig in a tux", "A random guest", "The bartender"], a: 1 },
-  { q: "Best place to start Timeline GP?", opts: ["Dance floor center", "The glowing START pad by the compact SE track", "Behind the bar", "VIP booth couch"], a: 1 },
+  { q: "Best place to start Arcade GP?", opts: ["Dance floor center", "The glowing pad by the SE arcade cabinets", "Behind the bar", "VIP booth couch"], a: 1 },
 ];
 
 /* —— TRIVIA (wall bay, 4-player scores) —— */
@@ -7098,172 +7127,410 @@ function updateTriviaGame(dt) {
   if (triviaGame.tLeft <= 0) endTriviaGame();
 }
 
-/* —— TIMELINE GP racing (west-wall bay, 4 racers, fully visible) —— */
+/* —— TIMELINE ARCADE GP ——
+ * Same-screen arcade racer (pseudo-3D OutRun style).
+ * Road projection / segment model adapted from Jake Gordon's
+ * javascript-racer (MIT): https://github.com/jakesgordon/javascript-racer
+ * All cars share one screen; local P2 (arrows) + AI fill empty slots.
+ */
 const raceGame = {
-  active: false, tLeft: 150, lap: 1, laps: 3, angle: 0, speed: 0, cool: 0,
-  best: 0, car: null, ghostCars: [], progress: 0,
+  active: false, cool: 0, t: 0, finished: false,
+  segments: [], trackLength: 0,
+  racers: [], /* { name, color, x, z, speed, lap, finished, ai, isYou, isP2 } */
+  position: 0, /* camera z follows lead human */
+  canvas: null, ctx: null,
+  segLen: 200, roadW: 2000, lanes: 3, drawDist: 220,
+  camH: 1000, camDepth: 0, fov: 100,
+  maxSpeed: 0, rumble: 3, centrifugal: 0.28,
   standings: [],
 };
-function mkRaceCar(color) {
-  const car = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(0.75, 0.28, 1.15),
-    new THREE.MeshBasicMaterial({ color, toneMapped: false })
-  );
-  body.position.y = 0.22;
-  car.add(body);
-  const cabin = new THREE.Mesh(
-    new THREE.BoxGeometry(0.55, 0.22, 0.55),
-    new THREE.MeshBasicMaterial({ color: 0x0a1520, toneMapped: false })
-  );
-  cabin.position.set(0, 0.42, -0.05);
-  car.add(cabin);
-  for (const [wx, wz] of [[-0.38, 0.35], [0.38, 0.35], [-0.38, -0.4], [0.38, -0.4]]) {
-    const wh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.14, 0.14, 0.12, 10),
-      new THREE.MeshBasicMaterial({ color: 0x111418, toneMapped: false })
-    );
-    wh.rotation.z = Math.PI / 2;
-    wh.position.set(wx, 0.14, wz);
-    car.add(wh);
+
+function raceUtilIncrease(start, inc, max) {
+  let r = start + inc;
+  while (r >= max) r -= max;
+  while (r < 0) r += max;
+  return r;
+}
+function raceUtilLimit(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function raceUtilAccel(v, a, dt) { return v + a * dt; }
+function raceUtilProject(p, camX, camY, camZ, camDepth, w, h, roadW) {
+  p.camera.x = (p.world.x || 0) - camX;
+  p.camera.y = (p.world.y || 0) - camY;
+  p.camera.z = (p.world.z || 0) - camZ;
+  if (p.camera.z <= 1) { p.screen.scale = 0; p.screen.x = 0; p.screen.y = 0; p.screen.w = 0; return; }
+  p.screen.scale = camDepth / p.camera.z;
+  p.screen.x = Math.round(w / 2 + p.screen.scale * p.camera.x * w / 2);
+  p.screen.y = Math.round(h / 2 - p.screen.scale * p.camera.y * h / 2);
+  p.screen.w = Math.round(p.screen.scale * roadW * w / 2);
+}
+function raceFindSegment(z) {
+  const segs = raceGame.segments;
+  if (!segs.length) return null;
+  return segs[Math.floor(z / raceGame.segLen) % segs.length];
+}
+function raceLastY() {
+  const segs = raceGame.segments;
+  return segs.length ? segs[segs.length - 1].p2.world.y : 0;
+}
+function raceAddSegment(curve, y) {
+  const n = raceGame.segments.length;
+  raceGame.segments.push({
+    index: n, curve, sprites: [],
+    p1: { world: { y: raceLastY(), z: n * raceGame.segLen }, camera: {}, screen: {} },
+    p2: { world: { y: y, z: (n + 1) * raceGame.segLen }, camera: {}, screen: {} },
+    color: Math.floor(n / raceGame.rumble) % 2
+      ? { road: "#3a3f4a", grass: "#1a3a22", rumble: "#e8eef8", lane: "#ffffff" }
+      : { road: "#2a2e38", grass: "#14301c", rumble: "#d02020", lane: "#ffffff" },
+  });
+}
+function raceAddRoad(enter, hold, leave, curve, y) {
+  const startY = raceLastY();
+  const endY = startY + (y || 0) * raceGame.segLen;
+  const total = enter + hold + leave;
+  for (let n = 0; n < enter; n++)
+    raceAddSegment(curve * (n / enter), startY + (endY - startY) * (n / total));
+  for (let n = 0; n < hold; n++)
+    raceAddSegment(curve, startY + (endY - startY) * ((enter + n) / total));
+  for (let n = 0; n < leave; n++)
+    raceAddSegment(curve * (1 - n / leave), startY + (endY - startY) * ((enter + hold + n) / total));
+}
+function raceResetRoad() {
+  raceGame.segments = [];
+  raceAddRoad(20, 80, 20, 0, 0);
+  raceAddRoad(20, 40, 20, 3, 0);
+  raceAddRoad(20, 60, 20, 0, 0);
+  raceAddRoad(20, 40, 20, -4, 0);
+  raceAddRoad(15, 30, 15, 2.5, 20);
+  raceAddRoad(15, 40, 15, 0, -20);
+  raceAddRoad(20, 50, 20, -3, 0);
+  raceAddRoad(20, 100, 20, 0, 0);
+  /* mark finish stripe segments */
+  for (let i = 0; i < raceGame.rumble * 2; i++) {
+    const s = raceGame.segments[i];
+    if (s) s.color = { road: i % 2 ? "#ffffff" : "#111418", grass: "#1a3a22", rumble: "#ffd94a", lane: "#111418" };
   }
-  car.traverse(o => { if (o.isMesh) { o.layers.set(1); o.frustumCulled = false; } });
-  car.layers.set(1);
-  return car;
+  raceGame.trackLength = raceGame.segments.length * raceGame.segLen;
+}
+function racePoly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4);
+  ctx.closePath(); ctx.fill();
+}
+function raceSegment(ctx, width, lanes, x1, y1, w1, x2, y2, w2, color) {
+  const r1 = w1 / Math.max(6, 2 * lanes), r2 = w2 / Math.max(6, 2 * lanes);
+  const l1 = w1 / Math.max(32, 8 * lanes), l2 = w2 / Math.max(32, 8 * lanes);
+  ctx.fillStyle = color.grass;
+  ctx.fillRect(0, y2, width, y1 - y2);
+  racePoly(ctx, x1 - w1 - r1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - r2, y2, color.rumble);
+  racePoly(ctx, x1 + w1 + r1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + r2, y2, color.rumble);
+  racePoly(ctx, x1 - w1, y1, x1 + w1, y1, x2 + w2, y2, x2 - w2, y2, color.road);
+  if (color.lane) {
+    const lanew1 = w1 * 2 / lanes, lanew2 = w2 * 2 / lanes;
+    let lanex1 = x1 - w1 + lanew1, lanex2 = x2 - w2 + lanew2;
+    for (let lane = 1; lane < lanes; lanex1 += lanew1, lanex2 += lanew2, lane++)
+      racePoly(ctx, lanex1 - l1 / 2, y1, lanex1 + l1 / 2, y1, lanex2 + l2 / 2, y2, lanex2 - l2 / 2, y2, color.lane);
+  }
+}
+function raceDrawCar(ctx, x, y, scale, color, name, steer) {
+  const w = 80 * scale, h = 40 * scale;
+  ctx.save();
+  ctx.translate(x, y);
+  /* body */
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.45, -h * 0.1);
+  ctx.lineTo(-w * 0.35, -h * 0.55);
+  ctx.lineTo(w * 0.35, -h * 0.55);
+  ctx.lineTo(w * 0.45, -h * 0.1);
+  ctx.lineTo(w * 0.4, h * 0.35);
+  ctx.lineTo(-w * 0.4, h * 0.35);
+  ctx.closePath();
+  ctx.fill();
+  /* windshield */
+  ctx.fillStyle = "rgba(180,220,255,0.55)";
+  ctx.fillRect(-w * 0.22, -h * 0.48, w * 0.44, h * 0.22);
+  /* wheels */
+  ctx.fillStyle = "#111";
+  ctx.fillRect(-w * 0.42, h * 0.15, w * 0.16, h * 0.28);
+  ctx.fillRect(w * 0.26, h * 0.15, w * 0.16, h * 0.28);
+  /* name tag */
+  if (scale > 0.35) {
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    const tw = Math.max(36, name.length * 7) * Math.min(1, scale);
+    ctx.fillRect(-tw / 2, -h * 0.95, tw, 14 * Math.min(1.2, scale));
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold " + Math.round(11 * Math.min(1.2, scale)) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(name, 0, -h * 0.95 + 11 * Math.min(1.2, scale));
+  }
+  ctx.restore();
+}
+function raceCollectRacers() {
+  const youName = (typeof MP !== "undefined" && MP && MP.displayName) ? MP.displayName : "You";
+  const colors = ["#1d9bf0", "#ff6a4a", "#7CFFB0", "#d48cff"];
+  const list = [{ name: youName, color: colors[0], isYou: true, isP2: false, ai: false }];
+  /* optional local P2 always available on same screen */
+  list.push({ name: "P2", color: colors[1], isYou: false, isP2: true, ai: false });
+  /* guests from multiplayer if present */
+  let guestN = 0;
+  try {
+    if (typeof MP !== "undefined" && MP && MP.remotes) {
+      for (const r of MP.remotes.values()) {
+        if (list.length >= 4) break;
+        const nm = (r.player && (r.player.getProfile?.()?.name || r.player.id)) || ("Guest" + (++guestN));
+        list.push({ name: String(nm).slice(0, 12), color: colors[list.length % colors.length], isYou: false, isP2: false, ai: true });
+      }
+    }
+  } catch (_) {}
+  while (list.length < 4) {
+    list.push({ name: "AI-" + list.length, color: colors[list.length % colors.length], isYou: false, isP2: false, ai: true });
+  }
+  return list.slice(0, 4).map((r, i) => ({
+    ...r,
+    x: -0.45 + i * 0.3,
+    z: i * raceGame.segLen * 2,
+    speed: 0,
+    lap: 1,
+    finished: false,
+    place: 0,
+  }));
 }
 function startRaceGame() {
-  try { if (MP && MP.active && typeof mpSendChat === "function") mpSendChat((MP.displayName||"Guest") + " started Timeline GP"); } catch (_) {}
+  try { if (MP && MP.active && typeof mpSendChat === "function") mpSendChat((MP.displayName || "Guest") + " started Timeline Arcade GP"); } catch (_) {}
   if (raceGame.active) return;
-  if (!loungeDecor || !loungeDecor.userData || !loungeDecor.userData.raceCenter) return;
   raceGame.active = true;
-  raceGame.tLeft = 150;
-  raceGame.lap = 1;
-  raceGame.angle = 0;
-  raceGame.speed = 0;
-  raceGame.progress = 0;
+  raceGame.finished = false;
+  raceGame.t = 0;
+  raceGame.cool = 0;
+  raceGame.segLen = 200;
+  raceGame.roadW = 2000;
+  raceGame.lanes = 3;
+  raceGame.drawDist = 220;
+  raceGame.camH = 1000;
+  raceGame.fov = 100;
+  raceGame.camDepth = 1 / Math.tan((raceGame.fov / 2) * Math.PI / 180);
+  raceGame.maxSpeed = raceGame.segLen / (1 / 60);
+  raceGame.rumble = 3;
+  raceGame.centrifugal = 0.28;
+  raceResetRoad();
+  raceGame.racers = raceCollectRacers();
+  raceGame.position = 0;
+  raceGame.standings = raceGame.racers.map(r => r.name);
   socialReading = true;
-  setHeroForMiniGame(true);
+  try { setHeroForMiniGame(true); } catch (_) {}
   try { setMiniTouch(false); } catch (_) {}
   document.body.classList.add("darts-active", "reading-tweets");
-  const rc = loungeDecor.userData.raceCenter;
-  /* player car parented under loungeDecor so layer-1 camera always sees it */
-  if (raceGame.car) {
-    try { if (raceGame.car.parent) raceGame.car.parent.remove(raceGame.car); } catch (_) {}
-    try { scene.remove(raceGame.car); } catch (_) {}
-  }
-  raceGame.car = mkRaceCar(0x1d9bf0);
-  raceGame.car.name = "RaceCarYou";
-  loungeDecor.add(raceGame.car);
-  raceGame.car.visible = true;
-  for (const g of raceGame.ghostCars) {
-    try { if (g.parent) g.parent.remove(g); } catch (_) {}
-    try { scene.remove(g); } catch (_) {}
-  }
-  raceGame.ghostCars = [];
-  const cols = [0xff6a4a, 0x7CFFB0, 0xd48cff];
-  const names = ["P2", "P3", "P4"];
-  for (let i = 0; i < 3; i++) {
-    const ghost = mkRaceCar(cols[i]);
-    ghost.name = "RaceCar" + names[i];
-    ghost.userData.ang = (i + 1) * 0.85;
-    ghost.userData.spd = 1.05 + i * 0.12 + Math.random() * 0.08;
-    ghost.userData.racerName = names[i];
-    ghost.userData.lap = 1;
-    loungeDecor.add(ghost);
-    raceGame.ghostCars.push(ghost);
-  }
-  raceGame.standings = ["You", "P2", "P3", "P4"];
   const hud = document.getElementById("raceHud");
   if (hud) { hud.classList.remove("hidden"); hud.setAttribute("aria-hidden", "false"); }
-  showMsg("🏎️ TIMELINE GP — 3 laps · WASD/stick · beat 3 rivals");
+  const cv = document.getElementById("raceCanvas");
+  raceGame.canvas = cv;
+  raceGame.ctx = cv ? cv.getContext("2d") : null;
+  try {
+    const btn = document.getElementById("raceQuitBtn");
+    if (btn) btn.onclick = () => endRaceGame(false);
+  } catch (_) {}
+  raceResizeCanvas();
+  showMsg("🏎️ ARCADE GP — same screen · WASD you · arrows P2 · 2 laps");
   try { SFX.pickup(); } catch (_) {}
 }
+function raceResizeCanvas() {
+  const cv = raceGame.canvas;
+  if (!cv) return;
+  const w = Math.min(1280, Math.max(640, window.innerWidth || 960));
+  const h = Math.min(720, Math.max(360, Math.floor((window.innerHeight || 600) * 0.72)));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+}
 function endRaceGame(won) {
+  if (!raceGame.active && !raceGame.finished) return;
   raceGame.active = false;
-  raceGame.cool = 10;
+  raceGame.cool = 8;
+  raceGame.finished = false;
+  raceGame.racers = [];
+  raceGame.segments = [];
   socialReading = false;
   document.body.classList.remove("darts-active", "reading-tweets");
-  setHeroForMiniGame(false);
+  try { setHeroForMiniGame(false); } catch (_) {}
   try { syncLoungeMobileUI(); } catch (_) {}
-  if (raceGame.car) {
-    try { if (raceGame.car.parent) raceGame.car.parent.remove(raceGame.car); } catch (_) {}
-    raceGame.car = null;
-  }
-  for (const g of raceGame.ghostCars) {
-    try { if (g.parent) g.parent.remove(g); } catch (_) {}
-  }
-  raceGame.ghostCars = [];
+  try { if (pig) pig.visible = true; } catch (_) {}
   const hud = document.getElementById("raceHud");
   if (hud) { hud.classList.add("hidden"); hud.setAttribute("aria-hidden", "true"); }
-  const bonus = won ? 500 : Math.floor(raceGame.lap * 80);
-  score += bonus;
-  updateHud();
-  showMsg(won ? "🏎️ YOU WIN TIMELINE GP · +" + bonus : "🏎️ Race over · +" + bonus + " · " + (raceGame.standings || []).join(", "));
+  const you = (raceGame.standings || [])[0];
+  const bonus = won ? 500 : 120;
+  try { score += bonus; } catch (_) {}
+  showMsg(won
+    ? "🏎️ YOU WIN ARCADE GP · +" + bonus + " · " + (raceGame.standings || []).join(" → ")
+    : "🏎️ Race over · +" + bonus + " · " + (raceGame.standings || []).join(" → "));
+}
+function raceRacerProgress(r) {
+  return (r.lap - 1) * raceGame.trackLength + r.z;
 }
 function updateRaceGame(dt) {
-  if (!raceGame.active || !loungeDecor || !loungeDecor.userData.raceCenter) return;
-  raceGame.tLeft -= dt;
-  const rc = loungeDecor.userData.raceCenter;
-  const c = new THREE.Vector3(rc.x, 0, rc.z);
-  const r = loungeDecor.userData.raceRadius || 3.85;
-  const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
-  const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
-  const throttle = keys["KeyW"] || keys["ArrowUp"] || stickY < -0.25;
-  const brake = keys["KeyS"] || keys["ArrowDown"] || stickY > 0.25;
-  const steer = (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0) + (keys["KeyD"] || keys["ArrowRight"] ? -1 : 0) + (-stickX);
-  if (throttle) raceGame.speed = Math.min(3.2, raceGame.speed + dt * 2.4);
-  else raceGame.speed = Math.max(0.5, raceGame.speed - dt * 1.1);
-  if (brake) raceGame.speed = Math.max(0.15, raceGame.speed - dt * 3.2);
-  /* progress around oval */
-  const prev = raceGame.progress || 0;
-  raceGame.progress = prev + raceGame.speed * dt * 0.38;
-  if (Math.floor(raceGame.progress / (Math.PI * 2)) > Math.floor(prev / (Math.PI * 2))) {
-    raceGame.lap++;
-    try { beep(660, 0.08, "square", 0.07); } catch (_) {}
-    if (raceGame.lap > raceGame.laps) { endRaceGame(true); return; }
+  if (!raceGame.active) return;
+  raceGame.t += dt;
+  raceResizeCanvas();
+  const maxS = raceGame.maxSpeed;
+  const accel = maxS / 4.5;
+  const braking = -maxS;
+  const decel = -maxS / 5.5;
+  const offDecel = -maxS / 2.2;
+
+  for (const r of raceGame.racers) {
+    if (r.finished) continue;
+    const seg = raceFindSegment(r.z) || raceGame.segments[0];
+    const sp = r.speed / maxS;
+    const dx = dt * 2.1 * Math.max(0.15, sp);
+    let left = false, right = false, faster = false, slower = false;
+    if (r.isYou) {
+      const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
+      const stickY = (typeof stick !== "undefined" && stick) ? stick.y : 0;
+      /* P1: WASD / stick only — arrows reserved for same-screen P2 */
+      left = !!(keys["KeyA"]) || stickX < -0.25;
+      right = !!(keys["KeyD"]) || stickX > 0.25;
+      faster = !!(keys["KeyW"]) || stickY < -0.25 || !!keys["Space"];
+      slower = !!(keys["KeyS"]) || stickY > 0.25;
+    } else if (r.isP2) {
+      left = !!keys["ArrowLeft"];
+      right = !!keys["ArrowRight"];
+      faster = !!keys["ArrowUp"];
+      slower = !!keys["ArrowDown"];
+      /* if P2 never touches controls, fall back to light AI so race isn't empty */
+      if (!left && !right && !faster && !slower) r.ai = true;
+      else r.ai = false;
+    }
+    if (r.ai) {
+      /* simple AI: stay in lane, ease into curves, keep pace */
+      const targetX = Math.sin(r.z * 0.00035 + (r.name.length)) * 0.55;
+      if (r.x > targetX + 0.05) left = true;
+      if (r.x < targetX - 0.05) right = true;
+      faster = r.speed < maxS * (0.72 + (r.name.charCodeAt(0) % 5) * 0.04);
+      if (Math.abs(seg.curve) > 2.5 && r.speed > maxS * 0.7) slower = true;
+    }
+    if (left) r.x -= dx;
+    if (right) r.x += dx;
+    r.x -= dx * sp * (seg.curve || 0) * raceGame.centrifugal;
+    if (faster) r.speed = raceUtilAccel(r.speed, accel, dt);
+    else if (slower) r.speed = raceUtilAccel(r.speed, braking, dt);
+    else r.speed = raceUtilAccel(r.speed, decel, dt);
+    if (Math.abs(r.x) > 1) {
+      if (r.speed > maxS / 4) r.speed = raceUtilAccel(r.speed, offDecel, dt);
+    }
+    r.x = raceUtilLimit(r.x, -2.2, 2.2);
+    r.speed = raceUtilLimit(r.speed, 0, maxS);
+    const prevZ = r.z;
+    r.z = raceUtilIncrease(r.z, dt * r.speed, raceGame.trackLength);
+    if (prevZ > r.z) {
+      /* crossed start/finish */
+      r.lap++;
+      if (r.lap > 2) {
+        r.finished = true;
+        r.place = raceGame.racers.filter(x => x.finished).length;
+        r.speed = 0;
+        try { beep(720, 0.08, "square", 0.07); } catch (_) {}
+      } else {
+        try { beep(520, 0.06, "square", 0.05); } catch (_) {}
+      }
+    }
   }
-  const ang = raceGame.progress;
-  const x = c.x + Math.cos(ang) * r;
-  const z = c.z + Math.sin(ang) * r;
-  if (raceGame.car) {
-    raceGame.car.position.set(x, 0.05, z);
-    raceGame.car.rotation.y = -ang + Math.PI / 2;
-    raceGame.car.visible = true;
-    raceGame.car.traverse(o => { o.layers.set(1); o.visible = true; });
-  }
-  /* park pig under car / hide */
-  pig.position.set(x, 0, z);
-  pig.visible = false;
-  pigY = 0.1;
-  yaw = -ang + Math.PI / 2;
-  const placements = [{ name: "You", prog: raceGame.progress + (raceGame.lap - 1) * Math.PI * 2 }];
-  for (const g of raceGame.ghostCars) {
-    g.userData.ang += g.userData.spd * dt * 0.38;
-    const a = g.userData.ang;
-    g.position.set(c.x + Math.cos(a) * r, 0.05, c.z + Math.sin(a) * r);
-    g.rotation.y = -a + Math.PI / 2;
-    g.visible = true;
-    g.traverse(o => { o.layers.set(1); o.visible = true; });
-    placements.push({ name: g.userData.racerName || "AI", prog: a });
-  }
-  placements.sort((a, b) => b.prog - a.prog);
-  raceGame.standings = placements.map(p => p.name);
-  /* chase cam */
-  const camX = x - Math.sin(yaw) * 7;
-  const camZ = z - Math.cos(yaw) * 7;
-  camera.position.lerp(new THREE.Vector3(camX, 5.2, camZ), Math.min(1, dt * 5));
-  camera.lookAt(x, 0.5, z);
-  camera.layers.set(1);
-  const m = Math.max(0, Math.floor(raceGame.tLeft / 60));
-  const sec = Math.max(0, Math.floor(raceGame.tLeft % 60));
+
+  /* standings by progress */
+  const ordered = [...raceGame.racers].sort((a, b) => raceRacerProgress(b) - raceRacerProgress(a));
+  raceGame.standings = ordered.map(r => r.name + (r.finished ? " ✓" : ""));
+  const st = document.getElementById("raceStandings");
+  if (st) st.textContent = ordered.map((r, i) => (i + 1) + ". " + r.name).join("  ·  ");
+  const you = raceGame.racers.find(r => r.isYou);
   const line = document.getElementById("raceLine");
-  if (line) {
-    line.textContent = `LAP ${Math.min(raceGame.lap, raceGame.laps)}/${raceGame.laps} · ${m}:${String(sec).padStart(2, "0")} · ${raceGame.speed.toFixed(1)}u`;
+  if (line && you) {
+    const mph = Math.round((you.speed / maxS) * 220);
+    line.textContent = "LAP " + Math.min(you.lap, 2) + "/2 · " + mph + " km/h · " + Math.floor(raceGame.t) + "s";
   }
   const sub = document.getElementById("raceSub");
-  if (sub) sub.textContent = "Standings: " + raceGame.standings.join(" → ") + " · WASD / stick";
-  if (raceGame.tLeft <= 0) endRaceGame(false);
+  if (sub) sub.textContent = "You: WASD/stick · P2: arrows · same screen · ESC quit";
+
+  /* camera follows you (or lead if you finished) */
+  const camR = (you && !you.finished) ? you : ordered[0];
+  if (camR) raceGame.position = raceUtilIncrease(camR.z, -raceGame.camH * raceGame.camDepth * 0.35, raceGame.trackLength);
+
+  raceRender();
+
+  /* end when all finished or you finished + 2s grace, or timeout */
+  const allDone = raceGame.racers.every(r => r.finished);
+  if (allDone || (you && you.finished && raceGame.t > 3) || raceGame.t > 120) {
+    const won = you && you.place === 1;
+    endRaceGame(!!won);
+  }
 }
+function raceRender() {
+  const cv = raceGame.canvas, ctx = raceGame.ctx;
+  if (!cv || !ctx || !raceGame.segments.length) return;
+  const width = cv.width, height = cv.height;
+  const baseSeg = raceFindSegment(raceGame.position);
+  if (!baseSeg) return;
+  const camZ = raceGame.position;
+  /* follow player's x for camera */
+  const you = raceGame.racers.find(r => r.isYou) || raceGame.racers[0];
+  const playerX = you ? you.x : 0;
+  const maxy = height;
+  let x = 0, dx = 0;
+
+  /* sky + hills */
+  const g = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+  g.addColorStop(0, "#1a3a6a"); g.addColorStop(0.55, "#4a90c8"); g.addColorStop(1, "#7ec8e8");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#2d6a3e";
+  ctx.fillRect(0, height * 0.55, width, height * 0.45);
+
+  const startIdx = baseSeg.index;
+  for (let n = 0; n < raceGame.drawDist; n++) {
+    const seg = raceGame.segments[(startIdx + n) % raceGame.segments.length];
+    raceUtilProject(seg.p1, playerX * raceGame.roadW - x, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
+    raceUtilProject(seg.p2, playerX * raceGame.roadW - x - dx, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
+    x += dx;
+    dx += seg.curve;
+    if (seg.p1.camera.z <= raceGame.camDepth || seg.p2.screen.y >= maxy || seg.p2.screen.y >= seg.p1.screen.y) continue;
+    raceSegment(ctx, width, raceGame.lanes,
+      seg.p1.screen.x, seg.p1.screen.y, seg.p1.screen.w,
+      seg.p2.screen.x, seg.p2.screen.y, seg.p2.screen.w,
+      seg.color);
+  }
+
+  /* draw racers (far to near) sorted by z distance from camera */
+  const drawList = raceGame.racers.map(r => {
+    let rel = r.z - camZ;
+    if (rel < -raceGame.trackLength / 2) rel += raceGame.trackLength;
+    if (rel > raceGame.trackLength / 2) rel -= raceGame.trackLength;
+    return { r, rel };
+  }).filter(o => o.rel > -raceGame.segLen * 2 && o.rel < raceGame.segLen * raceGame.drawDist)
+    .sort((a, b) => b.rel - a.rel);
+
+  for (const { r, rel } of drawList) {
+    const seg = raceFindSegment(r.z);
+    if (!seg) continue;
+    /* approximate screen pos from segment projection */
+    const p = { world: { x: r.x * raceGame.roadW, y: seg.p1.world.y, z: r.z }, camera: {}, screen: {} };
+    raceUtilProject(p, playerX * raceGame.roadW, raceGame.camH, camZ, raceGame.camDepth, width, height, raceGame.roadW);
+    if (p.camera.z <= raceGame.camDepth) continue;
+    const scale = p.screen.scale * 2200;
+    if (scale < 0.08) continue;
+    raceDrawCar(ctx, p.screen.x, p.screen.y, Math.min(2.2, Math.max(0.15, scale)), r.color, r.name, 0);
+  }
+
+  /* speed stripe HUD bottom of canvas */
+  ctx.fillStyle = "rgba(0,0,0,0.45)";
+  ctx.fillRect(0, height - 36, width, 36);
+  ctx.fillStyle = "#8fd1ff";
+  ctx.font = "bold 14px system-ui";
+  ctx.textAlign = "left";
+  ctx.fillText("TIMELINE ARCADE · same-screen multiplayer", 12, height - 14);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#ffd94a";
+  ctx.fillText((raceGame.standings || []).slice(0, 4).join("  "), width - 12, height - 14);
+}
+try {
+  window.startRaceGame = startRaceGame;
+  window.endRaceGame = endRaceGame;
+} catch (_) {}
 
 /* enhance darts for longer 4-player session */
 function startDartLeague() {
@@ -7752,62 +8019,47 @@ function buildIndependentLoungeWorld() {
 
   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
-    /* ===== TIMELINE GP — compact SE corner (away from bar / VIP / dance) ===== */
+    /* ===== TIMELINE ARCADE GP — compact cabinet bank (no floor track) ===== */
     const rcx = 20.5, rcz = -9.5;
-    addZone("Timeline GP", rcx, rcz, "#8fd1ff");
-    /* compact bay flooring */
-    g.add(box(8.5, 0.05, 9.5, 0x12161e, rcx, 0.02, rcz));
-    /* east-wall backboard */
-    g.add(box(0.18, 2.6, 7.5, 0x0e121a, W / 2 - 0.4, 1.7, rcz));
-    g.add(box(0.06, 2.1, 6.8, 0x1a2435, W / 2 - 0.32, 1.7, rcz));
-    const raceBanner = textSprite("TIMELINE GP · 4 RACERS", { size: 30, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
-    raceBanner.scale.multiplyScalar(0.55);
-    raceBanner.position.set(W / 2 - 0.5, 3.1, rcz);
+    addZone("Arcade GP", rcx - 1.5, rcz, "#8fd1ff");
+    g.add(box(7.5, 0.04, 6.5, 0x10141c, rcx - 1.2, 0.02, rcz));
+    /* neon marquee */
+    const raceBanner = textSprite("ARCADE GP · SAME SCREEN", { size: 28, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+    raceBanner.scale.multiplyScalar(0.52);
+    raceBanner.position.set(rcx - 1.2, 3.15, rcz - 2.4);
     g.add(raceBanner);
-    /* smaller track oval */
-    const trackR0 = 2.15, trackR1 = 3.35;
-    const track = new THREE.Mesh(
-      new THREE.RingGeometry(trackR0, trackR1, 56),
-      new THREE.MeshBasicMaterial({ color: 0x1c222c, toneMapped: false, side: THREE.DoubleSide })
-    );
-    track.rotation.x = -Math.PI / 2;
-    track.position.set(rcx, 0.06, rcz);
-    track.name = "RaceTrack";
-    g.add(track);
-    const lane = new THREE.Mesh(
-      new THREE.RingGeometry(2.7, 2.82, 56),
-      new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false, side: THREE.DoubleSide })
-    );
-    lane.rotation.x = -Math.PI / 2;
-    lane.position.set(rcx, 0.07, rcz);
-    g.add(lane);
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2;
-      const rr = trackR1 + 0.12;
-      g.add(box(0.28, 0.18, 0.28, 0x3a4048,
-        rcx + Math.cos(a) * rr, 0.12, rcz + Math.sin(a) * rr));
+    /* three arcade cabinets along SE wall */
+    for (let i = 0; i < 3; i++) {
+      const cx = rcx - 3.2 + i * 2.1, cz = rcz - 1.8;
+      g.add(box(1.1, 1.7, 0.85, 0x12161e, cx, 0.95, cz));
+      g.add(box(1.0, 0.12, 0.7, 0x1d9bf0, cx, 1.55, cz + 0.05));
+      /* glowing screen */
+      const scr = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.85, 0.55),
+        new THREE.MeshBasicMaterial({ color: i === 1 ? 0x1d9bf0 : 0x0a2035, toneMapped: false })
+      );
+      scr.position.set(cx, 1.35, cz + 0.44);
+      g.add(scr);
+      g.add(box(1.15, 0.08, 0.5, 0x2a2e38, cx, 0.78, cz + 0.35)); /* control shelf */
+      g.add(cyl(0.06, 0.06, 0.08, 0xd02020, cx - 0.25, 0.86, cz + 0.4, 8));
+      g.add(cyl(0.06, 0.06, 0.08, 0x1d9bf0, cx + 0.25, 0.86, cz + 0.4, 8));
     }
-    g.add(box(0.16, 0.04, 1.1, 0xffffff, rcx + 2.75, 0.09, rcz));
-    const sf = textSprite("START / FINISH", { size: 18, color: "#ffffff", strokeW: 4, maxWidth: 0 });
-    sf.scale.multiplyScalar(0.34);
-    sf.position.set(rcx + 3.35, 0.5, rcz);
-    g.add(sf);
-    /* pit stools — room-side (west of track) */
+    /* stools facing cabinets */
     for (let i = 0; i < 4; i++) {
-      const pz = rcz - 1.6 + i * 1.55;
-      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, rcx - 4.2, 0.8, pz, 12));
-      g.add(cyl(0.05, 0.06, 0.72, BRASS, rcx - 4.2, 0.38, pz, 8));
-      registerSeat(g, rcx - 4.2, 0.9, pz, Math.PI / 2, "GP pit " + (i + 1), "Timeline GP");
+      const sx = rcx - 3.4 + i * 1.7, sz = rcz + 0.6;
+      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, sx, 0.72, sz, 12));
+      g.add(cyl(0.05, 0.06, 0.65, BRASS, sx, 0.34, sz, 8));
+      registerSeat(g, sx, 0.82, sz, Math.PI, "Arcade seat " + (i + 1), "Arcade GP");
     }
-    /* large glowing walk-up pad — approach auto-starts */
-    g.add(box(2.6, 0.07, 2.6, 0x8fd1ff, rcx - 4.0, 0.045, rcz));
-    const walkRace = textSprite("WALK HERE · START RACE", { size: 24, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
-    walkRace.scale.multiplyScalar(0.42);
-    walkRace.position.set(rcx - 4.0, 1.75, rcz);
+    /* walk-up pad in front of middle cabinet */
+    g.add(box(2.4, 0.07, 2.0, 0x8fd1ff, rcx - 1.2, 0.045, rcz + 1.5));
+    const walkRace = textSprite("WALK HERE · ARCADE RACE", { size: 22, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+    walkRace.scale.multiplyScalar(0.4);
+    walkRace.position.set(rcx - 1.2, 1.65, rcz + 1.5);
     g.add(walkRace);
-    g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
-    g.userData.racePad = new THREE.Vector3(rcx - 4.0, 0, rcz);
-    g.userData.raceRadius = 2.75;
+    g.userData.raceCenter = new THREE.Vector3(rcx - 1.2, 0, rcz - 1.0);
+    g.userData.racePad = new THREE.Vector3(rcx - 1.2, 0, rcz + 1.5);
+    g.userData.raceRadius = 1.6;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
     /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
@@ -10314,15 +10566,10 @@ function updateSocialLounge(dt) {
             try { if (socialActive) startDartLeague(); else startDartGame(); } catch (err) { console.warn("dart start", err); }
           }
         }
-        if ((raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
-          const rp = L.racePad || L.raceCenter;
-          const rc = L.raceCenter || rp;
+        if ((raceGame.cool || 0) <= 0 && L.racePad) {
+          const rp = L.racePad;
           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
-          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
-          const dPad = Math.hypot(pig.position.x - rx, pig.position.z - rz);
-          const dCtr = Math.hypot(pig.position.x - cx, pig.position.z - cz);
-          const R = (L.raceRadius || 3) + 2.8;
-          if (dPad < 4.8 || dCtr < R) {
+          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 2.6) {
             try { startRaceGame(); } catch (err) { console.warn("race start", err); showMsg("Race failed to start"); }
           }
         }
@@ -12332,6 +12579,7 @@ addEventListener("keydown", e => {
   /* typing a reply in the tweet reader must not drive the game */
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
+  if (raceGame.active && e.code === "Escape") { endRaceGame(false); return; }
   /* lounge TV: V near a screen = engage (volume for you only). No remotes/T/C. */
   if (socialActive && typeof liveTV !== "undefined" && liveTV.active && e.code === "KeyV") {
     e.preventDefault();
@@ -12394,14 +12642,10 @@ addEventListener("keydown", e => {
             startTriviaGame(); return;
           }
         }
-        if (!raceGame.active && (raceGame.cool || 0) <= 0 && (L.racePad || L.raceCenter)) {
-          const rp = L.racePad || L.raceCenter;
-          const rc = L.raceCenter || rp;
+        if (!raceGame.active && (raceGame.cool || 0) <= 0 && L.racePad) {
+          const rp = L.racePad;
           const rx = rp.x * (L.independent ? 1 : sc), rz = rp.z * (L.independent ? 1 : sc);
-          const cx = rc.x * (L.independent ? 1 : sc), cz = rc.z * (L.independent ? 1 : sc);
-          const R = (L.raceRadius || 3) + 2.8;
-          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 4.8 ||
-              Math.hypot(pig.position.x - cx, pig.position.z - cz) < R) {
+          if (Math.hypot(pig.position.x - rx, pig.position.z - rz) < 2.8) {
             startRaceGame(); return;
           }
         }
