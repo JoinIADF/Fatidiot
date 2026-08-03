@@ -7496,7 +7496,7 @@ function buildBondPig() {
   /* 30% larger than the original tuxedo operator so he reads next to guests */
   const S = 1.3;
   const BLACK = 0x0d0f14, SATIN = 0x1b1f28, WHITE = 0xf6f7fa,
-        SKIN = 0xd4a07a, SNOUT = 0xe8a0a8, HAIR = 0x2a1c14, STEEL = 0x3a4048;
+        SKIN = 0xd9a878, SNOUT = 0xefa8b0, HAIR = 0x241a12, STEEL = 0x3a4048;
 
   const add = (parent, geo, matl, x, y, z) => {
     const m = new THREE.Mesh(geo, matl);
@@ -7526,21 +7526,26 @@ function buildBondPig() {
   const lapelMat = shiny(SATIN, 240, 0xffffff, { polyOff: -1 });
   add(g, new THREE.BoxGeometry(0.58 * S, 0.66 * S, 0.28 * S), jacketMat, 0, 1.13 * S, -0.01 * S);
   add(g, new THREE.BoxGeometry(0.62 * S, 0.16 * S, 0.3 * S), jacketMat, 0, 1.4 * S, -0.01 * S);
-  add(g, new THREE.BoxGeometry(0.11 * S, 0.42 * S, 0.04 * S), shirtMat, 0, 1.12 * S, 0.175 * S);
+  /* WIDE white shirt front so it clearly reads through the lapel V */
+  add(g, new THREE.BoxGeometry(0.18 * S, 0.44 * S, 0.04 * S), shirtMat, 0, 1.14 * S, 0.175 * S);
   for (const s of [-1, 1]) {
-    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.05 * s * S, 1.36 * S, 0.185 * S);
-    col.rotation.z = 0.4 * s;
-  }
-  for (const s of [-1, 1]) {
-    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.12 * s * S, 1.2 * S, 0.2 * S);
+    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.13 * s * S, 1.2 * S, 0.2 * S);
     lap.rotation.z = 0.28 * s;
     lap.rotation.y = -0.12 * s;
   }
-  /* classic black bow tie */
-  add(g, new THREE.BoxGeometry(0.09 * S, 0.055 * S, 0.05 * S), shiny(BLACK, 120, 0xffffff, { polyOff: -3 }), 0, 1.42 * S, 0.21 * S);
+  /* NECK + wing collar — connects head to torso; bow tie sits ON the collar */
+  const neck = add(g, new THREE.CylinderGeometry(0.075 * S, 0.085 * S, 0.16 * S, 12), shiny(SKIN, 25), 0, 1.5 * S, 0.02 * S);
+  add(g, new THREE.CylinderGeometry(0.095 * S, 0.1 * S, 0.06 * S, 12), shirtMat, 0, 1.46 * S, 0.02 * S);
   for (const s of [-1, 1]) {
-    const w = add(g, new THREE.BoxGeometry(0.11 * S, 0.08 * S, 0.04 * S), shiny(BLACK, 120, 0xffffff, { polyOff: -3 }), 0.09 * s * S, 1.42 * S, 0.21 * S);
-    w.rotation.z = 0.2 * s;
+    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.055 * S, 0.03 * S), shirtMat, 0.055 * s * S, 1.49 * S, 0.115 * S);
+    col.rotation.z = 0.45 * s;
+  }
+  /* classic black bow tie — under the chin, on the collar */
+  const tieMat = shiny(0x0a0c10, 130, 0xffffff, { polyOff: -3 });
+  add(g, new THREE.BoxGeometry(0.085 * S, 0.06 * S, 0.05 * S), tieMat, 0, 1.475 * S, 0.13 * S);
+  for (const s of [-1, 1]) {
+    const w = add(g, new THREE.BoxGeometry(0.115 * S, 0.085 * S, 0.04 * S), tieMat, 0.095 * s * S, 1.475 * S, 0.12 * S);
+    w.rotation.z = 0.18 * s;
   }
   add(g, new THREE.BoxGeometry(0.07 * S, 0.03 * S, 0.02 * S), shiny(WHITE, 120, 0xffffff, { polyOff: -2 }), -0.2 * S, 1.28 * S, 0.15 * S);
 
@@ -7572,85 +7577,88 @@ function buildBondPig() {
   g.add(gun);
   g.userData.gun = gun;
 
-  /* ---- HEAD matching reference: full regular cut, NO comb-over, NO bald spot ---- */
+  /* ---- HEAD, reference-matched: fair skin, tall visible forehead, short
+     side-parted dark-brown hair CROPPED CLOSE to the skull (matte — the old
+     glossy oversized spheres read as a black bowling ball), light stubble
+     on the jaw only, pig snout centred where the nose goes. ---- */
   const headG = new THREE.Group();
   headG.name = "bondHead";
-  headG.position.set(0, 1.7 * S, 0);
-  const hairMat = shiny(HAIR, 80);
-  const skinMat = shiny(SKIN, 30);
+  headG.position.set(0, 1.72 * S, 0);
+  /* matte hair: near-zero specular so it never reads wet/plastic */
+  const hairMat = shiny(HAIR, 8, 0x1a140e);
+  const skinMat = shiny(SKIN, 22, 0x5a4a3a);
 
-  /* natural oval face */
-  const skull = add(headG, new THREE.SphereGeometry(0.195 * S, 20, 18), skinMat, 0, 0, 0);
-  skull.scale.set(0.93, 1.1, 0.97);
-  /* chin / jaw */
-  const jaw = add(headG, new THREE.SphereGeometry(0.11 * S, 14, 12), skinMat, 0, -0.13 * S, 0.03 * S);
-  jaw.scale.set(1.2, 0.65, 1.05);
-  /* slight cheek volume */
+  /* natural oval face — slightly longer than wide */
+  const skull = add(headG, new THREE.SphereGeometry(0.19 * S, 20, 18), skinMat, 0, 0, 0.01 * S);
+  skull.scale.set(0.8, 1.2, 0.86);
+  /* (no forehead plate — coplanar surfaces under the hair rim caused the
+     sawtooth hairline; the skull alone gives a smooth brow) */
+  /* defined jaw + chin */
+  const jaw = add(headG, new THREE.SphereGeometry(0.1 * S, 14, 12), skinMat, 0, -0.155 * S, 0.03 * S);
+  jaw.scale.set(0.92, 0.62, 0.9);
+  const chin = add(headG, new THREE.SphereGeometry(0.055 * S, 10, 8), skinMat, 0, -0.21 * S, 0.08 * S);
+  chin.scale.set(0.8, 0.75, 0.7);
+  /* cheekbones — the oval face needs structure, not roundness */
   for (const s of [-1, 1]) {
-    const ch = add(headG, new THREE.SphereGeometry(0.07 * S, 10, 8), skinMat, 0.12 * s * S, -0.04 * S, 0.06 * S);
-    ch.scale.set(0.75, 0.9, 0.7);
+    const cb = add(headG, new THREE.SphereGeometry(0.055 * S, 10, 8), skinMat, 0.1 * s * S, 0.005 * S, 0.095 * S);
+    cb.scale.set(0.6, 0.5, 0.5);
+  }
+  for (const s of [-1, 1]) {
+    const ch = add(headG, new THREE.SphereGeometry(0.065 * S, 10, 8), skinMat, 0.115 * s * S, -0.045 * S, 0.07 * S);
+    ch.scale.set(0.75, 0.9, 0.65);
   }
   /* ears */
   for (const s of [-1, 1]) {
-    const ear = add(headG, new THREE.SphereGeometry(0.048 * S, 8, 6), skinMat, 0.18 * s * S, 0.0, -0.02 * S);
-    ear.scale.set(0.5, 1.05, 0.7);
+    const ear = add(headG, new THREE.SphereGeometry(0.045 * S, 8, 6), skinMat, 0.17 * s * S, -0.005 * S, -0.02 * S);
+    ear.scale.set(0.45, 1.0, 0.65);
   }
-  /* light stubble suggestion (darker jaw strip — subtle) */
-  const stub = add(headG, new THREE.SphereGeometry(0.12 * S, 12, 10), shiny(0xb88968, 20), 0, -0.1 * S, 0.08 * S);
-  stub.scale.set(1.05, 0.55, 0.85);
+  /* short boxed stubble — jaw and chin only, subtle */
+  const stubMat = shiny(0xdcc0a0, 10, 0x3a2f24);
+  const stub = add(headG, new THREE.SphereGeometry(0.104 * S, 12, 10), stubMat, 0, -0.15 * S, 0.04 * S);
+  stub.scale.set(0.98, 0.48, 0.9);
 
-  /*
-   * FULL REGULAR HAIRCUT (reference):
-   * - Complete coverage over the crown — no bald spot
-   * - Short sides, fuller top with natural forward volume
-   * - Centered, even hairline — NOT a comb-over / side-sweep
-   */
-  /* main crown dome — fully covers top of skull */
-  const crown = add(headG, new THREE.SphereGeometry(0.2 * S, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat, 0, 0.06 * S, -0.01 * S);
-  crown.scale.set(1.02, 0.95, 1.05);
-  /* extra top fill so no scalp shows through from any angle */
-  const topFill = add(headG, new THREE.SphereGeometry(0.17 * S, 14, 12), hairMat, 0, 0.12 * S, 0.0);
-  topFill.scale.set(1.05, 0.55, 1.0);
-  /* front hairline / bangs volume — centered, natural */
-  const front = add(headG, new THREE.SphereGeometry(0.15 * S, 14, 12), hairMat, 0, 0.1 * S, 0.1 * S);
-  front.scale.set(1.15, 0.45, 0.7);
-  front.rotation.x = 0.25;
-  /* left side hair (full, not shaved bald) */
-  const sideL = add(headG, new THREE.SphereGeometry(0.1 * S, 12, 10), hairMat, -0.15 * S, 0.02 * S, 0.0);
-  sideL.scale.set(0.65, 1.15, 0.95);
-  /* right side hair */
-  const sideR = add(headG, new THREE.SphereGeometry(0.1 * S, 12, 10), hairMat, 0.15 * S, 0.02 * S, 0.0);
-  sideR.scale.set(0.65, 1.15, 0.95);
-  /* back of head — full coverage */
-  const back = add(headG, new THREE.SphereGeometry(0.16 * S, 14, 12), hairMat, 0, 0.02 * S, -0.12 * S);
-  back.scale.set(1.05, 1.0, 0.75);
-  /* temples filled (prevents bald corners) */
+  /* DREAM HAIR: one CONTINUOUS thick cap (no scalp gaps = no balding read),
+     tilted back so the front rim lands at a NORMAL mid-forehead hairline while
+     the back reaches the nape. A quiff sits ABOVE the hairline for volume. */
+  /* ONE smooth cap: a partial sphere's rim is a perfect circle, so the
+     hairline is a clean curved line at mid-forehead — nothing else in front */
+  const hairCap = add(headG, new THREE.SphereGeometry(0.2 * S, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.56), hairMat, 0, 0.045 * S, -0.015 * S);
+  hairCap.scale.set(0.88, 1.04, 0.98);
+  hairCap.rotation.x = -0.52; /* tips the rim forward to mid-forehead, back to nape */
+  /* gentle top-back volume, fully inside the cap silhouette */
+  const topBack = add(headG, new THREE.SphereGeometry(0.14 * S, 14, 12), hairMat, 0, 0.12 * S, -0.055 * S);
+  topBack.scale.set(0.85, 0.75, 0.9);
+  /* full sides over the temples, tapering at the ears */
   for (const s of [-1, 1]) {
-    const t = add(headG, new THREE.SphereGeometry(0.07 * S, 10, 8), hairMat, 0.14 * s * S, 0.08 * S, 0.06 * S);
-    t.scale.set(0.7, 0.7, 0.65);
+    const side = add(headG, new THREE.SphereGeometry(0.085 * S, 10, 8), hairMat, 0.132 * s * S, 0.05 * S, 0.005 * S);
+    side.scale.set(0.5, 1.1, 0.95);
+    add(headG, new THREE.BoxGeometry(0.02 * S, 0.08 * S, 0.035 * S), hairMat, 0.148 * s * S, -0.04 * S, 0.05 * S);
   }
+  /* nape */
+  const nape = add(headG, new THREE.SphereGeometry(0.12 * S, 12, 8), hairMat, 0, -0.015 * S, -0.105 * S);
+  nape.scale.set(0.88, 0.8, 0.5);
 
-  /* thick dark brows like reference */
+  /* straight dark brows on the brow ridge */
   for (const s of [-1, 1]) {
-    const br = add(headG, new THREE.BoxGeometry(0.09 * S, 0.022 * S, 0.025 * S), hairMat, 0.07 * s * S, 0.07 * S, 0.155 * S);
-    br.rotation.z = -0.12 * s;
+    const br = add(headG, new THREE.BoxGeometry(0.085 * S, 0.02 * S, 0.025 * S), shiny(0x2e2016, 10, 0x1a140e), 0.07 * s * S, 0.048 * S, 0.168 * S);
+    br.rotation.z = -0.08 * s;
   }
   /* brown eyes */
   for (const s of [-1, 1]) {
-    add(headG, new THREE.SphereGeometry(0.03 * S, 10, 8), shiny(0xf5ebe0, 40), 0.068 * s * S, 0.02 * S, 0.16 * S);
-    add(headG, new THREE.SphereGeometry(0.018 * S, 8, 6), shiny(0x3a2418, 50), 0.068 * s * S, 0.02 * S, 0.175 * S);
+    add(headG, new THREE.SphereGeometry(0.028 * S, 10, 8), shiny(0xf5ebe0, 40), 0.068 * s * S, 0.025 * S, 0.165 * S);
+    add(headG, new THREE.SphereGeometry(0.016 * S, 8, 6), shiny(0x3a2418, 50), 0.068 * s * S, 0.025 * S, 0.18 * S);
   }
-  /* pig snout — medium, centered like the reference */
-  const sn = add(headG, new THREE.CylinderGeometry(0.072 * S, 0.082 * S, 0.11 * S, 16), shiny(SNOUT, 45), 0, -0.02 * S, 0.16 * S);
+  /* pig snout — centred, where the nose goes */
+  const sn = add(headG, new THREE.CylinderGeometry(0.052 * S, 0.06 * S, 0.09 * S, 16), shiny(SNOUT, 45), 0, -0.03 * S, 0.16 * S);
   sn.rotation.x = Math.PI / 2;
-  const cap = add(headG, new THREE.CylinderGeometry(0.076 * S, 0.076 * S, 0.022 * S, 16), shiny(0xd08a94, 45), 0, -0.02 * S, 0.22 * S);
+  const cap = add(headG, new THREE.CylinderGeometry(0.055 * S, 0.055 * S, 0.02 * S, 16), shiny(0xdd93a0, 45), 0, -0.03 * S, 0.208 * S);
   cap.rotation.x = Math.PI / 2;
   for (const s of [-1, 1]) {
-    const n = add(headG, new THREE.CylinderGeometry(0.018 * S, 0.018 * S, 0.028 * S, 8), shiny(0x6e3a44, 30), 0.028 * s * S, -0.02 * S, 0.23 * S);
+    const n = add(headG, new THREE.CylinderGeometry(0.013 * S, 0.013 * S, 0.024 * S, 8), shiny(0x6e3a44, 30), 0.021 * s * S, -0.03 * S, 0.216 * S);
     n.rotation.x = Math.PI / 2;
   }
-  /* subtle mouth line */
-  const mouth = add(headG, new THREE.BoxGeometry(0.08 * S, 0.012 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.1 * S, 0.15 * S);
+  /* level, unimpressed Bond mouth */
+  const mouth = add(headG, new THREE.BoxGeometry(0.08 * S, 0.011 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.125 * S, 0.15 * S);
 
   g.add(headG);
   g.userData.head = headG;
@@ -14389,6 +14397,16 @@ window.__game = {
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
   get marsState() { return marsState; },
+  /* headless screenshot: force one render, downscale, return data URL */
+  snap(w = 420) {
+    renderer.render(scene, camera);
+    const src = renderer.domElement;
+    const c = document.createElement("canvas");
+    const h = Math.round(w * src.height / src.width);
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(src, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.65);
+  },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
