@@ -1195,7 +1195,16 @@
   #loungePanel .lp-actions {
     display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
     padding: 10px 14px 14px; border-top: 1px solid #2a3544;
+    align-items: center;
   }
+  /* Activated view: bar is empty (and invisible) until rows are ticked */
+  #loungePanel .lp-actions:empty { display: none; padding: 0; border-top: 0; }
+  #loungePanel .lp-selcount {
+    margin-right: auto; color: #7CFFB0;
+    font: 800 12px/1 system-ui, sans-serif; letter-spacing: 0.04em;
+  }
+  /* pushes "+ Add More Users" to the top-right of the toolbar row */
+  #loungePanel .lp-toolbar button.lp-right { margin-left: auto; }
   #loungePanel .lp-actions button {
     min-height: 44px; padding: 10px 14px; border-radius: 12px;
     font: 800 12px/1 system-ui, sans-serif; cursor: pointer;
@@ -1262,17 +1271,50 @@
     body.lounge-ui #lives { font-size: 15px; top: 34px; }
     body.lounge-ui #wave { font-size: 13px; }
     body.lounge-ui #weapon { font-size: 12px; max-width: 40vw; }
+    /* U-NEST: the bar drops into the gap BETWEEN the left stick and the right
+       button column instead of spanning full width on top of both. The stick
+       and the button column form the arms of the U; the bar is its base.
+       Widths below mirror #stickBase (108 @ left:18) and #btnCol (76 @ right:12). */
     #loungeMobBar {
-      bottom: max(112px, calc(env(safe-area-inset-bottom, 0px) + 96px));
+      left: calc(18px + 108px + 10px);
+      right: calc(12px + 76px + 12px);
+      transform: none;
+      width: auto;
+      max-width: none;
+      bottom: max(14px, env(safe-area-inset-bottom, 0px));
+      padding: 7px;
+      gap: 5px;
     }
+    /* narrow centre column -> 2x2 instead of 4-across */
+    #loungeMobBar .lounge-btns {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "read remove"
+        "like list";
+      gap: 5px;
+    }
+    #loungeMobBar .lmbtn { min-height: 46px; padding: 8px 6px; }
+    #loungeMobBar .lmbtn .ico { font-size: 15px; }
+    #loungeMobBar .lmbtn .lbl { font-size: 9px; }
+    #loungeMobBar #guestChip { font-size: 12px; padding: 5px 10px; }
     @media (orientation: landscape) and (max-height: 480px) {
       #stickBase { width: 88px; height: 88px; }
       #btnCol { gap: 6px; }
       .mbtn { width: 56px; height: 56px; font-size: 10px; }
       .mbtn.rifle { width: 62px; height: 62px; }
-      #loungeMobBar { bottom: 74px; padding: 6px 7px; }
-      #loungeMobBar .lmbtn { min-height: 52px; font-size: 11px; padding: 10px 8px; min-width: 64px; }
-      #loungeMobBar .lmbtn.nope { min-width: 78px; font-size: 11px; }
+      /* landscape has width to spare: back to a single 4-across row */
+      #loungeMobBar {
+        left: calc(18px + 88px + 10px);
+        right: calc(12px + 62px + 12px);
+        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        padding: 6px 7px;
+      }
+      #loungeMobBar .lounge-btns {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        grid-template-areas: "read remove like list";
+      }
+      #loungeMobBar .lmbtn { min-height: 46px; font-size: 11px; padding: 8px 6px; min-width: 0; }
+      #loungeMobBar .lmbtn.nope { min-width: 0; font-size: 11px; }
       #loungeMobBar #guestChip { font-size: 12px; }
     }
   }
@@ -5740,17 +5782,17 @@ function renderLoungePanel() {
   if (!list) return;
 
   if (loungePanelMode === "activated") {
-    if (title) title.textContent = "Activated";
-    if (sub) sub.textContent = "People in the room. One tap brings them near you. Multi-select to remove or save to Favorite Accounts.";
+    if (title) title.textContent = "Top accounts you interact with that can enter the lounge";
+    if (sub) sub.textContent = "One tap brings them near you. Tick the boxes to move accounts into the lounge or remove them.";
+    /* toolbar: neutral nav on the left, add-users pushed to the right.
+       Selection actions live at the BOTTOM now (see renderActivatedActions). */
     if (toolbar) toolbar.innerHTML = `
-      <button type="button" class="hi" data-act="favs">Favorite Accounts</button>
-      <button type="button" data-act="add">Add</button>
-      <button type="button" class="danger" data-act="remove">Remove selected</button>
-      <button type="button" data-act="tofav">Save selected → Favorites</button>`;
+      <button type="button" data-act="favs">Accounts in Lounge</button>
+      <button type="button" class="lp-right" data-act="add">+ Add More Users</button>`;
     if (searchWrap) searchWrap.classList.add("hidden");
     const guests = enemies.filter(e => e.type === "xuser" && e.user);
     if (!guests.length) {
-      list.innerHTML = `<div class="lp-empty">Nobody Activated yet.<br>Tap <b>Add</b> or open Favorite Accounts.</div>`;
+      list.innerHTML = `<div class="lp-empty">Nobody here yet.<br>Tap <b>+ Add More Users</b> or open <b>Accounts in Lounge</b>.</div>`;
     } else {
       list.innerHTML = guests.map(e => {
         const u = e.user;
@@ -5766,9 +5808,8 @@ function renderLoungePanel() {
         </div>`;
       }).join("");
     }
-    if (actions) actions.innerHTML = `
-      <button type="button" data-act="close">Close</button>
-      <button type="button" class="primary" data-act="add">Add accounts</button>`;
+    /* bottom bar is selection-driven: empty until boxes are ticked */
+    renderActivatedActions();
   } else if (loungePanelMode === "favorites") {
     if (title) title.textContent = "Favorite Accounts";
     if (sub) sub.textContent = "Master bank. Push people into Activated, or remove from favorites. Activated pulls from here.";
@@ -5849,11 +5890,13 @@ function renderLoungePanel() {
       if (ev.target.closest("button")) return;
       if (ev.target.tagName === "INPUT") {
         row.classList.toggle("on", cb && cb.checked);
+        renderActivatedActions();
         return;
       }
       if (cb && !cb.disabled) {
         cb.checked = !cb.checked;
         row.classList.toggle("on", cb.checked);
+        renderActivatedActions();
       }
     });
   });
@@ -5894,6 +5937,31 @@ function renderLoungePanel() {
   };
   wireAct(toolbar);
   wireAct(actions);
+}
+
+/* Activated view: the bottom bar stays empty until rows are ticked, then
+   offers exactly two verbs — Move to Lounge / Remove. */
+function renderActivatedActions() {
+  if (loungePanelMode !== "activated") return;
+  const actions = document.getElementById("lpActions");
+  if (!actions) return;
+  const n = selectedLoungeHandles().length;
+  if (!n) {
+    actions.innerHTML = "";
+    actions.classList.remove("show");
+    return;
+  }
+  actions.classList.add("show");
+  actions.innerHTML = `
+    <span class="lp-selcount">${n} selected</span>
+    <button type="button" class="danger" data-act="remove">Remove</button>
+    <button type="button" class="primary" data-act="tofav">Move to Lounge</button>`;
+  actions.querySelectorAll("[data-act]").forEach(btn => {
+    btn.onclick = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      handleLoungePanelAction(btn.getAttribute("data-act"));
+    };
+  });
 }
 
 function handleLoungePanelAction(act) {
@@ -7340,6 +7408,108 @@ function getLoungeWalkBounds() {
   }
   return { xMin: -22.2, xMax: 22.2, zMin: -14.4, zMax: 20.6 };
 }
+/* ===================== LOUNGE-ONLY HERO: "PIG ROYALE" =====================
+   In the Timeline Lounge the comedic hog is swapped for a sharp tuxedoed
+   operator who kept the snout. Built from geometry (no external asset), with
+   glossy phong satin/patent-leather so it reads luxurious under lounge lights.
+   Silenced pistol hangs in the right hand, muzzle to the floor. */
+let bondSuit = null;
+let pigOwnParts = null;
+function shiny(color, shininess = 160, specular = 0xffffff) {
+  return new THREE.MeshPhongMaterial({ color, specular, shininess, flatShading: true });
+}
+function buildBondPig() {
+  const g = new THREE.Group();
+  g.name = "PigRoyale";
+  const BLACK = 0x0d0f14, SATIN = 0x1b1f28, WHITE = 0xf6f7fa,
+        SKIN = 0xe0b090, SNOUT = 0xe89fa8, HAIR = 0x241a14, STEEL = 0x3a4048;
+
+  const add = (geo, matl, x, y, z) => {
+    const m = new THREE.Mesh(geo, matl);
+    m.position.set(x, y, z);
+    m.castShadow = true;
+    g.add(m);
+    return m;
+  };
+  /* ---- legs: tapered tuxedo trousers with satin side stripe ---- */
+  for (const s of [-1, 1]) {
+    add(new THREE.BoxGeometry(0.19, 0.78, 0.22), shiny(BLACK, 40), 0.13 * s, 0.42, 0);
+    add(new THREE.BoxGeometry(0.02, 0.78, 0.03), shiny(SATIN, 220), 0.225 * s, 0.42, 0);
+    /* patent-leather shoes — highest gloss on the model */
+    const shoe = add(new THREE.BoxGeometry(0.22, 0.09, 0.4), shiny(0x05060a, 300), 0.13 * s, 0.05, 0.08);
+    shoe.geometry = shoe.geometry.clone();
+  }
+  /* ---- torso: jacket, shirt, lapels, bow tie ---- */
+  add(new THREE.BoxGeometry(0.58, 0.66, 0.3), shiny(BLACK, 60), 0, 1.13, 0);
+  add(new THREE.BoxGeometry(0.2, 0.6, 0.06), shiny(WHITE, 90), 0, 1.15, 0.15);   /* shirt placket */
+  for (const s of [-1, 1]) {                                                      /* peaked satin lapels */
+    const lap = add(new THREE.BoxGeometry(0.16, 0.5, 0.05), shiny(SATIN, 240), 0.12 * s, 1.2, 0.155);
+    lap.rotation.z = 0.22 * s;
+  }
+  add(new THREE.BoxGeometry(0.07, 0.05, 0.05), shiny(BLACK, 120), 0, 1.44, 0.18); /* bow knot */
+  for (const s of [-1, 1]) {
+    const w = add(new THREE.BoxGeometry(0.09, 0.08, 0.04), shiny(BLACK, 120), 0.075 * s, 1.44, 0.18);
+    w.rotation.z = 0.35 * s;
+  }
+  add(new THREE.BoxGeometry(0.07, 0.03, 0.02), shiny(WHITE, 120), -0.19, 1.26, 0.16); /* pocket square */
+  /* ---- arms ---- */
+  const armL = add(new THREE.BoxGeometry(0.16, 0.6, 0.18), shiny(BLACK, 60), -0.37, 1.12, 0.02);
+  armL.rotation.z = 0.06;
+  const armR = add(new THREE.BoxGeometry(0.16, 0.6, 0.18), shiny(BLACK, 60), 0.37, 1.12, 0.06);
+  armR.rotation.z = -0.06;
+  for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.17, 0.05, 0.19), shiny(WHITE, 90), 0.37 * s, 0.83, 0.04); /* cuffs */
+  const handR = add(new THREE.SphereGeometry(0.075, 8, 6), shiny(SKIN, 30), 0.38, 0.75, 0.07);
+  add(new THREE.SphereGeometry(0.075, 8, 6), shiny(SKIN, 30), -0.38, 0.75, 0.03);
+  /* ---- silenced pistol, muzzle down ---- */
+  const gun = new THREE.Group();
+  gun.add(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.05), shiny(STEEL, 180)));            /* slide */
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.14, 0.05), shiny(0x1a1c20, 90));
+  grip.position.set(0, 0.06, -0.06); grip.rotation.x = 0.35;
+  gun.add(grip);
+  const sil = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 12), shiny(0x23272e, 200));
+  sil.position.y = -0.24;
+  gun.add(sil);
+  gun.position.set(0.4, 0.66, 0.1);
+  g.add(gun);
+  g.userData.gun = gun;
+  /* ---- head: human, slicked hair, and the snout ---- */
+  const head = add(new THREE.BoxGeometry(0.34, 0.36, 0.32), shiny(SKIN, 25), 0, 1.66, 0);
+  head.geometry = head.geometry.clone();
+  add(new THREE.BoxGeometry(0.36, 0.12, 0.34), shiny(HAIR, 110), 0, 1.86, -0.01);   /* slicked top */
+  add(new THREE.BoxGeometry(0.37, 0.1, 0.1), shiny(HAIR, 110), 0, 1.8, -0.14);      /* back */
+  for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.04, 0.16, 0.2), shiny(HAIR, 110), 0.175 * s, 1.72, -0.02);
+  for (const s of [-1, 1]) {                                                        /* eyes + brows */
+    add(new THREE.SphereGeometry(0.028, 8, 6), shiny(0x14100c, 60), 0.085 * s, 1.7, 0.16);
+    const br = add(new THREE.BoxGeometry(0.09, 0.022, 0.02), shiny(HAIR, 60), 0.085 * s, 1.75, 0.16);
+    br.rotation.z = -0.1 * s;
+  }
+  /* THE SNOUT — kept from the pig, front and centre */
+  const sn = add(new THREE.CylinderGeometry(0.085, 0.095, 0.12, 14), shiny(SNOUT, 45), 0, 1.63, 0.2);
+  sn.rotation.x = Math.PI / 2;
+  const cap = add(new THREE.CylinderGeometry(0.088, 0.088, 0.02, 14), shiny(0xd08a94, 45), 0, 1.63, 0.265);
+  cap.rotation.x = Math.PI / 2;
+  for (const s of [-1, 1]) {
+    const n = add(new THREE.CylinderGeometry(0.02, 0.02, 0.03, 8), shiny(0x6e3a44, 30), 0.032 * s, 1.63, 0.275);
+    n.rotation.x = Math.PI / 2;
+  }
+  g.visible = false;
+  return g;
+}
+function setLoungeBondMode(on) {
+  try {
+    if (!pig) return;
+    if (!bondSuit) {
+      bondSuit = buildBondPig();
+      pig.add(bondSuit);
+      /* everything that existed before the swap = the hog's own geometry */
+      pigOwnParts = pig.children.filter(c => c !== bondSuit);
+    }
+    bondSuit.visible = !!on;
+    if (bondSuit.userData.gun) bondSuit.userData.gun.visible = !!on;
+    for (const c of pigOwnParts) c.visible = !on;
+  } catch (_) {}
+}
+
 function buildLoungeHero() {
   const g = new THREE.Group();
   g.name = "LoungeBondHero";
@@ -7513,6 +7683,7 @@ function activateSocialLounge() {
   });
   try { syncLoungeMobileUI(); } catch (_) {}
   try { setLoungeHeroVisible(true); } catch (_) {}
+  try { setLoungeBondMode(true); } catch (_) {}
 }
 
 function deactivateSocialLounge() {
@@ -7526,6 +7697,7 @@ function deactivateSocialLounge() {
     if (chip) { chip.classList.remove("show"); chip.setAttribute("aria-hidden", "true"); chip.textContent = ""; }
   } catch (_) {}
   try { setLoungeHeroVisible(false); } catch (_) {}
+  try { setLoungeBondMode(false); } catch (_) {}
   try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
   try {
     if (loungeHero) {
@@ -13277,6 +13449,12 @@ renderer.setAnimationLoop(() => {
   safeStep("trivia", () => updateTriviaGame(dt));
   safeStep("race", () => updateRaceGame(dt));
   safeStep("loungeHUD", () => { if (socialActive) { updateSitHint(); updateLoungeZoneHUD(); } });
+  /* weapon code re-shows slung models every frame; keep the tuxedo clean */
+  safeStep("bondMode", () => {
+    if (bondSuit && bondSuit.visible && pigOwnParts) {
+      for (const c of pigOwnParts) if (c.visible) c.visible = false;
+    }
+  });
   /* keep office suppressed — some systems re-show shell meshes */
   if (socialActive && liveLoungeMode) {
     try {
