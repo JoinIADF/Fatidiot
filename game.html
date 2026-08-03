@@ -1074,49 +1074,160 @@
   body.live-lounge #quota, body.live-lounge #chargeWrap, body.live-lounge #bossBarWrap,
   body.live-lounge #weapon, body.live-lounge #portalHint { display: none !important; }
   body.live-lounge #wave { opacity: 0.95; }
+  /* —— Darts session: hide ALL lounge / mobile chrome —— */
+  body.darts-active #mobileUI,
+  body.darts-active #mobileUI.show,
+  body.darts-active #loungeMobBar,
+  body.darts-active #loungeMobBar.show,
+  body.darts-active #stickBase,
+  body.darts-active #stickZone,
+  body.darts-active #btnCol,
+  body.darts-active #mJump,
+  body.darts-active #mAdd,
+  body.darts-active #stickLockLabel,
+  body.darts-active #mobileHint,
+  body.darts-active #socialHint,
+  body.darts-active #crosshair,
+  body.darts-active #guestChip,
+  body.darts-active #zoneTag,
+  body.darts-active #sitHint,
+  body.darts-active #wave,
+  body.darts-active #score,
+  body.darts-active #weapon,
+  body.darts-active #portalHint {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+  }
+  /* upscale club darts console */
   #dartPower {
-    position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%);
-    z-index: 95; display: none; width: min(380px, 88vw);
-    background: rgba(8,12,20,0.92); border: 1px solid rgba(124,255,176,0.4);
-    border-radius: 14px; padding: 12px 14px; color: #e8eef8;
-    font: 700 12px/1.35 system-ui, sans-serif; text-align: center;
+    position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    z-index: 120; display: none; width: min(420px, 92vw);
+    background:
+      linear-gradient(165deg, rgba(28,22,18,0.97) 0%, rgba(12,10,14,0.98) 55%, rgba(18,14,12,0.97) 100%);
+    border: 1px solid rgba(212,175,55,0.45);
+    border-radius: 18px;
+    padding: 14px 16px 16px;
+    color: #f2e8d8;
+    font: 600 12px/1.4 "Segoe UI", system-ui, sans-serif;
+    text-align: center;
     pointer-events: none;
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,0.5),
+      0 18px 50px rgba(0,0,0,0.55),
+      inset 0 1px 0 rgba(255,220,150,0.12);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
   #dartPower.show { display: block; }
   #dartPower.interactive { pointer-events: auto; }
-  #dartPower .dp-label { letter-spacing: 0.12em; color: #7CFFB0; margin-bottom: 6px; font-size: 11px; }
-  #dartPower .dp-track {
-    height: 16px; border-radius: 8px; background: #1a2230;
-    border: 1px solid #3a4558; overflow: hidden;
+  #dartPower .dp-brand {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    margin-bottom: 10px;
   }
-  #dartPower .dp-fill {
-    height: 100%; width: 0%; background: #ffd94a;
-    transition: width 0.04s linear;
+  #dartPower .dp-brand .dp-pip {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #d4af37; box-shadow: 0 0 10px #d4af37;
   }
-  #dartPower .dp-hint { margin-top: 8px; color: #8b98a8; font-weight: 600; font-size: 11px; }
-  #dartPower .dp-score {
-    margin-top: 6px; font: 800 18px/1.2 system-ui, sans-serif; color: #e8eef8;
+  #dartPower .dp-label {
+    letter-spacing: 0.28em; color: #d4af37; font-size: 11px; font-weight: 800;
+    text-transform: uppercase;
   }
   #dartPower .dp-modes {
-    display: flex; gap: 8px; justify-content: center; margin: 10px 0 4px; flex-wrap: wrap;
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+    margin: 0 0 12px;
   }
   #dartPower .dp-mode {
     pointer-events: auto; cursor: pointer;
-    border: 1.5px solid #3a4558; background: #141a24; color: #e8eef8;
-    font: 800 12px/1 system-ui, sans-serif; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid rgba(212,175,55,0.28);
+    background: rgba(20,16,14,0.9);
+    color: #c8b8a0;
+    font: 800 12px/1.1 "Segoe UI", system-ui, sans-serif;
+    padding: 12px 8px 10px; border-radius: 12px;
+    transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.12s;
   }
-  #dartPower .dp-mode:hover { border-color: #7CFFB0; color: #7CFFB0; }
-  #dartPower .dp-mode.on { border-color: #7CFFB0; background: rgba(20,50,36,0.9); color: #7CFFB0; }
+  #dartPower .dp-mode small {
+    display: block; margin-top: 4px; font: 600 9px/1.2 system-ui, sans-serif;
+    letter-spacing: 0.04em; color: #7a6e60; text-transform: uppercase;
+  }
+  #dartPower .dp-mode:hover {
+    border-color: rgba(212,175,55,0.7); color: #f5e6c8; transform: translateY(-1px);
+  }
+  #dartPower .dp-mode.on {
+    border-color: #d4af37;
+    background: linear-gradient(180deg, rgba(80,55,18,0.85), rgba(30,22,12,0.95));
+    color: #ffe6a0;
+    box-shadow: 0 0 18px rgba(212,175,55,0.22), inset 0 1px 0 rgba(255,230,160,0.15);
+  }
+  #dartPower .dp-mode.on small { color: #c9a84a; }
+  #dartPower .dp-power-row { margin-top: 2px; }
+  #dartPower .dp-power-cap {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font: 700 10px/1 system-ui, sans-serif; letter-spacing: 0.14em;
+    color: #8a7a62; text-transform: uppercase; margin-bottom: 6px;
+  }
+  #dartPower .dp-power-cap span { color: #ffd94a; font-size: 13px; letter-spacing: 0.04em; }
+  #dartPower .dp-track {
+    height: 12px; border-radius: 999px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(212,175,55,0.25);
+    overflow: hidden;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+  }
+  #dartPower .dp-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #7CFFB0 0%, #ffd94a 55%, #ff6a4a 100%);
+    border-radius: 999px;
+    transition: width 0.04s linear;
+    box-shadow: 0 0 12px rgba(255,217,74,0.35);
+  }
+  #dartPower .dp-hint {
+    margin-top: 10px; color: #8b8070; font-weight: 600; font-size: 11px;
+  }
+  #dartPower .dp-score { display: none; }
+  /* scoreboard plaque */
   #dartHud {
-    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
-    z-index: 94; display: none; min-width: 220px;
-    background: rgba(8,12,20,0.88); border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 12px; padding: 8px 14px; color: #e8eef8;
-    font: 700 12px/1.4 system-ui, sans-serif; text-align: center;
+    position: fixed; top: max(12px, env(safe-area-inset-top));
+    left: 50%; transform: translateX(-50%);
+    z-index: 118; display: none; min-width: min(340px, 90vw);
+    background:
+      linear-gradient(180deg, rgba(32,24,16,0.96) 0%, rgba(12,10,12,0.97) 100%);
+    border: 1px solid rgba(212,175,55,0.4);
+    border-radius: 14px;
+    padding: 12px 18px 14px;
+    color: #f2e8d8;
+    font: 600 12px/1.45 "Segoe UI", system-ui, sans-serif;
+    text-align: center;
     pointer-events: none;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,220,150,0.1);
   }
   #dartHud.show { display: block; }
-  #dartHud b { color: #7CFFB0; }
+  #dartHud .dh-mode {
+    letter-spacing: 0.22em; font-size: 10px; font-weight: 800;
+    color: #d4af37; text-transform: uppercase; margin-bottom: 4px;
+  }
+  #dartHud .dh-main {
+    font: 800 28px/1.1 "Segoe UI", system-ui, sans-serif;
+    color: #fff6e0; letter-spacing: 0.02em;
+  }
+  #dartHud .dh-main em {
+    font-style: normal; color: #7CFFB0; font-size: 0.55em;
+    letter-spacing: 0.08em; margin-left: 6px; vertical-align: middle;
+  }
+  #dartHud .dh-sub {
+    margin-top: 6px; color: #9a8c78; font-size: 11px; font-weight: 600;
+  }
+  #dartHud .dh-marks {
+    margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+  }
+  #dartHud .dh-mark {
+    background: rgba(0,0,0,0.35); border: 1px solid rgba(212,175,55,0.2);
+    border-radius: 8px; padding: 4px 7px; font: 700 10px/1.2 system-ui, sans-serif;
+    color: #c8b8a0; min-width: 42px;
+  }
+  #dartHud .dh-mark.closed { color: #7CFFB0; border-color: rgba(124,255,176,0.35); }
   body.live-lounge #score { opacity: 0.9; }
 
   /* —— Lounge Activated / Favorites panel —— */
@@ -7159,11 +7270,8 @@ function buildIndependentLoungeWorld() {
       /* sit clearly inside the room, in front of plaster (wall face ~23.86) */
       const boardX = wallX - 0.55;
       const ocheX = boardX - throwDist;
-      /* backboard / cabinet (behind the face) */
-      const back = box(0.16, boardR * 2.5, boardR * 2.5, 0x1a120c, boardX + 0.12, boardY, boardZ);
-      g.add(back);
-      const trim = box(0.08, boardR * 2.65, boardR * 2.65, 0x3a2818, boardX + 0.08, boardY, boardZ);
-      g.add(trim);
+      /* no square cabinet — squares z-fought when the cam moved.
+         Single circular dark disc sits behind the face for depth. */
       const SECTORS = [6,13,4,18,1,20,5,12,9,14,11,8,16,7,19,3,17,2,15,10];
       const boardTex = canvasTex(1024, 1024, (ctx, cw, ch) => {
         const cx = cw / 2, cy = ch / 2, R = cw * 0.42;
@@ -7202,31 +7310,45 @@ function buildIndependentLoungeWorld() {
       boardTex.anisotropy = 8;
       const boardGrp = new THREE.Group();
       boardGrp.name = "DartBoard";
-      /* cork cylinder body */
+      /* solid rear disc (slightly larger, pushed into wall — no square, no coplanar) */
+      const rear = new THREE.Mesh(
+        new THREE.CircleGeometry(boardR * 1.12, 64),
+        new THREE.MeshBasicMaterial({ color: 0x1a120c, toneMapped: false, side: THREE.DoubleSide })
+      );
+      rear.rotation.y = -Math.PI / 2;
+      rear.position.x = 0.04; /* toward wall */
+      boardGrp.add(rear);
+      /* cork rim cylinder for thickness */
       const cork = new THREE.Mesh(
-        new THREE.CylinderGeometry(boardR, boardR, 0.1, 48),
-        new THREE.MeshBasicMaterial({ color: 0x3a2818 })
+        new THREE.CylinderGeometry(boardR * 1.02, boardR * 1.02, 0.09, 48),
+        new THREE.MeshBasicMaterial({ color: 0x2a1c12, toneMapped: false })
       );
       cork.rotation.z = Math.PI / 2;
+      cork.position.x = -0.01;
       boardGrp.add(cork);
-      /* FACE — unlit, double-sided, always visible */
-      const face = new THREE.Mesh(
-        new THREE.CircleGeometry(boardR * 0.98, 64),
-        new THREE.MeshBasicMaterial({
-          map: boardTex, toneMapped: false, side: THREE.DoubleSide
-        })
-      );
+      /* FACE — polygonOffset so it never z-fights cork/rear */
+      const faceMat = new THREE.MeshBasicMaterial({
+        map: boardTex, toneMapped: false, side: THREE.FrontSide,
+        polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+        depthWrite: true, depthTest: true
+      });
+      const face = new THREE.Mesh(new THREE.CircleGeometry(boardR * 0.98, 64), faceMat);
       face.rotation.y = -Math.PI / 2;
-      face.position.x = -0.06;
+      face.position.x = -0.055; /* room side, clear of cork */
       face.userData.dartBoard = true;
+      face.renderOrder = 2;
       boardGrp.add(face);
-      /* bright gold wire ring */
+      /* gold wire — slightly in front of face */
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(boardR * 1.01, 0.035, 10, 64),
-        new THREE.MeshBasicMaterial({ color: 0xffd94a, toneMapped: false })
+        new THREE.TorusGeometry(boardR * 1.01, 0.03, 10, 64),
+        new THREE.MeshBasicMaterial({
+          color: 0xffd94a, toneMapped: false,
+          polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3
+        })
       );
       ring.rotation.y = Math.PI / 2;
       ring.position.x = -0.06;
+      ring.renderOrder = 3;
       boardGrp.add(ring);
       boardGrp.position.set(boardX, boardY, boardZ);
       g.add(boardGrp);
@@ -7496,7 +7618,7 @@ function buildBondPig() {
   /* 30% larger than the original tuxedo operator so he reads next to guests */
   const S = 1.3;
   const BLACK = 0x0d0f14, SATIN = 0x1b1f28, WHITE = 0xf6f7fa,
-        SKIN = 0xd9a878, SNOUT = 0xefa8b0, HAIR = 0x241a12, STEEL = 0x3a4048;
+        SKIN = 0xd4a07a, SNOUT = 0xe8a0a8, HAIR = 0x2a1c14, STEEL = 0x3a4048;
 
   const add = (parent, geo, matl, x, y, z) => {
     const m = new THREE.Mesh(geo, matl);
@@ -7526,30 +7648,21 @@ function buildBondPig() {
   const lapelMat = shiny(SATIN, 240, 0xffffff, { polyOff: -1 });
   add(g, new THREE.BoxGeometry(0.58 * S, 0.66 * S, 0.28 * S), jacketMat, 0, 1.13 * S, -0.01 * S);
   add(g, new THREE.BoxGeometry(0.62 * S, 0.16 * S, 0.3 * S), jacketMat, 0, 1.4 * S, -0.01 * S);
-  /* white shirt: a V that is WIDE at the collar and tapers down to the waist
-     (flattened cone — radiusTop wide, radiusBottom narrow) */
-  const shirtV = add(g, new THREE.CylinderGeometry(0.115 * S, 0.03 * S, 0.46 * S, 3, 1), shirtMat, 0, 1.16 * S, 0.16 * S);
-  shirtV.scale.z = 0.28;
-  shirtV.rotation.y = Math.PI; /* flat face of the prism forward */
-  /* lapels converge DOWNWARD — tops flare outward so the V opens at the collar */
+  add(g, new THREE.BoxGeometry(0.11 * S, 0.42 * S, 0.04 * S), shirtMat, 0, 1.12 * S, 0.175 * S);
   for (const s of [-1, 1]) {
-    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.13 * s * S, 1.2 * S, 0.2 * S);
-    lap.rotation.z = -0.28 * s;
+    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.05 * S, 0.03 * S), shirtMat, 0.05 * s * S, 1.36 * S, 0.185 * S);
+    col.rotation.z = 0.4 * s;
+  }
+  for (const s of [-1, 1]) {
+    const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.12 * s * S, 1.2 * S, 0.2 * S);
+    lap.rotation.z = 0.28 * s;
     lap.rotation.y = -0.12 * s;
   }
-  /* NECK + wing collar — connects head to torso; bow tie sits ON the collar */
-  const neck = add(g, new THREE.CylinderGeometry(0.075 * S, 0.085 * S, 0.16 * S, 12), shiny(SKIN, 25), 0, 1.5 * S, 0.02 * S);
-  add(g, new THREE.CylinderGeometry(0.095 * S, 0.1 * S, 0.06 * S, 12), shirtMat, 0, 1.46 * S, 0.02 * S);
+  /* classic black bow tie */
+  add(g, new THREE.BoxGeometry(0.09 * S, 0.055 * S, 0.05 * S), shiny(BLACK, 120, 0xffffff, { polyOff: -3 }), 0, 1.42 * S, 0.21 * S);
   for (const s of [-1, 1]) {
-    const col = add(g, new THREE.BoxGeometry(0.07 * S, 0.055 * S, 0.03 * S), shirtMat, 0.055 * s * S, 1.49 * S, 0.115 * S);
-    col.rotation.z = 0.45 * s;
-  }
-  /* classic black bow tie — under the chin, on the collar */
-  const tieMat = shiny(0x0a0c10, 130, 0xffffff, { polyOff: -3 });
-  add(g, new THREE.BoxGeometry(0.095 * S, 0.07 * S, 0.05 * S), tieMat, 0, 1.45 * S, 0.175 * S);
-  for (const s of [-1, 1]) {
-    const w = add(g, new THREE.BoxGeometry(0.13 * S, 0.095 * S, 0.04 * S), tieMat, 0.105 * s * S, 1.45 * S, 0.168 * S);
-    w.rotation.z = 0.18 * s;
+    const w = add(g, new THREE.BoxGeometry(0.11 * S, 0.08 * S, 0.04 * S), shiny(BLACK, 120, 0xffffff, { polyOff: -3 }), 0.09 * s * S, 1.42 * S, 0.21 * S);
+    w.rotation.z = 0.2 * s;
   }
   add(g, new THREE.BoxGeometry(0.07 * S, 0.03 * S, 0.02 * S), shiny(WHITE, 120, 0xffffff, { polyOff: -2 }), -0.2 * S, 1.28 * S, 0.15 * S);
 
@@ -7581,88 +7694,85 @@ function buildBondPig() {
   g.add(gun);
   g.userData.gun = gun;
 
-  /* ---- HEAD, reference-matched: fair skin, tall visible forehead, short
-     side-parted dark-brown hair CROPPED CLOSE to the skull (matte — the old
-     glossy oversized spheres read as a black bowling ball), light stubble
-     on the jaw only, pig snout centred where the nose goes. ---- */
+  /* ---- HEAD matching reference: full regular cut, NO comb-over, NO bald spot ---- */
   const headG = new THREE.Group();
   headG.name = "bondHead";
-  headG.position.set(0, 1.72 * S, 0);
-  /* matte hair: near-zero specular so it never reads wet/plastic */
-  const hairMat = shiny(HAIR, 8, 0x1a140e);
-  const skinMat = shiny(SKIN, 22, 0x5a4a3a);
+  headG.position.set(0, 1.7 * S, 0);
+  const hairMat = shiny(HAIR, 80);
+  const skinMat = shiny(SKIN, 30);
 
-  /* natural oval face — slightly longer than wide */
-  const skull = add(headG, new THREE.SphereGeometry(0.19 * S, 20, 18), skinMat, 0, 0, 0.01 * S);
-  skull.scale.set(0.8, 1.2, 0.86);
-  /* (no forehead plate — coplanar surfaces under the hair rim caused the
-     sawtooth hairline; the skull alone gives a smooth brow) */
-  /* defined jaw + chin */
-  const jaw = add(headG, new THREE.SphereGeometry(0.1 * S, 14, 12), skinMat, 0, -0.155 * S, 0.03 * S);
-  jaw.scale.set(0.92, 0.62, 0.9);
-  const chin = add(headG, new THREE.SphereGeometry(0.055 * S, 10, 8), skinMat, 0, -0.21 * S, 0.08 * S);
-  chin.scale.set(0.8, 0.75, 0.7);
-  /* cheekbones — the oval face needs structure, not roundness */
+  /* natural oval face */
+  const skull = add(headG, new THREE.SphereGeometry(0.195 * S, 20, 18), skinMat, 0, 0, 0);
+  skull.scale.set(0.93, 1.1, 0.97);
+  /* chin / jaw */
+  const jaw = add(headG, new THREE.SphereGeometry(0.11 * S, 14, 12), skinMat, 0, -0.13 * S, 0.03 * S);
+  jaw.scale.set(1.2, 0.65, 1.05);
+  /* slight cheek volume */
   for (const s of [-1, 1]) {
-    const cb = add(headG, new THREE.SphereGeometry(0.055 * S, 10, 8), skinMat, 0.1 * s * S, 0.005 * S, 0.095 * S);
-    cb.scale.set(0.6, 0.5, 0.5);
-  }
-  for (const s of [-1, 1]) {
-    const ch = add(headG, new THREE.SphereGeometry(0.065 * S, 10, 8), skinMat, 0.115 * s * S, -0.045 * S, 0.07 * S);
-    ch.scale.set(0.75, 0.9, 0.65);
+    const ch = add(headG, new THREE.SphereGeometry(0.07 * S, 10, 8), skinMat, 0.12 * s * S, -0.04 * S, 0.06 * S);
+    ch.scale.set(0.75, 0.9, 0.7);
   }
   /* ears */
   for (const s of [-1, 1]) {
-    const ear = add(headG, new THREE.SphereGeometry(0.045 * S, 8, 6), skinMat, 0.17 * s * S, -0.005 * S, -0.02 * S);
-    ear.scale.set(0.45, 1.0, 0.65);
+    const ear = add(headG, new THREE.SphereGeometry(0.048 * S, 8, 6), skinMat, 0.18 * s * S, 0.0, -0.02 * S);
+    ear.scale.set(0.5, 1.05, 0.7);
   }
-  /* short boxed stubble — jaw and chin only, subtle */
-  const stubMat = shiny(0xdcc0a0, 10, 0x3a2f24);
-  const stub = add(headG, new THREE.SphereGeometry(0.104 * S, 12, 10), stubMat, 0, -0.15 * S, 0.04 * S);
-  stub.scale.set(0.98, 0.48, 0.9);
+  /* light stubble suggestion (darker jaw strip — subtle) */
+  const stub = add(headG, new THREE.SphereGeometry(0.12 * S, 12, 10), shiny(0xb88968, 20), 0, -0.1 * S, 0.08 * S);
+  stub.scale.set(1.05, 0.55, 0.85);
 
-  /* DREAM HAIR: one CONTINUOUS thick cap (no scalp gaps = no balding read),
-     tilted back so the front rim lands at a NORMAL mid-forehead hairline while
-     the back reaches the nape. A quiff sits ABOVE the hairline for volume. */
-  /* ONE smooth cap: a partial sphere's rim is a perfect circle, so the
-     hairline is a clean curved line at mid-forehead — nothing else in front */
-  const hairCap = add(headG, new THREE.SphereGeometry(0.2 * S, 24, 18, 0, Math.PI * 2, 0, Math.PI * 0.56), hairMat, 0, 0.045 * S, -0.015 * S);
-  hairCap.scale.set(0.88, 1.04, 0.98);
-  hairCap.rotation.x = -0.52; /* tips the rim forward to mid-forehead, back to nape */
-  /* gentle top-back volume, fully inside the cap silhouette */
-  const topBack = add(headG, new THREE.SphereGeometry(0.14 * S, 14, 12), hairMat, 0, 0.12 * S, -0.055 * S);
-  topBack.scale.set(0.85, 0.75, 0.9);
-  /* full sides over the temples, tapering at the ears */
+  /*
+   * FULL REGULAR HAIRCUT (reference):
+   * - Complete coverage over the crown — no bald spot
+   * - Short sides, fuller top with natural forward volume
+   * - Centered, even hairline — NOT a comb-over / side-sweep
+   */
+  /* main crown dome — fully covers top of skull */
+  const crown = add(headG, new THREE.SphereGeometry(0.2 * S, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat, 0, 0.06 * S, -0.01 * S);
+  crown.scale.set(1.02, 0.95, 1.05);
+  /* extra top fill so no scalp shows through from any angle */
+  const topFill = add(headG, new THREE.SphereGeometry(0.17 * S, 14, 12), hairMat, 0, 0.12 * S, 0.0);
+  topFill.scale.set(1.05, 0.55, 1.0);
+  /* front hairline / bangs volume — centered, natural */
+  const front = add(headG, new THREE.SphereGeometry(0.15 * S, 14, 12), hairMat, 0, 0.1 * S, 0.1 * S);
+  front.scale.set(1.15, 0.45, 0.7);
+  front.rotation.x = 0.25;
+  /* left side hair (full, not shaved bald) */
+  const sideL = add(headG, new THREE.SphereGeometry(0.1 * S, 12, 10), hairMat, -0.15 * S, 0.02 * S, 0.0);
+  sideL.scale.set(0.65, 1.15, 0.95);
+  /* right side hair */
+  const sideR = add(headG, new THREE.SphereGeometry(0.1 * S, 12, 10), hairMat, 0.15 * S, 0.02 * S, 0.0);
+  sideR.scale.set(0.65, 1.15, 0.95);
+  /* back of head — full coverage */
+  const back = add(headG, new THREE.SphereGeometry(0.16 * S, 14, 12), hairMat, 0, 0.02 * S, -0.12 * S);
+  back.scale.set(1.05, 1.0, 0.75);
+  /* temples filled (prevents bald corners) */
   for (const s of [-1, 1]) {
-    const side = add(headG, new THREE.SphereGeometry(0.085 * S, 10, 8), hairMat, 0.132 * s * S, 0.05 * S, 0.005 * S);
-    side.scale.set(0.5, 1.1, 0.95);
-    add(headG, new THREE.BoxGeometry(0.02 * S, 0.08 * S, 0.035 * S), hairMat, 0.148 * s * S, -0.04 * S, 0.05 * S);
+    const t = add(headG, new THREE.SphereGeometry(0.07 * S, 10, 8), hairMat, 0.14 * s * S, 0.08 * S, 0.06 * S);
+    t.scale.set(0.7, 0.7, 0.65);
   }
-  /* nape */
-  const nape = add(headG, new THREE.SphereGeometry(0.12 * S, 12, 8), hairMat, 0, -0.015 * S, -0.105 * S);
-  nape.scale.set(0.88, 0.8, 0.5);
 
-  /* straight dark brows on the brow ridge */
+  /* thick dark brows like reference */
   for (const s of [-1, 1]) {
-    const br = add(headG, new THREE.BoxGeometry(0.085 * S, 0.02 * S, 0.025 * S), shiny(0x2e2016, 10, 0x1a140e), 0.07 * s * S, 0.048 * S, 0.168 * S);
-    br.rotation.z = -0.08 * s;
+    const br = add(headG, new THREE.BoxGeometry(0.09 * S, 0.022 * S, 0.025 * S), hairMat, 0.07 * s * S, 0.07 * S, 0.155 * S);
+    br.rotation.z = -0.12 * s;
   }
   /* brown eyes */
   for (const s of [-1, 1]) {
-    add(headG, new THREE.SphereGeometry(0.028 * S, 10, 8), shiny(0xf5ebe0, 40), 0.068 * s * S, 0.025 * S, 0.165 * S);
-    add(headG, new THREE.SphereGeometry(0.016 * S, 8, 6), shiny(0x3a2418, 50), 0.068 * s * S, 0.025 * S, 0.18 * S);
+    add(headG, new THREE.SphereGeometry(0.03 * S, 10, 8), shiny(0xf5ebe0, 40), 0.068 * s * S, 0.02 * S, 0.16 * S);
+    add(headG, new THREE.SphereGeometry(0.018 * S, 8, 6), shiny(0x3a2418, 50), 0.068 * s * S, 0.02 * S, 0.175 * S);
   }
-  /* pig snout — centred, where the nose goes */
-  const sn = add(headG, new THREE.CylinderGeometry(0.052 * S, 0.06 * S, 0.09 * S, 16), shiny(SNOUT, 45), 0, -0.03 * S, 0.16 * S);
+  /* pig snout — medium, centered like the reference */
+  const sn = add(headG, new THREE.CylinderGeometry(0.072 * S, 0.082 * S, 0.11 * S, 16), shiny(SNOUT, 45), 0, -0.02 * S, 0.16 * S);
   sn.rotation.x = Math.PI / 2;
-  const cap = add(headG, new THREE.CylinderGeometry(0.055 * S, 0.055 * S, 0.02 * S, 16), shiny(0xdd93a0, 45), 0, -0.03 * S, 0.208 * S);
+  const cap = add(headG, new THREE.CylinderGeometry(0.076 * S, 0.076 * S, 0.022 * S, 16), shiny(0xd08a94, 45), 0, -0.02 * S, 0.22 * S);
   cap.rotation.x = Math.PI / 2;
   for (const s of [-1, 1]) {
-    const n = add(headG, new THREE.CylinderGeometry(0.013 * S, 0.013 * S, 0.024 * S, 8), shiny(0x6e3a44, 30), 0.021 * s * S, -0.03 * S, 0.216 * S);
+    const n = add(headG, new THREE.CylinderGeometry(0.018 * S, 0.018 * S, 0.028 * S, 8), shiny(0x6e3a44, 30), 0.028 * s * S, -0.02 * S, 0.23 * S);
     n.rotation.x = Math.PI / 2;
   }
-  /* level, unimpressed Bond mouth */
-  const mouth = add(headG, new THREE.BoxGeometry(0.08 * S, 0.011 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.125 * S, 0.15 * S);
+  /* subtle mouth line */
+  const mouth = add(headG, new THREE.BoxGeometry(0.08 * S, 0.012 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.1 * S, 0.15 * S);
 
   g.add(headG);
   g.userData.head = headG;
@@ -8867,44 +8977,47 @@ function mkDartMesh(color = 0xd44a90) {
   return dart;
 }
 function mkThrowingArm() {
-  /* big visible first-person arm: sleeve + forearm + hand + fingers grip */
+  /* Compact FP arm that FITS the camera frustum (hand visible lower-right).
+     Total extent kept under ~0.28m so nothing clips out of view. */
   const arm = new THREE.Group();
   arm.name = "DartArm";
-  const skin = new THREE.MeshBasicMaterial({ color: 0xe0b090, toneMapped: false });
-  const sleeve = new THREE.MeshBasicMaterial({ color: 0x0d0f14, toneMapped: false });
-  const shirt = new THREE.MeshBasicMaterial({ color: 0xf6f7fa, toneMapped: false });
-  /* upper arm / sleeve */
-  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.42, 12), sleeve);
-  upper.position.set(0, -0.15, 0);
-  arm.add(upper);
-  const elbow = new THREE.Group();
-  elbow.position.set(0, -0.36, 0);
-  arm.add(elbow);
-  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.065, 0.38, 12), sleeve);
-  fore.position.set(0, -0.16, 0.04);
-  elbow.add(fore);
-  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.07, 0.06, 12), shirt);
-  cuff.position.set(0, -0.34, 0.04);
-  elbow.add(cuff);
+  const skin = new THREE.MeshBasicMaterial({ color: 0xe8b898, toneMapped: false, depthTest: true });
+  const sleeve = new THREE.MeshBasicMaterial({ color: 0x1a1520, toneMapped: false, depthTest: true });
+  const cuffM = new THREE.MeshBasicMaterial({ color: 0xf4f0e8, toneMapped: false, depthTest: true });
+  /* forearm (main visible mass) */
+  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.28, 12), sleeve);
+  fore.rotation.z = Math.PI / 2;
+  fore.position.set(-0.06, 0, 0);
+  arm.add(fore);
+  /* white cuff */
+  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.05, 12), cuffM);
+  cuff.rotation.z = Math.PI / 2;
+  cuff.position.set(0.1, 0, 0);
+  arm.add(cuff);
+  /* hand */
   const hand = new THREE.Group();
-  hand.position.set(0, -0.42, 0.06);
-  elbow.add(hand);
-  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 10), skin);
-  palm.scale.set(1, 0.75, 1.15);
+  hand.position.set(0.16, 0, 0.01);
+  arm.add(hand);
+  const palm = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 10), skin);
+  palm.scale.set(1.15, 0.7, 0.95);
   hand.add(palm);
-  /* fingers curled around dart */
   for (let i = 0; i < 4; i++) {
-    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.01, 0.08, 6), skin);
-    f.position.set(-0.02 + i * 0.022, -0.05, 0.04);
-    f.rotation.x = 0.9;
+    const f = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.008, 0.07, 6), skin);
+    f.position.set(0.04, 0.03 - i * 0.02, 0.03);
+    f.rotation.z = Math.PI / 2;
+    f.rotation.y = -0.35;
     hand.add(f);
   }
-  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.012, 0.06, 6), skin);
-  thumb.position.set(-0.05, -0.02, 0.03);
-  thumb.rotation.z = 0.8;
+  const thumb = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.01, 0.05, 6), skin);
+  thumb.position.set(0.02, 0.045, 0.02);
+  thumb.rotation.z = Math.PI / 2;
+  thumb.rotation.y = 0.6;
   hand.add(thumb);
-  arm.userData.elbow = elbow;
+  arm.userData.elbow = arm; /* no separate elbow — compact */
   arm.userData.hand = hand;
+  arm.userData.fore = fore;
+  /* depth-friendly render order */
+  arm.traverse(o => { if (o.isMesh) { o.renderOrder = 10; o.frustumCulled = false; } });
   return arm;
 }
 function ensureDartUI() {
@@ -8913,15 +9026,17 @@ function ensureDartUI() {
     bar = document.createElement("div");
     bar.id = "dartPower";
     bar.innerHTML = `
-      <div class="dp-label" id="dartTitle">DARTS</div>
+      <div class="dp-brand"><span class="dp-pip"></span><div class="dp-label" id="dartTitle">Private Darts</div><span class="dp-pip"></span></div>
       <div class="dp-modes" id="dartModes">
-        <button type="button" class="dp-mode on" data-mode="201">201</button>
-        <button type="button" class="dp-mode" data-mode="cricket">Cricket</button>
-        <button type="button" class="dp-mode" data-mode="practice">Practice</button>
+        <button type="button" class="dp-mode on" data-mode="201">201<small>Countdown</small></button>
+        <button type="button" class="dp-mode" data-mode="cricket">Cricket<small>Marks 15–20</small></button>
+        <button type="button" class="dp-mode" data-mode="practice">Practice<small>9 free darts</small></button>
       </div>
-      <div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div>
-      <div class="dp-score" id="dartScoreLine"></div>
-      <div class="dp-hint" id="dartHint">Pick a mode · walk to oche</div>`;
+      <div class="dp-power-row">
+        <div class="dp-power-cap">Throw power <span id="dartPowerPct">—</span></div>
+        <div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div>
+      </div>
+      <div class="dp-hint" id="dartHint">Aim with mouse · hold LMB · release to throw · Esc exits</div>`;
     document.body.appendChild(bar);
     bar.querySelectorAll(".dp-mode").forEach(btn => {
       btn.addEventListener("click", (ev) => {
@@ -8964,7 +9079,6 @@ function resetDartMatch() {
 }
 function updateDartHud() {
   const hud = document.getElementById("dartHud");
-  const line = document.getElementById("dartScoreLine");
   if (!dartGame.active) {
     if (hud) hud.classList.remove("show");
     return;
@@ -8972,24 +9086,26 @@ function updateDartHud() {
   if (hud) hud.classList.add("show");
   let html = "";
   if (dartGame.mode === "201") {
-    html = `<b>201</b> · remaining <b>${dartGame.score201}</b> · turn darts ${dartGame.dartsThisTurn}`;
+    html = `<div class="dh-mode">201 · Double-out</div>
+      <div class="dh-main">${dartGame.score201}<em>LEFT</em></div>
+      <div class="dh-sub">Turn darts ${dartGame.dartsThisTurn} · session ${dartGame.total} pts scored</div>`;
   } else if (dartGame.mode === "cricket") {
     const m = dartGame.cricket.marks;
     const bits = [20,19,18,17,16,15,25].map(n => {
       const v = m[n] || 0;
       const dots = "●".repeat(Math.min(3, v)) + "○".repeat(Math.max(0, 3 - v));
-      return `${n === 25 ? "B" : n}:${dots}`;
-    });
-    html = `<b>CRICKET</b> · pts <b>${dartGame.cricket.points}</b><br>${bits.join(" · ")}`;
+      const closed = v >= 3 ? " closed" : "";
+      return `<span class="dh-mark${closed}">${n === 25 ? "BULL" : n} ${dots}</span>`;
+    }).join("");
+    html = `<div class="dh-mode">Cricket</div>
+      <div class="dh-main">${dartGame.cricket.points}<em>PTS</em></div>
+      <div class="dh-marks">${bits}</div>`;
   } else {
-    html = `<b>PRACTICE</b> · score <b>${dartGame.total}</b> · left ${dartGame.throwsLeft}`;
+    html = `<div class="dh-mode">Practice</div>
+      <div class="dh-main">${dartGame.total}<em>PTS</em></div>
+      <div class="dh-sub">${dartGame.throwsLeft} darts remaining</div>`;
   }
   if (hud) hud.innerHTML = html;
-  if (line) line.textContent = dartGame.mode === "201"
-    ? `${dartGame.score201} left`
-    : dartGame.mode === "cricket"
-      ? `${dartGame.cricket.points} pts`
-      : `${dartGame.total} pts`;
 }
 function startDartGame() {
   const L = loungeDecor && loungeDecor.userData;
@@ -9018,23 +9134,32 @@ function startDartGame() {
     try { scene.remove(dartGame.arm); } catch (_) {}
   }
   /* first-person arm parented to camera so it never z-fights the world */
+  document.body.classList.add("darts-active");
+  try { document.body.classList.add("reading-tweets"); } catch (_) {}
   dartGame.arm = mkThrowingArm();
-  /* lower-right FOV — large enough to read as "your arm" */
-  dartGame.arm.position.set(0.22, -0.22, -0.38);
-  dartGame.arm.rotation.set(0.15, 0.05, -0.55);
-  dartGame.arm.scale.setScalar(1.15);
+  /* lower-right, fully inside frustum (cam looks -Z; FOV ~52) */
+  dartGame.arm.position.set(0.18, -0.14, -0.42);
+  dartGame.arm.rotation.set(0.05, 0.55, 0.15);
+  dartGame.arm.scale.setScalar(1.0);
   camera.add(dartGame.arm);
   dartGame.heldDart = mkDartMesh(0x1d9bf0);
   dartGame.arm.userData.hand.add(dartGame.heldDart);
-  dartGame.heldDart.position.set(0.04, -0.02, 0.1);
-  dartGame.heldDart.rotation.set(0.1, 0.15, -Math.PI / 2);
-  dartGame.heldDart.scale.setScalar(1.2);
+  /* dart tip points toward board (camera -Z → world after cam rot) */
+  dartGame.heldDart.position.set(0.06, 0.0, 0.02);
+  dartGame.heldDart.rotation.set(0, Math.PI / 2, 0);
+  dartGame.heldDart.scale.setScalar(1.1);
+  dartGame.heldDart.traverse(o => { if (o.isMesh) { o.renderOrder = 12; o.frustumCulled = false; } });
   if (!dartGame.reticle) {
     const r = new THREE.Mesh(
-      new THREE.RingGeometry(0.03, 0.045, 24),
-      new THREE.MeshBasicMaterial({ color: 0x7CFFB0, side: THREE.DoubleSide, depthTest: true, transparent: true, opacity: 0.9 })
+      new THREE.RingGeometry(0.035, 0.05, 28),
+      new THREE.MeshBasicMaterial({
+        color: 0x7CFFB0, side: THREE.DoubleSide, transparent: true, opacity: 0.85,
+        depthTest: true, depthWrite: false, toneMapped: false,
+        polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4
+      })
     );
     r.rotation.y = -Math.PI / 2;
+    r.renderOrder = 5;
     dartGame.reticle = r;
     scene.add(r);
   }
@@ -9053,6 +9178,8 @@ function endDartGame() {
   dartGame.cool = 4;
   dartGame.league = false;
   socialReading = false;
+  document.body.classList.remove("darts-active");
+  try { document.body.classList.remove("reading-tweets"); } catch (_) {}
   setHeroForMiniGame(false);
   try { setMiniTouch(false); } catch (_) {}
   if (dartGame.reticle) dartGame.reticle.visible = false;
@@ -9254,9 +9381,10 @@ function finishDartFlight(f) {
     }
     dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a, 0xe8eef8]));
     dartGame.arm.userData.hand.add(dartGame.heldDart);
-    dartGame.heldDart.position.set(0.04, -0.02, 0.1);
-    dartGame.heldDart.rotation.set(0.1, 0.15, -Math.PI / 2);
-    dartGame.heldDart.scale.setScalar(1.2);
+    dartGame.heldDart.position.set(0.06, 0.0, 0.02);
+    dartGame.heldDart.rotation.set(0, Math.PI / 2, 0);
+    dartGame.heldDart.scale.setScalar(1.1);
+    dartGame.heldDart.traverse(o => { if (o.isMesh) { o.renderOrder = 12; o.frustumCulled = false; } });
   }
   if (dartGame.mode === "201" && dartGame.score201 === 0) {
     setTimeout(endDartGame, 1400);
@@ -9284,16 +9412,18 @@ function updateDartGame(dt) {
     dartGame.shake = 0.04 + dartGame.power * 0.22;
   }
   const fill = document.getElementById("dartPowerFill");
+  const pct = document.getElementById("dartPowerPct");
   if (fill) {
     fill.style.width = (dartGame.charging ? dartGame.power * 100 : 0) + "%";
-    const p = dartGame.power;
-    fill.style.background = p > 0.88 ? "#ff6a4a" : (p > 0.55 && p < 0.82) ? "#7CFFB0" : "#ffd94a";
+  }
+  if (pct) {
+    pct.textContent = dartGame.charging ? (Math.round(dartGame.power * 100) + "%") : "—";
   }
   const hint = document.getElementById("dartHint");
   if (hint) {
     hint.textContent = dartGame.charging
-      ? `Power ${Math.round(dartGame.power * 100)}% · release to throw`
-      : `Mouse aims · hold LMB for power · Esc quits`;
+      ? "Release to throw · sweet spot is the green band"
+      : "Mouse aims · hold LMB for power · Esc exits";
   }
 
   const R = dartGame.boardR || 0.45;
@@ -9302,7 +9432,7 @@ function updateDartGame(dt) {
   dartGame.aimZ = Math.max(-aimLim, Math.min(aimLim, dartGame.aimZ));
 
   if (dartGame.reticle) {
-    dartGame.reticle.position.set(bp.x - 0.04, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
+    dartGame.reticle.position.set(bp.x - 0.09, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
     dartGame.reticle.visible = !dartGame.flying.some(f => f.alive);
   }
 
@@ -9321,32 +9451,30 @@ function updateDartGame(dt) {
   camera.up.set(0, 1, 0);
   camera.lookAt(look);
 
-  /* FP arm: large, always visible, pulls back on charge, snaps forward on throw */
+  /* FP arm: compact, always in FOV — aim tilts, charge pulls back, throw punches forward */
   if (dartGame.arm) {
-    dartGame.throwAnim = Math.max(0, (dartGame.throwAnim || 0) - dt * 2.8);
-    const sh = dartGame.shake * Math.sin(t * 38) * 0.014;
+    dartGame.throwAnim = Math.max(0, (dartGame.throwAnim || 0) - dt * 3.2);
+    const sh = dartGame.shake * Math.sin(t * 38) * 0.01;
     const ny = dartGame.aimY / aimLim;
     const nz = dartGame.aimZ / aimLim;
-    const pull = dartGame.charging ? dartGame.power * 0.85 : 0;
+    const pull = dartGame.charging ? dartGame.power * 0.9 : 0;
     const thr = dartGame.throwAnim || 0;
-    /* base pose lower-right; pull back = more z, throw = forward punch */
     dartGame.arm.position.set(
-      0.22 + sh + nz * 0.04,
-      -0.2 + sh * 0.4 - ny * 0.06 + thr * 0.05,
-      -0.36 + pull * 0.12 - thr * 0.22
+      0.18 + sh + nz * 0.05,
+      -0.14 + sh * 0.3 - ny * 0.05 + thr * 0.02,
+      -0.42 + pull * 0.1 - thr * 0.18
     );
     dartGame.arm.rotation.set(
-      0.12 - ny * 0.55 - pull * 0.25 + thr * 0.4,
-      0.08 + nz * 0.55,
-      -0.5 - pull * 0.15
+      0.05 - ny * 0.4 - pull * 0.15 + thr * 0.35,
+      0.55 + nz * 0.45,
+      0.12 - pull * 0.1
     );
-    const elbow = dartGame.arm.userData.elbow;
-    if (elbow) {
-      elbow.rotation.x = -0.2 - pull * 0.9 + thr * 1.1;
-      elbow.position.z = 0.02 + pull * 0.1 - thr * 0.08;
-    }
     if (dartGame.heldDart) dartGame.heldDart.visible = true;
     dartGame.arm.visible = true;
+    /* keep parented to camera every frame (safety) */
+    if (dartGame.arm.parent !== camera) {
+      try { camera.add(dartGame.arm); } catch (_) {}
+    }
   }
 
   for (const f of dartGame.flying) {
@@ -14401,16 +14529,6 @@ window.__game = {
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
   get marsState() { return marsState; },
-  /* headless screenshot: force one render, downscale, return data URL */
-  snap(w = 420) {
-    renderer.render(scene, camera);
-    const src = renderer.domElement;
-    const c = document.createElement("canvas");
-    const h = Math.round(w * src.height / src.width);
-    c.width = w; c.height = h;
-    c.getContext("2d").drawImage(src, 0, 0, w, h);
-    return c.toDataURL("image/jpeg", 0.65);
-  },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
