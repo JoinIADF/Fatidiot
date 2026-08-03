@@ -1,0 +1,203 @@
+--- a/index.html
++++ b/index.html
+@@ -5299,6 +5299,14 @@
+   return out.length ? out : [{ text: "…", tweetIdx: 0, part: 1, parts: 1, full: "…", isLong: false }];
+ }
+ 
++
++/* Demo PFPs via unavatar (same pipeline as live X avatars) */
++for (const u of DEMO_X_FEED) {
++  if (!u.avatarUrl && u.handle) {
++    u.avatarUrl = "https://unavatar.io/twitter/" + encodeURIComponent(u.handle);
++  }
++}
++
+ async function loadSocialFeed() {
+   /* Live hook: GET /api/x/recent-interactions → { users: [...] }
+      Falls back to DEMO_X_FEED when offline / no token / no backend. */
+@@ -5307,15 +5315,21 @@
+     if (res.ok) {
+       const data = await res.json();
+       if (data && Array.isArray(data.users) && data.users.length) {
+-        return data.users.map((u, i) => ({
+-          id: String(u.id || ("live" + i)),
+-          handle: String(u.handle || u.username || "user").replace(/^@/, ""),
+-          name: String(u.name || u.handle || "User"),
+-          color: u.color || pick(["#1d9bf0", "#7CFFB0", "#ffb6c6", "#ffd200", "#c9a0ff"]),
+-          interacted: u.interacted || u.reason || "recent",
+-          tweets: (u.tweets || u.posts || []).slice(0, 3).map(String),
+-          avatarUrl: u.avatarUrl || u.profile_image_url || null,
+-        })).filter(u => u.tweets.length && !isVCHandle(u.handle));
++        return data.users.map((u, i) => {
++          let av = u.avatarUrl || u.profile_image_url || u.profileImageUrl || u.avatar || null;
++          if (typeof av === "string" && /_normal\.(jpg|png|webp)/i.test(av)) {
++            av = av.replace(/_normal\.(jpg|png|webp)/i, "_400x400.$1");
++          }
++          return {
++            id: String(u.id || ("live" + i)),
++            handle: String(u.handle || u.username || "user").replace(/^@/, ""),
++            name: String(u.name || u.handle || "User"),
++            color: u.color || pick(["#1d9bf0", "#7CFFB0", "#ffb6c6", "#ffd200", "#c9a0ff"]),
++            interacted: u.interacted || u.reason || "recent",
++            tweets: (u.tweets || u.posts || []).slice(0, 3).map(String),
++            avatarUrl: av,
++          };
++        }).filter(u => u.tweets.length && !isVCHandle(u.handle));
+       }
+     }
+   } catch (_) { /* demo path */ }
+@@ -5337,6 +5351,108 @@
+   });
+ }
+ 
++/* —— X PFP → guest face ——
++   Live feed supplies avatarUrl / profile_image_url; demo falls back to unavatar.io
++   (twitter/{handle}). Circular crop; letter disc stays until the image lands. */
++const _pfpTexCache = new Map(); /* url -> THREE.Texture */
++function pfpUrlCandidates(u) {
++  const handle = String((u && (u.handle || u.username)) || "").replace(/^@/, "").trim();
++  const urls = [];
++  const push = (v) => {
++    if (!v || typeof v !== "string") return;
++    const s = v.trim();
++    if (!s || urls.includes(s)) return;
++    urls.push(s);
++  };
++  push(u && (u.avatarUrl || u.profile_image_url || u.profileImageUrl || u.avatar));
++  /* X API often returns _normal — prefer higher res */
++  const raw = u && (u.avatarUrl || u.profile_image_url);
++  if (raw && /_normal\.(jpg|png|webp)/i.test(raw)) {
++    push(raw.replace(/_normal\.(jpg|png|webp)/i, ".$1"));
++    push(raw.replace(/_normal\.(jpg|png|webp)/i, "_400x400.$1"));
++  }
++  if (handle) {
++    push("https://unavatar.io/twitter/" + encodeURIComponent(handle) + "?fallback=false");
++    push("https://unavatar.io/x/" + encodeURIComponent(handle) + "?fallback=false");
++    /* CORS-friendly image proxy as last resort for pbs.twimg */
++    push("https://images.weserv.nl/?url=" + encodeURIComponent("unavatar.io/twitter/" + handle) + "&w=256&h=256&fit=cover&a=focal");
++  }
++  return urls;
++}
++function circleCropToTexture(img) {
++  const size = 256;
++  const c = document.createElement("canvas");
++  c.width = c.height = size;
++  const ctx = c.getContext("2d");
++  ctx.clearRect(0, 0, size, size);
++  ctx.beginPath();
++  ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
++  ctx.closePath();
++  ctx.clip();
++  const sw = img.naturalWidth || img.width;
++  const sh = img.naturalHeight || img.height;
++  const side = Math.min(sw, sh);
++  const sx = (sw - side) / 2;
++  const sy = (sh - side) / 2;
++  ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
++  /* subtle rim so face reads on dark lounge */
++  ctx.beginPath();
++  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
++  ctx.strokeStyle = "rgba(255,255,255,0.35)";
++  ctx.lineWidth = 6;
++  ctx.stroke();
++  const tex = new THREE.CanvasTexture(c);
++  tex.colorSpace = THREE.SRGBColorSpace;
++  tex.anisotropy = 4;
++  tex.needsUpdate = true;
++  return tex;
++}
++function loadPfpTexture(url) {
++  if (!url) return Promise.reject(new Error("no url"));
++  if (_pfpTexCache.has(url)) return Promise.resolve(_pfpTexCache.get(url));
++  return new Promise((resolve, reject) => {
++    const img = new Image();
++    img.crossOrigin = "anonymous";
++    img.onload = () => {
++      try {
++        const tex = circleCropToTexture(img);
++        _pfpTexCache.set(url, tex);
++        resolve(tex);
++      } catch (err) { reject(err); }
++    };
++    img.onerror = () => reject(new Error("pfp load fail " + url));
++    img.src = url;
++  });
++}
++async function applyPfpToFaceMesh(faceMesh, u) {
++  if (!faceMesh || !faceMesh.material) return false;
++  const candidates = pfpUrlCandidates(u);
++  for (const url of candidates) {
++    try {
++      const tex = await loadPfpTexture(url);
++      if (!faceMesh.material) return false;
++      /* dispose old letter map if present */
++      try {
++        const old = faceMesh.material.map;
++        if (old && old !== tex && old.image && old.image.tagName === "CANVAS" && !old.userData?.isPfp) {
++          /* keep letter textures cheap; only dispose if we know it's safe */
++        }
++      } catch (_) {}
++      tex.userData = tex.userData || {};
++      tex.userData.isPfp = true;
++      faceMesh.material.map = tex;
++      faceMesh.material.color.setHex(0xffffff);
++      faceMesh.material.transparent = true;
++      faceMesh.material.toneMapped = false;
++      faceMesh.material.needsUpdate = true;
++      faceMesh.userData.pfpUrl = url;
++      faceMesh.userData.hasPfp = true;
++      return true;
++    } catch (_) { /* try next candidate */ }
++  }
++  return false;
++}
++
+ function buildXUser(u) {
+   const g = new THREE.Group();
+   const col = new THREE.Color(u.color || "#1d9bf0");
+@@ -5353,17 +5469,26 @@
+   /* phone */
+   g.add(box(0.14, 0.24, 0.04, 0x111318, 0.52, 1.25, 0.12));
+   g.add(box(0.11, 0.18, 0.01, 0x5ad1ff, 0.52, 1.25, 0.145));
+-  /* head + avatar face */
++  /* head + avatar face (letter first, then async X PFP paste) */
+   const head = sph(0.28, 0xe8c4a8, 0, 1.78, 0);
+   g.add(head);
+   const face = new THREE.Mesh(
+-    new THREE.CircleGeometry(0.22, 24),
+-    new THREE.MeshBasicMaterial({ map: avatarTex(u.name || u.handle, u.color), transparent: true })
++    new THREE.CircleGeometry(0.24, 28),
++    new THREE.MeshBasicMaterial({
++      map: avatarTex(u.name || u.handle, u.color),
++      transparent: true,
++      toneMapped: false,
++      depthWrite: true,
++    })
+   );
+-  face.position.set(0, 1.78, 0.27);
++  face.position.set(0, 1.78, 0.275);
++  face.userData.noOutline = true; /* outline shell would eat the photo paste */
++  face.userData.isPfpFace = true;
++  face.name = "XUserFace";
+   g.add(face);
+-  /* hair blob */
+-  g.add(sph(0.3, 0x2a1c14, 0, 1.95, -0.02));
++  g.userData.face = face;
++  /* hair blob — sit slightly back so it doesn't cover the PFP disc */
++  g.add(sph(0.3, 0x2a1c14, 0, 1.96, -0.04));
+   /* NAME above @handle, like a real X profile */
+   const nameTag = textSprite(u.name || u.handle, { size: 38, color: "#ffffff", strokeW: 7, maxWidth: 0 });
+   nameTag.position.set(0, 2.86, 0);
+@@ -5376,6 +5501,10 @@
+   g.add(handleTag);
+   g.userData.handleTag = handleTag;
+   addOutline(g, 1.04);
++  /* fire-and-forget PFP load — swaps letter disc when ready */
++  try {
++    applyPfpToFaceMesh(face, u).catch(() => {});
++  } catch (_) {}
+   return g;
+ }
+ 
+@@ -7226,7 +7355,7 @@
+ 

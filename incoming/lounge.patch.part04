@@ -1,0 +1,120 @@
+-          const side = Math.min(img.width, img.height);
+-          tex.repeat.set(side / img.width, side / img.height);
+-          tex.offset.set((1 - side / img.width) / 2, (1 - side / img.height) / 2);
+-        }
+         plane.material.map = tex;
+         plane.material.color.set(0xffffff);
+         plane.material.needsUpdate = true;
+       } catch (_) {}
+-    }, undefined, () => {});
++    }, undefined, () => { /* keep placeholder color if missing */ });
+   } catch (_) {}
+-  /* brass plaque: "We will purge them all" */
+-  const plaqueTex = canvasTex(512, 128, (c2, w, h) => {
+-    const grad = c2.createLinearGradient(0, 0, 0, h);
+-    grad.addColorStop(0, "#d8b25e"); grad.addColorStop(0.5, "#b8923e"); grad.addColorStop(1, "#96742c");
+-    c2.fillStyle = grad; c2.fillRect(0, 0, w, h);
+-    c2.strokeStyle = "#6a4f1c"; c2.lineWidth = 6; c2.strokeRect(10, 10, w - 20, h - 20);
+-    c2.fillStyle = "#3a2c10";
+-    c2.font = "italic bold 44px Georgia, 'Times New Roman', serif";
+-    c2.textAlign = "center"; c2.textBaseline = "middle";
+-    c2.fillText("We will purge them all", w / 2, h / 2 + 2);
+-  });
+-  const plaque = new THREE.Mesh(
+-    new THREE.BoxGeometry(2.0, 0.5, 0.06),
+-    [null, null, null, null,
+-      new THREE.MeshBasicMaterial({ map: plaqueTex }),
+-      new THREE.MeshStandardMaterial({ color: 0x96742c })
+-    ].map(m => m || new THREE.MeshStandardMaterial({ color: 0x96742c, metalness: 0.6, roughness: 0.4 }))
+-  );
+-  plaque.position.set(0, 1.55, 0.02);
+-  g.add(plaque);
+-  /* a soft picture light over the portrait */
+-  const lamp = new THREE.PointLight(0xffe0b0, 3, 6);
+-  lamp.position.set(0, 1.9, 0.8);
+-  g.add(lamp);
+-  g.position.set(px, py, pz);
+-  g.rotation.y = Math.PI / 2; /* on the west wall, facing into the room */
++  const cap = (typeof textSprite === "function")
++    ? textSprite("TIMELINE LOUNGE · BOND", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 })
++    : null;
++  if (cap) {
++    cap.scale.multiplyScalar(0.55);
++    cap.position.set(0, 4.7, -12.2);
++    g.add(cap);
++  }
+   g.visible = false;
+   g.userData.isLoungeHero = true;
+   g.userData.keepInLounge = true;
++  /* Prefer parenting under loungeDecor so combat-world hide never eats it */
+   if (loungeDecor) loungeDecor.add(g);
+   else scene.add(g);
+   loungeHero = g;
+@@ -8587,7 +8336,6 @@
+       pigOwnParts = null;
+     }
+     setLoungeBondMode(true);
+-    try { startLoungeLiveTV(); } catch (_) {}
+   } catch (_) {}
+ }
+ 
+@@ -8603,7 +8351,6 @@
+   } catch (_) {}
+   try { setLoungeHeroVisible(false); } catch (_) {}
+   try { setLoungeBondMode(false); } catch (_) {}
+-  try { stopLoungeLiveTV(); } catch (_) {}
+   try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
+   try {
+     if (loungeHero) {
+@@ -11152,26 +10899,6 @@
+   /* typing a reply in the tweet reader must not drive the game */
+   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
+   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
+-  /* lounge TV controls: T channel (needs held remote), C captions, V sound */
+-  if (socialActive && typeof liveTV !== "undefined" && liveTV.active) {
+-    if (e.code === "KeyT") {
+-      if (liveTV.heldRemote != null) liveTVTuneTV(liveTV.heldRemote, true, true);
+-      else { try { showMsg("\ud83d\udcfa Grab a remote from the bar to change channels"); } catch (_) {} }
+-      return;
+-    }
+-    if (e.code === "KeyC") {
+-      liveTV.captions = !liveTV.captions;
+-      try { showMsg("Closed captions " + (liveTV.captions ? "ON" : "OFF")); } catch (_) {}
+-      return;
+-    }
+-    if (e.code === "KeyV") {
+-      const near = liveTVNearestTV(9);
+-      if (liveTV.audioTV != null) liveTVSetAudio(null);
+-      else if (near != null) liveTVSetAudio(near);
+-      else { try { showMsg("Walk up to a TV first, then press V for sound"); } catch (_) {} }
+-      return;
+-    }
+-  }
+   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
+   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
+   keys[e.code] = true;
+@@ -14654,7 +14381,6 @@
+       }
+     } catch (_) {}
+   });
+-  safeStep("liveTV", () => updateLoungeLiveTV());
+   /* keep office suppressed — some systems re-show shell meshes */
+   if (socialActive && liveLoungeMode) {
+     try {
+@@ -15246,16 +14972,6 @@
+   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
+   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
+   get marsState() { return marsState; },
+-  /* headless screenshot: force one render, downscale, return data URL */
+-  snap(w = 420) {
+-    renderer.render(scene, camera);
+-    const src = renderer.domElement;
+-    const c = document.createElement("canvas");
+-    const h = Math.round(w * src.height / src.width);
+-    c.width = w; c.height = h;
+-    c.getContext("2d").drawImage(src, 0, 0, w, h);
+-    return c.toDataURL("image/jpeg", 0.65);
+-  },
+ };
+ /* deep-link: ?level=2 skips to Starbase for preview */
+ try {
