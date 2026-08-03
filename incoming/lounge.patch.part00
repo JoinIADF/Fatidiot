@@ -1,0 +1,18 @@
+--- a/index.html
++++ b/index.html
+@@ -1716,7 +1716,14 @@
+     setTimeout(() => beep(1600, 0.05, "square", 0.05, -700), 45);
+     setTimeout(() => noiseBurst(0.06, 0.08, 3000, 600), 70);
+   },
+-  lock:  () => { beep(720, 0.05, "square", 0.06, 120); beep(1100, 0.08, "triangle", 0.07, 200); },
++  /* soft single tick + 350ms throttle so scanning guests isn't a beep machine */
++  _lockNext: 0,
++  lock:  () => {
++    const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
++    if (now < (SFX._lockNext || 0)) return;
++    SFX._lockNext = now + 350;
++    beep(520, 0.035, "sine", 0.018, 0);
++  },
+   hit:   () => { noiseBurst(0.07, 0.14, 2500, 200); beep(180, 0.09, "square", 0.1, -100); thump(110, 0.1, 0.1); },
+   boom:  () => { noiseBurst(0.4, 0.28, 1400, 40); noiseBurst(0.15, 0.16, 5000, 600); thump(55, 0.35, 0.24); beep(80, 0.3, "sawtooth", 0.12, -40); },
+   demon: () => {
