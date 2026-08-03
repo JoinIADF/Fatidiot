@@ -7526,11 +7526,15 @@ function buildBondPig() {
   const lapelMat = shiny(SATIN, 240, 0xffffff, { polyOff: -1 });
   add(g, new THREE.BoxGeometry(0.58 * S, 0.66 * S, 0.28 * S), jacketMat, 0, 1.13 * S, -0.01 * S);
   add(g, new THREE.BoxGeometry(0.62 * S, 0.16 * S, 0.3 * S), jacketMat, 0, 1.4 * S, -0.01 * S);
-  /* WIDE white shirt front so it clearly reads through the lapel V */
-  add(g, new THREE.BoxGeometry(0.18 * S, 0.44 * S, 0.04 * S), shirtMat, 0, 1.14 * S, 0.175 * S);
+  /* white shirt: a V that is WIDE at the collar and tapers down to the waist
+     (flattened cone — radiusTop wide, radiusBottom narrow) */
+  const shirtV = add(g, new THREE.CylinderGeometry(0.115 * S, 0.03 * S, 0.46 * S, 3, 1), shirtMat, 0, 1.16 * S, 0.16 * S);
+  shirtV.scale.z = 0.28;
+  shirtV.rotation.y = Math.PI; /* flat face of the prism forward */
+  /* lapels converge DOWNWARD — tops flare outward so the V opens at the collar */
   for (const s of [-1, 1]) {
     const lap = add(g, new THREE.BoxGeometry(0.14 * S, 0.46 * S, 0.035 * S), lapelMat, 0.13 * s * S, 1.2 * S, 0.2 * S);
-    lap.rotation.z = 0.28 * s;
+    lap.rotation.z = -0.28 * s;
     lap.rotation.y = -0.12 * s;
   }
   /* NECK + wing collar — connects head to torso; bow tie sits ON the collar */
@@ -7542,9 +7546,9 @@ function buildBondPig() {
   }
   /* classic black bow tie — under the chin, on the collar */
   const tieMat = shiny(0x0a0c10, 130, 0xffffff, { polyOff: -3 });
-  add(g, new THREE.BoxGeometry(0.085 * S, 0.06 * S, 0.05 * S), tieMat, 0, 1.475 * S, 0.13 * S);
+  add(g, new THREE.BoxGeometry(0.095 * S, 0.07 * S, 0.05 * S), tieMat, 0, 1.45 * S, 0.175 * S);
   for (const s of [-1, 1]) {
-    const w = add(g, new THREE.BoxGeometry(0.115 * S, 0.085 * S, 0.04 * S), tieMat, 0.095 * s * S, 1.475 * S, 0.12 * S);
+    const w = add(g, new THREE.BoxGeometry(0.13 * S, 0.095 * S, 0.04 * S), tieMat, 0.105 * s * S, 1.45 * S, 0.168 * S);
     w.rotation.z = 0.18 * s;
   }
   add(g, new THREE.BoxGeometry(0.07 * S, 0.03 * S, 0.02 * S), shiny(WHITE, 120, 0xffffff, { polyOff: -2 }), -0.2 * S, 1.28 * S, 0.15 * S);
