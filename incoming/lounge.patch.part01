@@ -1,0 +1,69 @@
+-    chatInp.addEventListener("blur", () => document.body.classList.remove("mp-chat-focus"));
+     chatInp.addEventListener("keydown", (e) => {
+       e.stopPropagation();
+       if (e.key === "Enter") { e.preventDefault(); send(); }
+-      if (e.key === "Escape") { chatInp.blur(); }
++      if (e.key === "Escape") { e.preventDefault(); mpCloseChatComposer(); }
+     });
+   }
+   const openG = document.getElementById("mpChatOpen");
+-  if (openG) openG.addEventListener("click", () => mpOpenGroupChat());
++  if (openG) openG.addEventListener("click", (ev) => {
++    ev.preventDefault(); ev.stopPropagation();
++    mpCloseChatComposer();
++    mpOpenGroupChat(true);
++  });
+   const closeG = document.getElementById("mpgClose");
+-  if (closeG) closeG.addEventListener("click", () => mpOpenGroupChat(false));
++  if (closeG) closeG.addEventListener("click", () => {
++    mpOpenGroupChat(false);
++    document.body.classList.remove("mp-chat-focus");
++  });
+   const gSend = () => {
+     const inp = document.getElementById("mpgInput");
+     if (!inp) return;
+@@ -9343,10 +9439,19 @@
+   const mpgInp = document.getElementById("mpgInput");
+   if (mpgInp) {
+     mpgInp.addEventListener("focus", () => document.body.classList.add("mp-chat-focus"));
+-    mpgInp.addEventListener("blur", () => document.body.classList.remove("mp-chat-focus"));
++    mpgInp.addEventListener("blur", () => {
++      const g = document.getElementById("mpGroupChat");
++      if (g && !g.classList.contains("hidden")) return;
++      document.body.classList.remove("mp-chat-focus");
++    });
+     mpgInp.addEventListener("keydown", (e) => {
+       e.stopPropagation();
+       if (e.key === "Enter") { e.preventDefault(); gSend(); }
++      if (e.key === "Escape") {
++        e.preventDefault();
++        mpOpenGroupChat(false);
++        document.body.classList.remove("mp-chat-focus");
++      }
+     });
+   }
+   const chip = document.getElementById("mpRoomChip");
+@@ -9362,21 +9467,8 @@
+ }
+ 
+ try { wireMultiplayerUI(); } catch (err) { console.warn("mp wire", err); }
+-try {
+-  addEventListener("keydown", (e) => {
+-    if (!MP.active || mode !== "play") return;
+-    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+-    if (e.code === "KeyT" && !e.repeat) {
+-      e.preventDefault();
+-      const inp = document.getElementById("mpChatInput");
+-      if (inp) { inp.focus(); }
+-    }
+-    if (e.code === "KeyY" && !e.repeat) {
+-      e.preventDefault();
+-      try { mpOpenGroupChat(); } catch (_) {}
+-    }
+-  });
+-} catch (_) {}
++/* chat opens only via CHAT button click — no keyboard steal of WASD */
++
+ try { window.MP = MP; window.mpOpenJoinModal = mpOpenJoinModal; window.updateMultiplayer = updateMultiplayer; } catch (_) {}
+ 
+ 
