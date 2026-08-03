@@ -1,0 +1,226 @@
++  for (const id of ["mpHud", "mpChatDock", "mpChatBar"]) {
++    const el = document.getElementById(id);
++    if (!el) continue;
++    el.classList.toggle("hidden", !on);
++    el.setAttribute("aria-hidden", on ? "false" : "true");
++  }
++  if (!on) {
++    const g = document.getElementById("mpGroupChat");
++    if (g) { g.classList.add("hidden"); g.setAttribute("aria-hidden", "true"); }
++  }
++}
++
++function mpUpdateRoomChip() {
++  const PR = mpPR();
++  const codeEl = document.getElementById("mpRoomCode");
++  const countEl = document.getElementById("mpCount");
++  if (codeEl) codeEl.textContent = MP.roomCode || (PR && PR.getRoomCode && PR.getRoomCode()) || "····";
++  let n = 1;
++  try {
++    if (PR && PR.getParticipants) n = Object.keys(PR.getParticipants()).length;
++    else n = 1 + MP.remotes.size;
++  } catch (_) { n = 1 + MP.remotes.size; }
++  if (countEl) countEl.textContent = String(Math.min(MP.MAX, n));
++}
++
++function mpNameOf(player) {
++  if (!player) return "Guest";
++  try {
++    const s = player.getState && player.getState("displayName");
++    if (s) return String(s).slice(0, 24);
++  } catch (_) {}
++  try {
++    const p = player.getProfile && player.getProfile();
++    if (p && p.name) return String(p.name).slice(0, 24);
++  } catch (_) {}
++  return "Guest";
++}
++
++function mpColorOf(player) {
++  try {
++    const p = player.getProfile && player.getProfile();
++    if (p && p.color && p.color.hex) return p.color.hex;
++    if (p && p.color && p.color.hexString) return parseInt(String(p.color.hexString).replace("#", ""), 16);
++  } catch (_) {}
++  return 0x1d9bf0;
++}
++
++function buildMpRemoteAvatar(name, colorHex) {
++  const g = new THREE.Group();
++  g.name = "MpGuest";
++  const col = new THREE.Color(colorHex || 0x1d9bf0);
++  const shirt = col.clone().multiplyScalar(0.55);
++  g.add(box(0.55, 0.75, 0.32, shirt.getHex(), 0, 1.15, 0));
++  g.add(box(0.22, 0.65, 0.22, shirt.getHex(), -0.4, 1.12, 0));
++  g.add(box(0.22, 0.65, 0.22, shirt.getHex(), 0.4, 1.12, 0));
++  g.add(box(0.24, 0.65, 0.26, 0x2a3038, -0.16, 0.48, 0));
++  g.add(box(0.24, 0.65, 0.26, 0x2a3038, 0.16, 0.48, 0));
++  /* whole-head letter/PFP style sprite */
++  const letterMap = avatarTex(name, "#" + (colorHex >>> 0).toString(16).padStart(6, "0"));
++  const head = new THREE.Sprite(new THREE.SpriteMaterial({
++    map: letterMap, transparent: true, toneMapped: false, depthTest: true, sizeAttenuation: true,
++  }));
++  head.position.set(0, 1.92, 0);
++  head.scale.set(0.85, 0.85, 1);
++  head.userData.noOutline = true;
++  head.userData.isPfpHead = true;
++  g.add(head);
++  g.userData.pfpHead = head;
++  const nameTag = textSprite(name, { size: 34, color: "#7CFFB0", strokeW: 6, maxWidth: 0 });
++  nameTag.position.set(0, 2.58, 0);
++  nameTag.scale.multiplyScalar(0.55);
++  g.add(nameTag);
++  g.userData.nameTag = nameTag;
++  const badge = textSprite("GUEST · UNVERIFIED", { size: 22, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
++  badge.position.set(0, 2.28, 0);
++  badge.scale.multiplyScalar(0.42);
++  g.add(badge);
++  addOutline(g, 1.04);
++  g.traverse(o => { try { o.layers.set(1); } catch (_) {} });
++  return g;
++}
++
++function mpSpawnRemote(player) {
++  if (!player || !MP.active) return;
++  const PR = mpPR();
++  const me = PR && PR.myPlayer && PR.myPlayer();
++  if (me && player.id === me.id) return;
++  if (MP.remotes.has(player.id)) return;
++  if (MP.remotes.size >= MP.MAX - 1) {
++    try { player.kick && player.kick(); } catch (_) {}
++    return;
++  }
++  const name = mpNameOf(player);
++  const col = mpColorOf(player);
++  const mesh = buildMpRemoteAvatar(name, col);
++  const x = Number(player.getState("x"));
++  const z = Number(player.getState("z"));
++  mesh.position.set(Number.isFinite(x) ? x : rand(-4, 4), 0, Number.isFinite(z) ? z : 8 + rand(-2, 2));
++  scene.add(mesh);
++  MP.remotes.set(player.id, {
++    player,
++    mesh,
++    target: mesh.position.clone(),
++    yaw: 0,
++  });
++  mpPushChat({ sys: true, name: "SYSTEM", text: name + " joined the lounge", t: Date.now() });
++  mpUpdateRoomChip();
++  try {
++    player.onQuit(() => {
++      mpRemoveRemote(player.id);
++      mpPushChat({ sys: true, name: "SYSTEM", text: name + " left", t: Date.now() });
++    });
++  } catch (_) {}
++}
++
++function mpRemoveRemote(id) {
++  const r = MP.remotes.get(id);
++  if (!r) return;
++  try { scene.remove(r.mesh); } catch (_) {}
++  MP.remotes.delete(id);
++  mpUpdateRoomChip();
++}
++
++function mpClearRemotes() {
++  for (const id of [...MP.remotes.keys()]) mpRemoveRemote(id);
++}
++
++function mpFormatTime(ts) {
++  try {
++    const d = new Date(ts || Date.now());
++    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
++  } catch (_) { return ""; }
++}
++
++function mpPushChat(msg) {
++  MP.chatLog.push(msg);
++  if (MP.chatLog.length > 200) MP.chatLog.shift();
++  /* dock */
++  const dock = document.getElementById("mpChatDock");
++  if (dock) {
++    const line = document.createElement("div");
++    line.className = "mpc-line" + (msg.sys ? " sys" : "");
++    line.innerHTML = msg.sys
++      ? escapeHtml(msg.text)
++      : `<span class="n">${escapeHtml(msg.name)}</span>: ${escapeHtml(msg.text)}`;
++    dock.appendChild(line);
++    while (dock.children.length > 6) dock.removeChild(dock.firstChild);
++    setTimeout(() => { try { line.remove(); } catch (_) {} }, 8000);
++  }
++  /* group log */
++  const log = document.getElementById("mpgLog");
++  if (log) {
++    const PR = mpPR();
++    const me = PR && PR.myPlayer && PR.myPlayer();
++    const mine = me && msg.id && me.id === msg.id;
++    const row = document.createElement("div");
++    row.className = "mpg-msg";
++    row.innerHTML = `<div class="who${mine ? " me" : ""}">${escapeHtml(msg.sys ? "SYSTEM" : msg.name)}</div>
++      <div class="txt">${escapeHtml(msg.text)}</div>
++      <div class="t">${escapeHtml(mpFormatTime(msg.t))}</div>`;
++    log.appendChild(row);
++    log.scrollTop = log.scrollHeight;
++    while (log.children.length > 120) log.removeChild(log.firstChild);
++  }
++}
++
++function mpSendChat(text) {
++  text = String(text || "").trim().slice(0, 200);
++  if (!text || !MP.active) return;
++  const PR = mpPR();
++  if (!PR) return;
++  const me = PR.myPlayer();
++  const name = MP.displayName || mpNameOf(me);
++  const payload = { text, name, t: Date.now() };
++  mpPushChat({ id: me.id, name, text, t: payload.t });
++  try {
++    if (PR.RPC && PR.RPC.call) {
++      PR.RPC.call("loungeChat", payload, PR.RPC.Mode.OTHERS);
++    }
++  } catch (err) { console.warn("mp chat rpc", err); }
++  /* host keeps durable log */
++  try {
++    if (PR.isHost && PR.isHost()) {
++      const log = (PR.getState("chatLog") || []).slice(-80);
++      log.push({ id: me.id, name, text, t: payload.t });
++      PR.setState("chatLog", log, true);
++    }
++  } catch (_) {}
++}
++
++function mpOpenGroupChat(on) {
++  const g = document.getElementById("mpGroupChat");
++  if (!g) return;
++  const show = on == null ? g.classList.contains("hidden") : !!on;
++  g.classList.toggle("hidden", !show);
++  g.setAttribute("aria-hidden", show ? "false" : "true");
++  if (show) {
++    const log = document.getElementById("mpgLog");
++    if (log) log.scrollTop = log.scrollHeight;
++    try { document.getElementById("mpgInput").focus(); } catch (_) {}
++  }
++}
++
++async function mpStartSession({ name, roomCode }) {
++  const PR = mpPR();
++  if (!PR || !PR.insertCoin) {
++    throw new Error("Playroom Kit failed to load — check network / CDN");
++  }
++  if (MP.connecting || MP.active) return;
++  MP.connecting = true;
++  MP.displayName = String(name || "Guest").trim().slice(0, 24) || "Guest";
++  try { localStorage.setItem("fatidiot_mp_name", MP.displayName); } catch (_) {}
++
++  const opts = {
++    maxPlayersPerRoom: MP.MAX,
++    skipLobby: true,
++    defaultPlayerStates: {
++      displayName: MP.displayName,
++      role: "guest",
++      verified: false,
++      x: 0, y: 0, z: 10, yaw: Math.PI,
++      seated: null,
++      game: null,
++    },
++  };
++  const code = String(roomCode || "").trim().toUpperCase();
