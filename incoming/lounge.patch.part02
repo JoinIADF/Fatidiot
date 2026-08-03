@@ -1,0 +1,154 @@
+-  const R = dartGame.boardR || 0.45;
++  const R = dartGame.boardR || 0.9;
+   const tp = dartGame.throwPos;
+   /* aim point on board plane */
+   let targetY = bp.y + dartGame.aimY;
+   let targetZ = bp.z + dartGame.aimZ;
+-  /* power: sweet spot ~0.62–0.78; low = short/drop, high = float high */
+-  const sweet = 0.7;
++  /* sweet spot ~0.58–0.78 power for clean hits */
++  const sweet = 0.68;
+   const err = power - sweet;
+-  const tremor = (0.04 + (1 - power) * 0.08) * (0.6 + Math.random() * 0.8);
+-  targetY += err * 0.55 + (Math.random() - 0.5) * tremor;
+-  targetZ += (Math.random() - 0.5) * tremor * 1.15;
++  /* inaccuracy grows when under/over-powered or hand shake */
++  const tremor = (0.03 + Math.abs(err) * 0.22 + (1 - power) * 0.05) * (0.5 + Math.random());
++  targetY += err * 0.7 + (Math.random() - 0.5) * tremor;
++  targetZ += (Math.random() - 0.5) * tremor * 1.2;
+   let hitX = bp.x + 0.02;
+-  if (power < 0.25) {
+-    /* falls short of board */
+-    hitX = tp.x + (bp.x - tp.x) * (0.4 + power * 1.2);
+-    targetY -= (0.25 - power) * 1.4;
+-  } else if (power > 0.92) {
+-    targetY += (power - 0.92) * 1.8;
++  if (power < 0.22) {
++    hitX = tp.x + (bp.x - tp.x) * (0.35 + power * 1.5);
++    targetY -= (0.22 - power) * 1.6;
++  } else if (power > 0.93) {
++    targetY += (power - 0.93) * 2.2;
++    targetZ += (Math.random() - 0.5) * 0.25;
+   }
+-  /* release from hand approx */
+   const start = new THREE.Vector3();
+   if (dartGame.heldDart) {
+     try {
+@@ -9155,21 +9176,25 @@
+       dartGame.arm.userData.hand.remove(dartGame.heldDart);
+       scene.add(dartGame.heldDart);
+     } catch (_) {
+-      start.set(tp.x + 0.2, tp.y, tp.z);
++      start.set(tp.x + 0.25, tp.y + 0.05, tp.z);
+     }
+   } else {
+-    start.set(tp.x + 0.2, tp.y, tp.z);
++    start.set(tp.x + 0.25, tp.y + 0.05, tp.z);
+   }
+   const mesh = dartGame.heldDart || mkDartMesh();
+   dartGame.heldDart = null;
+   mesh.position.copy(start);
+   const end = new THREE.Vector3(hitX, targetY, targetZ);
+   const dist = start.distanceTo(end);
++  /* flight time from power: harder throw = faster */
++  const speed = 9 + power * 14;
++  const dur = Math.max(0.22, Math.min(0.7, dist / speed));
++  /* gravity drop: low power arcs more; high power flatter */
++  const arc = 0.12 + (1 - power) * 0.55 + Math.abs(err) * 0.15;
+   const flight = {
+     mesh, start: start.clone(), end: end.clone(),
+-    t: 0, dur: 0.32 + (1 - power) * 0.28 + dist * 0.02,
+-    power, alive: true, scored: false,
+-    arc: 0.22 + power * 0.18,
++    t: 0, dur, power, alive: true, scored: false, arc,
++    spin: (Math.random() - 0.5) * 8,
+   };
+   dartGame.flying.push(flight);
+   if (dartGame.mode === "practice") dartGame.throwsLeft--;
+@@ -9177,8 +9202,9 @@
+     dartGame.dartsThisTurn--;
+     if (dartGame.throwsLeft < 900) dartGame.throwsLeft--;
+   }
+-  try { beep(160 + power * 180, 0.05, "triangle", 0.04); } catch (_) {}
+-  dartGame.shake = 0.25;
++  try { beep(150 + power * 220, 0.05, "triangle", 0.045); } catch (_) {}
++  dartGame.shake = 0.35;
++  dartGame.throwAnim = 1; /* arm follow-through */
+ }
+ function finishDartFlight(f) {
+   if (f.scored) return;
+@@ -9216,8 +9242,9 @@
+     }
+     dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a, 0xe8eef8]));
+     dartGame.arm.userData.hand.add(dartGame.heldDart);
+-    dartGame.heldDart.position.set(0.02, -0.02, 0.08);
+-    dartGame.heldDart.rotation.set(0.2, 0, -Math.PI / 2);
++    dartGame.heldDart.position.set(0.04, -0.02, 0.1);
++    dartGame.heldDart.rotation.set(0.1, 0.15, -Math.PI / 2);
++    dartGame.heldDart.scale.setScalar(1.2);
+   }
+   if (dartGame.mode === "201" && dartGame.score201 === 0) {
+     setTimeout(endDartGame, 1400);
+@@ -9282,35 +9309,50 @@
+   camera.up.set(0, 1, 0);
+   camera.lookAt(look);
+ 
+-  /* FP arm: aim toward reticle, pull back when charging */
++  /* FP arm: large, always visible, pulls back on charge, snaps forward on throw */
+   if (dartGame.arm) {
+-    const sh = dartGame.shake * Math.sin(t * 38) * 0.012;
+-    dartGame.arm.position.set(0.28 + sh, -0.32 + sh * 0.5, -0.42);
+-    /* pitch/yaw from aim */
++    dartGame.throwAnim = Math.max(0, (dartGame.throwAnim || 0) - dt * 2.8);
++    const sh = dartGame.shake * Math.sin(t * 38) * 0.014;
+     const ny = dartGame.aimY / aimLim;
+     const nz = dartGame.aimZ / aimLim;
+-    dartGame.arm.rotation.set(0.25 - ny * 0.45, -0.12 + nz * 0.5, -0.3);
++    const pull = dartGame.charging ? dartGame.power * 0.85 : 0;
++    const thr = dartGame.throwAnim || 0;
++    /* base pose lower-right; pull back = more z, throw = forward punch */
++    dartGame.arm.position.set(
++      0.22 + sh + nz * 0.04,
++      -0.2 + sh * 0.4 - ny * 0.06 + thr * 0.05,
++      -0.36 + pull * 0.12 - thr * 0.22
++    );
++    dartGame.arm.rotation.set(
++      0.12 - ny * 0.55 - pull * 0.25 + thr * 0.4,
++      0.08 + nz * 0.55,
++      -0.5 - pull * 0.15
++    );
+     const elbow = dartGame.arm.userData.elbow;
+     if (elbow) {
+-      const pull = dartGame.charging ? dartGame.power * 0.7 : 0.05;
+-      elbow.rotation.x = -0.15 - pull;
+-      elbow.position.z = pull * 0.08;
++      elbow.rotation.x = -0.2 - pull * 0.9 + thr * 1.1;
++      elbow.position.z = 0.02 + pull * 0.1 - thr * 0.08;
+     }
+     if (dartGame.heldDart) dartGame.heldDart.visible = true;
++    dartGame.arm.visible = true;
+   }
+ 
+   for (const f of dartGame.flying) {
+     if (!f.alive) continue;
+     f.t += dt;
+     const u = Math.min(1, f.t / f.dur);
+-    const e = 1 - Math.pow(1 - u, 1.6);
++    /* ease-out then settle */
++    const e = 1 - Math.pow(1 - u, 1.35);
+     f.mesh.position.lerpVectors(f.start, f.end, e);
++    /* gravity arc peaks mid-flight */
+     f.mesh.position.y += Math.sin(u * Math.PI) * f.arc;
+-    /* orient tip toward velocity */
+-    const next = new THREE.Vector3().lerpVectors(f.start, f.end, Math.min(1, e + 0.05));
+-    next.y += Math.sin(Math.min(1, u + 0.05) * Math.PI) * f.arc;
++    /* tip follows velocity */
++    const u2 = Math.min(1, u + 0.04);
++    const next = new THREE.Vector3().lerpVectors(f.start, f.end, 1 - Math.pow(1 - u2, 1.35));
++    next.y += Math.sin(u2 * Math.PI) * f.arc;
+     f.mesh.lookAt(next);
+     f.mesh.rotateY(Math.PI / 2);
++    f.mesh.rotateX(u * (f.spin || 0) * 0.15);
+     if (u >= 1) finishDartFlight(f);
+   }
+ }
