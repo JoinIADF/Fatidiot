@@ -6656,7 +6656,10 @@ function confirmCreateLiveLounge() {
 
 
 function lb(x, z, hw, hd, h) {
-  LOUNGE_BLOCKS.push([x * LOUNGE_SCALE, z * LOUNGE_SCALE, hw * LOUNGE_SCALE, hd * LOUNGE_SCALE, h]);
+  /* Live lounge mesh coords are already world-space (W=48,D=36).
+     Never multiply by LOUNGE_SCALE here — that pushed colliders ~30% outside the visual walls
+     so the pig could walk through walls and get stuck outside. */
+  LOUNGE_BLOCKS.push([x, z, hw, hd, h]);
 }
 function addLoungeObstacles() {
   clearObstaclesByTag("lounge");
@@ -6759,10 +6762,12 @@ function buildIndependentLoungeWorld() {
   mkWall(W + 0.5, 0, D / 2 + 4.5, Math.PI);     /* south */
   mkWall(D + 2.5, -W / 2, D * 0.08, Math.PI / 2);
   mkWall(D + 2.5, W / 2, D * 0.08, -Math.PI / 2);
-  lb(0, -D / 2 + 2, W / 2, 0.3, H);
-  lb(0, D / 2 + 4.5, W / 2, 0.3, H);
-  lb(-W / 2, D * 0.08, 0.3, D / 2, H);
-  lb(W / 2, D * 0.08, 0.3, D / 2, H);
+  /* Collision shell — slightly thicker + extended so corners have no escape gaps.
+     Visual walls: N z=-16, S z=22.5, E/W x=±24 (W=48,D=36, floor z-shift D*0.08). */
+  lb(0, -D / 2 + 2, W / 2 + 0.6, 0.45, H);          /* north */
+  lb(0, D / 2 + 4.5, W / 2 + 0.6, 0.45, H);         /* south */
+  lb(-W / 2, D * 0.08, 0.45, D / 2 + 3.5, H);       /* west  */
+  lb(W / 2, D * 0.08, 0.45, D / 2 + 3.5, H);        /* east  */
 
   /* —— Media screens (was yellow wall panels) ——
      Mounted high above the bar for future video / X streams / ads.
@@ -7211,7 +7216,7 @@ function buildIndependentLoungeWorld() {
   g.add(welcome);
 
   g.userData.liveLounge = true;
-  g.userData.walkBounds = { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
+  g.userData.walkBounds = { xMin: -22.2, xMax: 22.2, zMin: -14.4, zMax: 20.6 };
   g.layers.set(1);
   g.traverse(o => o.layers.set(1));
   scene.add(g);
@@ -7333,7 +7338,7 @@ function getLoungeWalkBounds() {
   if (loungeDecor && loungeDecor.userData && loungeDecor.userData.walkBounds) {
     return loungeDecor.userData.walkBounds;
   }
-  return { xMin: -22, xMax: 22, zMin: -14, zMax: 28 };
+  return { xMin: -22.2, xMax: 22.2, zMin: -14.4, zMax: 20.6 };
 }
 function buildLoungeHero() {
   const g = new THREE.Group();
@@ -7384,10 +7389,11 @@ function buildLoungeHero() {
 }
 
 function clampPigToLounge() {
-  if (!(typeof socialActive !== "undefined" && socialActive && loungeDecor && pig)) return;
-  const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
+  if (!(typeof socialActive !== "undefined" && socialActive && pig)) return;
+  const b = (loungeDecor && loungeDecor.userData && loungeDecor.userData.walkBounds) || getLoungeWalkBounds();
   pig.position.x = Math.max(b.xMin, Math.min(b.xMax, pig.position.x));
   pig.position.z = Math.max(b.zMin, Math.min(b.zMax, pig.position.z));
+  if (pig.position.y < 0) pig.position.y = 0;
 }
 
 function setLoungeHeroVisible(on) {
@@ -7451,9 +7457,27 @@ function activateSocialLounge() {
   setCombatWorldVisible(false);
   if (loungeDecor) loungeDecor.visible = true;
   vcTimer = 99999;
-  pig.position.set(0, 0, 20);
+  /* Spawn in lobby but well inside the south wall so the follow-cam
+     (which sits ~7.5u behind the pig) starts INSIDE the room, not outside. */
+  pig.position.set(0, 0, 10);
   pigY = 0; pigVy = 0;
   try { pig.userData.keepInLounge = true; pig.visible = true; } catch (_) {}
+  try {
+    if (typeof yaw === "number") yaw = Math.PI; /* face toward bar / -Z into room */
+    clampPigToLounge();
+    /* hard-snap camera inside on entry — no lerp from combat outdoor position */
+    if (typeof camera !== "undefined" && camera) {
+      const b = getLoungeWalkBounds();
+      const dist = 5.5, h = 2.4;
+      const sy = Math.sin(yaw), cy = Math.cos(yaw);
+      let cx = pig.position.x + sy * dist;
+      let cz = pig.position.z + cy * dist;
+      cx = Math.max(b.xMin + 0.5, Math.min(b.xMax - 0.5, cx));
+      cz = Math.max(b.zMin + 0.5, Math.min(b.zMax - 0.5, cz));
+      camera.position.set(cx, h, cz);
+      camera.lookAt(pig.position.x, 1.4, pig.position.z);
+    }
+  } catch (_) {}
   const wv = $("waveV"); if (wv) wv.textContent = "LIVE LOUNGE";
   const ql = $("quotaLabel"); if (ql) ql.textContent = "ZONE";
   const qv = $("quotaV"); if (qv) qv.textContent = "Lobby";
@@ -12199,6 +12223,15 @@ function collideObstacles(pos, r, feetY = 0) {
       else pos.z += pz * Math.sign(dz || 1);
     }
   }
+  /* Live lounge: clamp to room interior (NOT office FLOOR_* which is much larger) */
+  if (typeof socialActive !== "undefined" && socialActive && typeof getLoungeWalkBounds === "function") {
+    const b = (typeof loungeDecor !== "undefined" && loungeDecor && loungeDecor.userData && loungeDecor.userData.walkBounds)
+      ? loungeDecor.userData.walkBounds
+      : getLoungeWalkBounds();
+    pos.x = Math.max(b.xMin, Math.min(b.xMax, pos.x));
+    pos.z = Math.max(b.zMin, Math.min(b.zMax, pos.z));
+    return;
+  }
   pos.x = Math.max(-FLOOR_W / 2 + 1, Math.min(FLOOR_W / 2 - 1, pos.x));
   /* Starbase opens the south wall into a deep outdoor parking lot */
   const zMax = (typeof starbaseActive !== "undefined" && starbaseActive)
@@ -12379,6 +12412,7 @@ function update(dt) {
   if (!(seated && socialActive && !raceGame.active)) pig.position.addScaledVector(pigVel, dt);
   else { pigVel.set(0,0,0); }
   collideObstacles(pig.position, 0.8, pigY);
+  try { if (socialActive) clampPigToLounge(); } catch (_) {}
   if (!onGround && pigY > 0.45 && mode === "play") {
     for (const w of windowZones) {
       if (starbaseActive) continue; /* gallery walls — no window escape on Starbase */
@@ -13167,29 +13201,34 @@ function updateCamera(dt) {
   if (typeof dartGame !== "undefined" && dartGame.active) return;
   if (typeof strikerGame !== "undefined" && strikerGame.active) return;
   if (typeof arcadeGame !== "undefined" && arcadeGame.active) return;
-  const dist = 7.5, h = 2.2 + pitch * 4.5;
+  const dist = (typeof socialActive !== "undefined" && socialActive) ? 5.2 : 7.5, h = 2.2 + pitch * ((typeof socialActive !== "undefined" && socialActive) ? 3.2 : 4.5);
   const target = new THREE.Vector3(
     pig.position.x + Math.sin(yaw) * dist * Math.cos(pitch * 0.6),
     pig.position.y + h,
     pig.position.z + Math.cos(yaw) * dist * Math.cos(pitch * 0.6)
   );
-  /* Pre-clamp desired camera target to lounge before lerp (avoids starting outside) */
+  /* Keep camera STRICTLY inside lounge walls (pad is inward, never outside) */
   const inLounge = !!(typeof socialActive !== "undefined" && socialActive && loungeDecor);
   if (inLounge) {
     try { clampPigToLounge(); } catch (_) {}
     const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
-    const pad = 0.35; /* camera can sit closer to walls than the pig */
-    target.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, target.x));
-    target.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, target.z));
-    target.y = Math.min(5.4, Math.max(1.4, target.y));
+    const pad = 0.55; /* keep cam this far inside walk bounds */
+    target.x = Math.max(b.xMin + pad, Math.min(b.xMax - pad, target.x));
+    target.z = Math.max(b.zMin + pad, Math.min(b.zMax - pad, target.z));
+    target.y = Math.min(4.8, Math.max(1.5, target.y));
+    /* pull camera closer when near walls so look-at still works without leaving room */
+    const distToBound = Math.min(
+      target.x - (b.xMin + pad), (b.xMax - pad) - target.x,
+      target.z - (b.zMin + pad), (b.zMax - pad) - target.z
+    );
   }
   camera.position.lerp(target, 1 - Math.pow(0.0001, dt));
   if (inLounge) {
     const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
-    const pad = 0.35;
-    camera.position.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, camera.position.x));
-    camera.position.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, camera.position.z));
-    camera.position.y = Math.min(5.4, Math.max(1.4, camera.position.y));
+    const pad = 0.55;
+    camera.position.x = Math.max(b.xMin + pad, Math.min(b.xMax - pad, camera.position.x));
+    camera.position.z = Math.max(b.zMin + pad, Math.min(b.zMax - pad, camera.position.z));
+    camera.position.y = Math.min(4.8, Math.max(1.5, camera.position.y));
   } else {
     /* keep camera inside office / starbase bounds */
     camera.position.x = Math.max(-FLOOR_W / 2 + 0.5, Math.min(FLOOR_W / 2 - 0.5, camera.position.x));
@@ -13205,9 +13244,9 @@ function updateCamera(dt) {
     /* re-clamp after shake so we never pop outside */
     if (inLounge) {
       const b = loungeDecor.userData.walkBounds || getLoungeWalkBounds();
-      const pad = 0.35;
-      camera.position.x = Math.max(b.xMin - pad, Math.min(b.xMax + pad, camera.position.x));
-      camera.position.z = Math.max(b.zMin - pad, Math.min(b.zMax + pad, camera.position.z));
+      const pad = 0.55;
+      camera.position.x = Math.max(b.xMin + pad, Math.min(b.xMax - pad, camera.position.x));
+      camera.position.z = Math.max(b.zMin + pad, Math.min(b.zMax - pad, camera.position.z));
     }
   }
   camera.lookAt(look);
