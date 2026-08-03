@@ -1,0 +1,7 @@
++  dartGame.aimY -= dy * 0.0018;
+ }
+ 
+-
+ /* —— TEST YOUR CLOUT: timing striker — click at the PEAK for 100% + victory bell —— */
+ const strikerGame = { active: false, tT: 0, cool: 0, power: 0, slammed: false };
+ function ringVictoryBell() {

@@ -1,0 +1,189 @@
++    ? "201 — count down to 0 · finish on a DOUBLE"
++    : dartGame.mode === "cricket"
++      ? "CRICKET — mark 15–20 & bull · 3 hits closes"
++      : "PRACTICE — 9 darts · free scoring");
++}
++function updateDartHud() {
++  const hud = document.getElementById("dartHud");
++  const line = document.getElementById("dartScoreLine");
++  if (!dartGame.active) {
++    if (hud) hud.classList.remove("show");
++    return;
++  }
++  if (hud) hud.classList.add("show");
++  let html = "";
++  if (dartGame.mode === "201") {
++    html = `<b>201</b> · remaining <b>${dartGame.score201}</b> · turn darts ${dartGame.dartsThisTurn}`;
++  } else if (dartGame.mode === "cricket") {
++    const m = dartGame.cricket.marks;
++    const bits = [20,19,18,17,16,15,25].map(n => {
++      const v = m[n] || 0;
++      const dots = "●".repeat(Math.min(3, v)) + "○".repeat(Math.max(0, 3 - v));
++      return `${n === 25 ? "B" : n}:${dots}`;
++    });
++    html = `<b>CRICKET</b> · pts <b>${dartGame.cricket.points}</b><br>${bits.join(" · ")}`;
++  } else {
++    html = `<b>PRACTICE</b> · score <b>${dartGame.total}</b> · left ${dartGame.throwsLeft}`;
++  }
++  if (hud) hud.innerHTML = html;
++  if (line) line.textContent = dartGame.mode === "201"
++    ? `${dartGame.score201} left`
++    : dartGame.mode === "cricket"
++      ? `${dartGame.cricket.points} pts`
++      : `${dartGame.total} pts`;
+ }
+ function startDartGame() {
+   const L = loungeDecor && loungeDecor.userData;
+   if (!L || !L.dartBoardPos) return;
+   dartGame.active = true;
+-  if (!dartGame.league) {
+-    dartGame.throwsLeft = 9;
+-    dartGame.total = 0;
+-  } else if (!dartGame.throwsLeft) {
+-    dartGame.throwsLeft = 12;
+-  }
++  dartGame.mode = dartGame.mode || "201";
+   dartGame.aimY = 0;
+   dartGame.aimZ = 0;
+   dartGame.power = 0;
+@@ -8870,191 +8973,261 @@
+   dartGame.shake = 0;
+   dartGame.camSnapped = false;
+   dartGame.boardPos = L.dartBoardPos.clone();
+-  dartGame.boardR = L.dartBoardRadius || 0.72;
+-  dartGame.throwPos = (L.dartThrowPos || L.dartTablePos || new THREE.Vector3(L.dartBoardPos.x - 7.6, 1.35, L.dartBoardPos.z)).clone();
+-  dartGame.throwPos.y = 1.4;
++  dartGame.boardR = L.dartBoardRadius || 0.45;
++  dartGame.throwPos = (L.dartThrowPos || new THREE.Vector3(L.dartBoardPos.x - 3.9, 1.55, L.dartBoardPos.z)).clone();
++  dartGame.throwPos.y = 1.55;
+   socialReading = true;
+   setHeroForMiniGame(true);
+   try { setMiniTouch(true, isMobile() ? "DRAG AIM · HOLD THROW" : "MOUSE aim · HOLD LMB power · RELEASE throw · ESC"); } catch (_) {}
+   for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
+   dartGame.darts = [];
+   dartGame.flying = [];
+-  /* arm + held dart */
+-  if (dartGame.arm) try { scene.remove(dartGame.arm); } catch (_) {}
++  if (dartGame.arm) {
++    try { if (dartGame.arm.parent) dartGame.arm.parent.remove(dartGame.arm); } catch (_) {}
++    try { scene.remove(dartGame.arm); } catch (_) {}
++  }
++  /* first-person arm parented to camera so it never z-fights the world */
+   dartGame.arm = mkThrowingArm();
+-  dartLayer(dartGame.arm);
+-  scene.add(dartGame.arm);
++  dartGame.arm.position.set(0.28, -0.32, -0.45);
++  dartGame.arm.rotation.set(0.35, -0.15, -0.35);
++  dartGame.arm.scale.setScalar(0.9);
++  camera.add(dartGame.arm);
+   dartGame.heldDart = mkDartMesh(0x1d9bf0);
+-  dartLayer(dartGame.heldDart);
+   dartGame.arm.userData.hand.add(dartGame.heldDart);
+-  dartGame.heldDart.position.set(0.08, 0, 0.06);
+-  dartGame.heldDart.rotation.y = Math.PI / 2;
+-  dartGame.heldDart.rotation.z = 0.2;
++  dartGame.heldDart.position.set(0.02, -0.02, 0.08);
++  dartGame.heldDart.rotation.set(0.2, 0, -Math.PI / 2);
+   if (!dartGame.reticle) {
+-    dartGame.reticle = textSprite("◎", { size: 72, color: "#7CFFB0", strokeW: 4, maxWidth: 0 });
+-    dartGame.reticle.scale.multiplyScalar(0.35);
+-    scene.add(dartGame.reticle);
++    const r = new THREE.Mesh(
++      new THREE.RingGeometry(0.03, 0.045, 24),
++      new THREE.MeshBasicMaterial({ color: 0x7CFFB0, side: THREE.DoubleSide, depthTest: true, transparent: true, opacity: 0.9 })
++    );
++    r.rotation.y = -Math.PI / 2;
++    dartGame.reticle = r;
++    scene.add(r);
+   }
+-  dartLayer(dartGame.reticle);
+   dartGame.reticle.visible = true;
+-  /* ensure a big always-facing board marker in front of cam */
+-  if (dartGame.debugBoard) { try { scene.remove(dartGame.debugBoard); } catch(_){} }
+-  {
+-    const bp = dartGame.boardPos;
+-    const tex = canvasTex(256, 256, (ctx, w, h) => {
+-      ctx.fillStyle = "#0a0a0a"; ctx.fillRect(0,0,w,h);
+-      for (let i=0;i<20;i++){
+-        ctx.beginPath(); ctx.moveTo(w/2,h/2);
+-        ctx.arc(w/2,h/2,w*0.45, i/20*Math.PI*2, (i+1)/20*Math.PI*2);
+-        ctx.closePath(); ctx.fillStyle = i%2?"#1a5a30":"#111"; ctx.fill();
+-      }
+-      ctx.strokeStyle="#d4af37"; ctx.lineWidth=8;
+-      ctx.beginPath(); ctx.arc(w/2,h/2,w*0.45,0,Math.PI*2); ctx.stroke();
+-      ctx.fillStyle="#d4af37"; ctx.beginPath(); ctx.arc(w/2,h/2,12,0,Math.PI*2); ctx.fill();
+-    });
+-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, toneMapped: false, depthTest: false }));
+-    sp.position.copy(bp);
+-    sp.scale.set(2.8, 2.8, 1);
+-    dartLayer(sp);
+-    scene.add(sp);
+-    dartGame.debugBoard = sp;
+-  }
+-
+-  /* power bar DOM */
+-  let bar = document.getElementById("dartPower");
+-  if (!bar) {
+-    bar = document.createElement("div");
+-    bar.id = "dartPower";
+-    bar.innerHTML = `<div class="dp-label">POWER</div><div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div><div class="dp-hint" id="dartHint">Hold LMB · release to throw</div>`;
+-    document.body.appendChild(bar);
+-  }
+-  bar.classList.add("show");
+-  showMsg("🎯 DARTS — mouse aims arm · hold LMB for power · release to throw");
++  const bar = ensureDartUI();
++  bar.classList.add("show", "interactive");
++  bar.querySelectorAll(".dp-mode").forEach(b => {
++    b.classList.toggle("on", b.getAttribute("data-mode") === dartGame.mode);
++  });
++  resetDartMatch();
+   try { SFX.pickup(); } catch (_) {}
+ }
+ function endDartGame() {
+   dartGame.active = false;
+   dartGame.charging = false;
+-  dartGame.cool = 6;
++  dartGame.cool = 4;
+   dartGame.league = false;
+   socialReading = false;
+   setHeroForMiniGame(false);
+   try { setMiniTouch(false); } catch (_) {}
+   if (dartGame.reticle) dartGame.reticle.visible = false;
+-  if (dartGame.debugBoard) { try { scene.remove(dartGame.debugBoard); } catch (_) {} dartGame.debugBoard = null; }
+-  if (dartGame.arm) { try { scene.remove(dartGame.arm); } catch (_) {} dartGame.arm = null; }
+-  if (dartGame._fov) { try { camera.fov = dartGame._fov; camera.updateProjectionMatrix(); } catch(_){} dartGame._fov = null; }
++  if (dartGame.arm) {
++    try { camera.remove(dartGame.arm); } catch (_) {}
++    try { scene.remove(dartGame.arm); } catch (_) {}
++    dartGame.arm = null;
++  }
++  if (dartGame._fov) {
++    try { camera.fov = dartGame._fov; camera.updateProjectionMatrix(); } catch (_) {}
++    dartGame._fov = null;
++  }
+   dartGame.heldDart = null;
++  dartGame.camSnapped = false;
+   const bar = document.getElementById("dartPower");
+-  if (bar) bar.classList.remove("show");
++  if (bar) bar.classList.remove("show", "interactive");
++  const hud = document.getElementById("dartHud");
++  if (hud) hud.classList.remove("show");
+   setTimeout(() => {
+     for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
+     dartGame.darts = [];
+     dartGame.flying = [];
+-  }, 2800);
+-  showMsg(`🎯 DARTS TOTAL: ${dartGame.total} pts`);
+-  score += dartGame.total;
++  }, 2500);
++  const summary = dartGame.mode === "201"
++    ? (dartGame.score201 === 0 ? "201 CHECKOUT!" : `201 ended · ${dartGame.score201} left`)
++    : dartGame.mode === "cricket"
++      ? `Cricket · ${dartGame.cricket.points} pts`
++      : `Practice · ${dartGame.total} pts`;
++  showMsg("🎯 " + summary);
++  score += Math.max(0, dartGame.total | 0);
+   updateHud();
+ }
+-function dartScoreFromOffset(off, R) {
+-  const r = off / Math.max(0.001, R);

@@ -1,0 +1,200 @@
+   cap.rotation.x = Math.PI / 2;
+   for (const s of [-1, 1]) {
+-    const n = add(headG, new THREE.CylinderGeometry(0.017 * S, 0.017 * S, 0.028 * S, 8), shiny(0x6e3a44, 30), 0.027 * s * S, -0.035 * S, 0.235 * S);
++    const n = add(headG, new THREE.CylinderGeometry(0.018 * S, 0.018 * S, 0.028 * S, 8), shiny(0x6e3a44, 30), 0.028 * s * S, -0.02 * S, 0.23 * S);
+     n.rotation.x = Math.PI / 2;
+   }
+-  /* warm closed-lip smile with upturned corners */
+-  const mouth = add(headG, new THREE.BoxGeometry(0.085 * S, 0.011 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.115 * S, 0.152 * S);
+-  for (const s of [-1, 1]) {
+-    const cnr = add(headG, new THREE.BoxGeometry(0.022 * S, 0.01 * S, 0.014 * S), shiny(0xa07060, 20), 0.052 * s * S, -0.108 * S, 0.15 * S);
+-    cnr.rotation.z = -0.5 * s;
+-  }
++  /* subtle mouth line */
++  const mouth = add(headG, new THREE.BoxGeometry(0.08 * S, 0.012 * S, 0.015 * S), shiny(0xa07060, 20), 0, -0.1 * S, 0.15 * S);
+ 
+   g.add(headG);
+   g.userData.head = headG;
+@@ -8757,111 +8803,168 @@
+   } catch (_) {}
+ }
+ 
+-/* —— DARTS MINI-GAME (realistic): wall board, aim arm, hold-LMB power —— */
++/* —— DARTS MINI-GAME: wall board, FP arm, hold-LMB power, 201 + Cricket —— */
++const DART_SECTORS = [6,13,4,18,1,20,5,12,9,14,11,8,16,7,19,3,17,2,15,10];
+ const dartGame = {
+-  active: false, throwsLeft: 0, total: 0, cool: 0, darts: [], flying: [],
+-  /* aim offsets on board plane (local Y up, Z along wall) */
+-  aimY: 0, aimZ: 0,
+-  power: 0, charging: false, chargeT: 0,
+-  arm: null, heldDart: null, reticle: null, powerBar: null,
+-  throwPos: null, boardPos: null, boardR: 0.72,
++  active: false, mode: "201", /* "201" | "cricket" */
++  throwsLeft: 0, total: 0, cool: 0, darts: [], flying: [],
++  aimY: 0, aimZ: 0, power: 0, charging: false, chargeT: 0,
++  arm: null, heldDart: null, reticle: null,
++  throwPos: null, boardPos: null, boardR: 0.45,
+   league: false, pScores: null, player: 0,
+-  shake: 0,
++  shake: 0, camSnapped: false, selecting: false,
++  score201: 201, cricket: null, dartsThisTurn: 3, turnHits: [],
+ };
+ function mkDartMesh(color = 0xd44a90) {
+   const dart = new THREE.Group();
++  dart.name = "Dart";
+   const shaft = new THREE.Mesh(
+-    new THREE.CylinderGeometry(0.012, 0.014, 0.38, 8),
+-    new THREE.MeshBasicMaterial({ color: 0xf0e8d0 })
++    new THREE.CylinderGeometry(0.008, 0.01, 0.28, 8),
++    new THREE.MeshStandardMaterial({ color: 0xe8e0c8, metalness: 0.2, roughness: 0.5 })
+   );
+   shaft.rotation.z = Math.PI / 2;
+   dart.add(shaft);
+   const tip = new THREE.Mesh(
+-    new THREE.ConeGeometry(0.012, 0.1, 8),
+-    new THREE.MeshBasicMaterial({ color: 0xe8eef8 })
++    new THREE.ConeGeometry(0.008, 0.07, 8),
++    new THREE.MeshStandardMaterial({ color: 0xc0c8d0, metalness: 0.8, roughness: 0.3 })
+   );
+   tip.rotation.z = -Math.PI / 2;
+-  tip.position.x = 0.24;
++  tip.position.x = 0.17;
+   dart.add(tip);
+   const barrel = new THREE.Mesh(
+-    new THREE.CylinderGeometry(0.02, 0.018, 0.1, 10),
+-    new THREE.MeshBasicMaterial({ color })
++    new THREE.CylinderGeometry(0.014, 0.012, 0.08, 10),
++    new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.4 })
+   );
+   barrel.rotation.z = Math.PI / 2;
+   barrel.position.x = -0.02;
+   dart.add(barrel);
+-  /* flights */
+   for (let i = 0; i < 3; i++) {
+     const fl = new THREE.Mesh(
+-      new THREE.BoxGeometry(0.01, 0.08, 0.06),
+-      new THREE.MeshBasicMaterial({ color })
++      new THREE.BoxGeometry(0.008, 0.06, 0.045),
++      new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide })
+     );
+-    fl.position.set(-0.16, 0, 0);
++    fl.position.set(-0.12, 0, 0);
+     fl.rotation.x = (i / 3) * Math.PI * 2;
+     dart.add(fl);
+   }
++  dart.scale.setScalar(1.15);
+   return dart;
+ }
+ function mkThrowingArm() {
+   const arm = new THREE.Group();
+   arm.name = "DartArm";
+-  /* upper arm */
+-  const capGeo = (r, len) => (THREE.CapsuleGeometry
+-    ? new THREE.CapsuleGeometry(r, len, 4, 8)
+-    : new THREE.CylinderGeometry(r, r, len + r * 2, 8));
+-  const upper = new THREE.Mesh(
+-    capGeo(0.07, 0.28),
+-    new THREE.MeshBasicMaterial({ color: 0xf0c4a8 })
+-  );
+-  upper.position.set(0, 0, 0);
+-  upper.rotation.z = 0.4;
++  const skin = new THREE.MeshStandardMaterial({ color: 0xe0b090, roughness: 0.7 });
++  const sleeve = new THREE.MeshStandardMaterial({ color: 0x0d0f14, roughness: 0.55, metalness: 0.15 });
++  /* upper arm (from shoulder) */
++  const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.05, 0.32, 10), sleeve);
++  upper.position.set(0, -0.12, 0);
+   arm.add(upper);
+-  /* forearm pivot */
+   const elbow = new THREE.Group();
+-  elbow.position.set(0.12, -0.18, 0.02);
++  elbow.position.set(0, -0.28, 0);
+   arm.add(elbow);
+-  const fore = new THREE.Mesh(
+-    capGeo(0.055, 0.32),
+-    new THREE.MeshBasicMaterial({ color: 0xe8b090 })
+-  );
+-  fore.position.set(0.16, -0.02, 0);
+-  fore.rotation.z = -0.15;
++  const fore = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.04, 0.3, 10), sleeve);
++  fore.position.set(0, -0.14, 0.02);
+   elbow.add(fore);
+-  /* hand */
+-  const hand = new THREE.Mesh(
+-    new THREE.SphereGeometry(0.055, 10, 8),
+-    new THREE.MeshBasicMaterial({ color: 0xd4a080 })
+-  );
+-  hand.position.set(0.34, -0.04, 0.02);
++  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.046, 0.05, 10),
++    new THREE.MeshStandardMaterial({ color: 0xf6f7fa, roughness: 0.6 }));
++  cuff.position.set(0, -0.28, 0.02);
++  elbow.add(cuff);
++  const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), skin);
++  hand.position.set(0, -0.34, 0.03);
+   elbow.add(hand);
+-  /* sleeve cuff */
+-  const cuff = new THREE.Mesh(
+-    new THREE.CylinderGeometry(0.08, 0.07, 0.1, 10),
+-    new THREE.MeshStandardMaterial({ color: 0x3a2818, roughness: 0.8 })
+-  );
+-  cuff.position.set(0.02, 0.06, 0);
+-  cuff.rotation.z = 0.5;
+-  arm.add(cuff);
+   arm.userData.elbow = elbow;
+   arm.userData.hand = hand;
+   return arm;
+ }
+-function dartLayer(obj) {
+-  try {
+-    obj.layers.set(1);
+-    obj.traverse(c => c.layers.set(1));
+-  } catch (_) {}
++function ensureDartUI() {
++  let bar = document.getElementById("dartPower");
++  if (!bar) {
++    bar = document.createElement("div");
++    bar.id = "dartPower";
++    bar.innerHTML = `
++      <div class="dp-label" id="dartTitle">DARTS</div>
++      <div class="dp-modes" id="dartModes">
++        <button type="button" class="dp-mode on" data-mode="201">201</button>
++        <button type="button" class="dp-mode" data-mode="cricket">Cricket</button>
++        <button type="button" class="dp-mode" data-mode="practice">Practice</button>
++      </div>
++      <div class="dp-track"><div class="dp-fill" id="dartPowerFill"></div></div>
++      <div class="dp-score" id="dartScoreLine"></div>
++      <div class="dp-hint" id="dartHint">Pick a mode · walk to oche</div>`;
++    document.body.appendChild(bar);
++    bar.querySelectorAll(".dp-mode").forEach(btn => {
++      btn.addEventListener("click", (ev) => {
++        ev.preventDefault(); ev.stopPropagation();
++        if (!dartGame.active) return;
++        bar.querySelectorAll(".dp-mode").forEach(b => b.classList.remove("on"));
++        btn.classList.add("on");
++        dartGame.mode = btn.getAttribute("data-mode") || "201";
++        resetDartMatch();
++      });
++    });
++  }
++  let hud = document.getElementById("dartHud");
++  if (!hud) {
++    hud = document.createElement("div");
++    hud.id = "dartHud";
++    document.body.appendChild(hud);
++  }
++  return bar;
++}
++function resetDartMatch() {
++  dartGame.total = 0;
++  dartGame.throwsLeft = dartGame.mode === "practice" ? 9 : 99;
++  dartGame.dartsThisTurn = 3;
++  dartGame.turnHits = [];
++  dartGame.score201 = 201;
++  dartGame.cricket = {
++    marks: { 15:0, 16:0, 17:0, 18:0, 19:0, 20:0, 25:0 },
++    points: 0,
++  };
++  for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
++  dartGame.darts = [];
++  dartGame.flying = [];
++  updateDartHud();
++  showMsg(dartGame.mode === "201"

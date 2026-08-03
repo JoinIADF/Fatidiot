@@ -1,0 +1,175 @@
+-  floatText(new THREE.Vector3(bp.x - 0.6, hitY + 0.4, hitZ),
+-    pts ? `+${pts}${pts === 50 ? " BULL!" : pts === 25 ? " OUTER" : ""}` : (f.power < 0.28 ? "SHORT" : "MISS"),
+-    { size: 40, color: pts >= 25 ? "#7CFFB0" : pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.15);
+-  /* new held dart if more throws */
+-  if (dartGame.throwsLeft > 0 && dartGame.arm) {
+-    dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a]));
+-    dartLayer(dartGame.heldDart);
++  floatText(new THREE.Vector3(bp.x - 0.5, hitY + 0.35, hitZ), msg,
++    { size: 36, color: hit.pts >= 50 ? "#7CFFB0" : hit.pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.1);
++  updateDartHud();
++  /* new dart in hand */
++  if (dartGame.arm && (dartGame.throwsLeft > 0 || dartGame.dartsThisTurn > 0) && !(dartGame.mode === "201" && dartGame.score201 === 0)) {
++    if (dartGame.mode !== "practice" && dartGame.dartsThisTurn <= 0) {
++      dartGame.dartsThisTurn = 3;
++      /* clear stuck darts each turn for readability */
++      setTimeout(() => {
++        for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
++        dartGame.darts = [];
++      }, 700);
++    }
++    dartGame.heldDart = mkDartMesh(pick([0x1d9bf0, 0xd44a90, 0x7CFFB0, 0xffd94a, 0xe8eef8]));
+     dartGame.arm.userData.hand.add(dartGame.heldDart);
+-    dartGame.heldDart.position.set(0.08, 0, 0.06);
+-    dartGame.heldDart.rotation.y = Math.PI / 2;
++    dartGame.heldDart.position.set(0.02, -0.02, 0.08);
++    dartGame.heldDart.rotation.set(0.2, 0, -Math.PI / 2);
++  }
++  if (dartGame.mode === "201" && dartGame.score201 === 0) {
++    setTimeout(endDartGame, 1400);
++  } else if (dartGame.mode === "practice" && dartGame.throwsLeft <= 0) {
++    setTimeout(endDartGame, 1100);
++  } else if (dartGame.mode === "cricket") {
++    /* win if all closed */
++    const m = dartGame.cricket.marks;
++    if ([15,16,17,18,19,20,25].every(n => m[n] >= 3)) setTimeout(endDartGame, 1400);
+   }
+-  if (dartGame.throwsLeft <= 0) setTimeout(endDartGame, 1100);
+ }
+ function updateDartGame(dt) {
+   if (!dartGame.active) return;
+@@ -9062,104 +9235,91 @@
+   if (!L || !L.dartBoardPos) return;
+   const bp = L.dartBoardPos;
+   dartGame.boardPos = bp;
+-  const tp = dartGame.throwPos || new THREE.Vector3(bp.x - 7.6, 1.4, bp.z);
+-  dartGame.shake = Math.max(0, dartGame.shake - dt);
++  const tp = dartGame.throwPos || new THREE.Vector3(bp.x - 3.9, 1.55, bp.z);
++  dartGame.shake = Math.max(0, dartGame.shake - dt * 1.2);
+ 
+-  /* charge power */
+   if (dartGame.charging) {
+     dartGame.chargeT += dt;
+-    /* ease to 1 over ~1.1s, with slight pulse */
+-    dartGame.power = Math.min(1, dartGame.chargeT / 1.05);
+-    dartGame.shake = 0.05 + dartGame.power * 0.25;
++    /* ~1.15s to full; slight sine so max is readable */
++    dartGame.power = Math.min(1, dartGame.chargeT / 1.15);
++    dartGame.shake = 0.04 + dartGame.power * 0.22;
+   }
+   const fill = document.getElementById("dartPowerFill");
+   if (fill) {
+     fill.style.width = (dartGame.charging ? dartGame.power * 100 : 0) + "%";
+-    fill.style.background = dartGame.power > 0.88 ? "#ff6a4a" : dartGame.power > 0.55 ? "#7CFFB0" : "#ffd94a";
++    const p = dartGame.power;
++    fill.style.background = p > 0.88 ? "#ff6a4a" : (p > 0.55 && p < 0.82) ? "#7CFFB0" : "#ffd94a";
+   }
+   const hint = document.getElementById("dartHint");
+   if (hint) {
+     hint.textContent = dartGame.charging
+-      ? `Power ${Math.round(dartGame.power * 100)}% · release to throw · darts left ${dartGame.throwsLeft}`
+-      : `Aim with mouse · hold LMB · ${dartGame.throwsLeft} darts · ${dartGame.total} pts · Esc quits`;
++      ? `Power ${Math.round(dartGame.power * 100)}% · release to throw`
++      : `Mouse aims · hold LMB for power · Esc quits`;
+   }
+ 
+-  /* clamp aim to board radius */
+-  const R = dartGame.boardR || 0.72;
+-  const aimLim = R * 0.95;
++  const R = dartGame.boardR || 0.45;
++  const aimLim = R * 0.98;
+   dartGame.aimY = Math.max(-aimLim, Math.min(aimLim, dartGame.aimY));
+   dartGame.aimZ = Math.max(-aimLim, Math.min(aimLim, dartGame.aimZ));
+-  /* reticle on board */
++
+   if (dartGame.reticle) {
+-    dartGame.reticle.position.set(bp.x - 0.12, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
++    dartGame.reticle.position.set(bp.x - 0.04, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
+     dartGame.reticle.visible = !dartGame.flying.some(f => f.alive);
+   }
+ 
+-  /* camera: behind throw line looking at board (east wall) */
+-  const camTarget = new THREE.Vector3(tp.x - 3.2, 1.75, tp.z);
++  /* camera locked at oche looking at board — no mouse-look spin */
++  const camTarget = new THREE.Vector3(tp.x - 0.15, 1.62, tp.z);
+   if (!dartGame.camSnapped) {
+     camera.position.copy(camTarget);
+     dartGame.camSnapped = true;
+     dartGame._fov = camera.fov;
+-    camera.fov = 58;
++    camera.fov = 52;
+     camera.updateProjectionMatrix();
+   } else {
+-    camera.position.lerp(camTarget, Math.min(1, dt * 10));
++    camera.position.lerp(camTarget, Math.min(1, dt * 12));
+   }
+-  const look = new THREE.Vector3(bp.x, bp.y + dartGame.aimY * 0.2, bp.z + dartGame.aimZ * 0.2);
++  const look = new THREE.Vector3(bp.x, bp.y + dartGame.aimY * 0.15, bp.z + dartGame.aimZ * 0.15);
+   camera.up.set(0, 1, 0);
+   camera.lookAt(look);
+-  camera.layers.enable(0); /* also see layer 0 just in case */
+-  camera.layers.enable(1);
+-  camera.updateMatrixWorld(true);
+-  if (dartGame.debugBoard) {
+-    dartGame.debugBoard.position.copy(bp);
+-    dartGame.debugBoard.visible = true;
+-  }
+ 
+-  /* arm position + aim pose */
++  /* FP arm: aim toward reticle, pull back when charging */
+   if (dartGame.arm) {
+-    const sh = dartGame.shake * (Math.sin(t * 40) * 0.015);
+-    /* arm lower-right, scaled down so board stays primary focus */
+-    dartGame.arm.position.set(tp.x + 0.15 + sh, tp.y - 0.6, tp.z + 0.9 + sh * 0.4);
+-    dartGame.arm.scale.setScalar(0.75);
+-    const handWorld = new THREE.Vector3(bp.x, bp.y + dartGame.aimY, bp.z + dartGame.aimZ);
+-    dartGame.arm.lookAt(handWorld);
+-    dartGame.arm.rotateY(-Math.PI / 2);
+-    dartGame.arm.rotateZ(-0.55);
+-    /* elbow draw-back when charging */
++    const sh = dartGame.shake * Math.sin(t * 38) * 0.012;
++    dartGame.arm.position.set(0.28 + sh, -0.32 + sh * 0.5, -0.42);
++    /* pitch/yaw from aim */
++    const ny = dartGame.aimY / aimLim;
++    const nz = dartGame.aimZ / aimLim;
++    dartGame.arm.rotation.set(0.25 - ny * 0.45, -0.12 + nz * 0.5, -0.3);
+     const elbow = dartGame.arm.userData.elbow;
+     if (elbow) {
+-      const pull = dartGame.charging ? dartGame.power * 0.55 : 0.08;
+-      elbow.rotation.z = -0.2 - pull;
+-      elbow.position.x = 0.12 - pull * 0.15;
++      const pull = dartGame.charging ? dartGame.power * 0.7 : 0.05;
++      elbow.rotation.x = -0.15 - pull;
++      elbow.position.z = pull * 0.08;
+     }
+-    dartLayer(dartGame.arm);
++    if (dartGame.heldDart) dartGame.heldDart.visible = true;
+   }
+ 
+-  /* fly darts */
+   for (const f of dartGame.flying) {
+     if (!f.alive) continue;
+     f.t += dt;
+     const u = Math.min(1, f.t / f.dur);
+-    const e = 1 - Math.pow(1 - u, 2); /* ease out */
++    const e = 1 - Math.pow(1 - u, 1.6);
+     f.mesh.position.lerpVectors(f.start, f.end, e);
+-    /* arc */
+-    f.mesh.position.y += Math.sin(u * Math.PI) * (0.35 + f.power * 0.25);
+-    f.mesh.lookAt(f.end);
++    f.mesh.position.y += Math.sin(u * Math.PI) * f.arc;
++    /* orient tip toward velocity */
++    const next = new THREE.Vector3().lerpVectors(f.start, f.end, Math.min(1, e + 0.05));
++    next.y += Math.sin(Math.min(1, u + 0.05) * Math.PI) * f.arc;
++    f.mesh.lookAt(next);
+     f.mesh.rotateY(Math.PI / 2);
+     if (u >= 1) finishDartFlight(f);
+   }
+ }
+-/* mouse aim while darts active */
+ function dartAimFromMouse(dx, dy) {
+-  if (!dartGame.active || dartGame.charging && false) {}
+   if (!dartGame.active) return;
+-  dartGame.aimZ += dx * 0.0022; /* mouse X → along wall */
+-  dartGame.aimY -= dy * 0.0022; /* mouse Y → up/down */
++  dartGame.aimZ += dx * 0.0018;
