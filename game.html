@@ -7709,6 +7709,178 @@ function getLoungeMediaScreens() {
   return (loungeDecor && loungeDecor.userData && loungeDecor.userData.mediaScreens) || [];
 }
 try { window.getLoungeMediaScreens = getLoungeMediaScreens; } catch (_) {}
+
+/* ============================== LOUNGE LIVE TV ==============================
+ * Real live TV on the bar media screens. Channel lineup:
+ * CBS News 24/7 - ABC News Live - CNBC - LiveNOW from FOX (main US feeds),
+ * URLs sourced from the iptv-org database (github.com/iptv-org).
+ * Each channel carries several candidate stream URLs; the tuner tries them
+ * in order (streams die / geo-block often) and falls through to the next
+ * channel if none play. T = next channel. Failure never breaks the game. */
+const liveTV = {
+  active: false, playing: false, video: null, hls: null,
+  chIdx: -1, urlIdx: 0, name: "", watchdog: 0, frameSkip: 0,
+};
+const LIVE_TV_CHANNELS = [
+  { name: "CBS News 24/7", urls: [
+    "https://jmp2.uk/plu-6350fdd266e9ea0007bedec5.m3u8",
+    "https://jmp2.uk/plu-6231ede1be5b460007f91bc1.m3u8",
+    "https://jmp2.uk/plu-62441d6ded1827000763dcda.m3u8",
+  ]},
+  { name: "ABC News Live", urls: [
+    "https://pb-0n3n2ej0w8pl9.akamaized.net/ABCNewsLive_Disney.m3u8",
+    "https://aegis-cloudfront-1.tubi.video/d6cbb0de-68e4-4f3b-82f9-bf5d526e0bde/index.m3u8",
+    "https://jmp2.uk/plu-6508be683a0d700008c534e4.m3u8",
+  ]},
+  { name: "CNBC", urls: [
+    "https://gpuserver3.tier1streams.com/CNBC/index.m3u8",
+  ]},
+  { name: "LiveNOW from FOX", urls: [
+    "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-livenowbyfox-lgus/playlist.m3u8",
+    "https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8",
+    "https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8",
+  ]},
+];
+function ensureHlsJs() {
+  return new Promise((resolve, reject) => {
+    if (window.Hls) { resolve(window.Hls); return; }
+    const sc = document.createElement("script");
+    sc.src = "https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js";
+    sc.onload = () => window.Hls ? resolve(window.Hls) : reject(new Error("no Hls global"));
+    sc.onerror = () => reject(new Error("hls.js CDN load failed"));
+    document.head.appendChild(sc);
+  });
+}
+function liveTVCaption(name) {
+  return (ctx2, w, h) => {
+    const v = liveTV.video;
+    ctx2.fillStyle = "#000"; ctx2.fillRect(0, 0, w, h);
+    if (v && v.readyState >= 2 && v.videoWidth) {
+      const ar = v.videoWidth / v.videoHeight, tar = w / h;
+      let dw = w, dh = h, dx = 0, dy = 0;
+      if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
+      ctx2.drawImage(v, dx, dy, dw, dh);
+    }
+    ctx2.fillStyle = "rgba(0,0,0,0.62)";
+    ctx2.fillRect(0, h - 34, w, 34);
+    ctx2.fillStyle = "#ff3b3b";
+    ctx2.beginPath(); ctx2.arc(20, h - 17, 7, 0, Math.PI * 2); ctx2.fill();
+    ctx2.fillStyle = "#fff";
+    ctx2.font = "bold 17px system-ui, sans-serif";
+    ctx2.textAlign = "left"; ctx2.textBaseline = "middle";
+    ctx2.fillText("LIVE \u00b7 " + name, 36, h - 16);
+    ctx2.textAlign = "right";
+    ctx2.fillStyle = "#9ec4e0";
+    ctx2.font = "600 13px system-ui, sans-serif";
+    ctx2.fillText("[T] next channel", w - 12, h - 16);
+  };
+}
+function liveTVTune(nextChannel, manual = false) {
+  if (!liveTV.active || !LIVE_TV_CHANNELS.length) return;
+  liveTV.playing = false;
+  if (nextChannel) {
+    liveTV.chIdx = (liveTV.chIdx + 1) % LIVE_TV_CHANNELS.length;
+    liveTV.urlIdx = 0;
+  } else {
+    liveTV.urlIdx++;
+    if (liveTV.urlIdx >= LIVE_TV_CHANNELS[Math.max(0, liveTV.chIdx)].urls.length) {
+      liveTV.chIdx = (liveTV.chIdx + 1) % LIVE_TV_CHANNELS.length;
+      liveTV.urlIdx = 0;
+    }
+  }
+  const ch = LIVE_TV_CHANNELS[liveTV.chIdx];
+  const url = ch.urls[liveTV.urlIdx];
+  liveTV.name = ch.name;
+  if (manual) { try { showMsg("\ud83d\udcfa TUNING: " + ch.name); } catch (_) {} }
+  const v = liveTV.video;
+  try { if (liveTV.hls) { liveTV.hls.destroy(); liveTV.hls = null; } } catch (_) {}
+  clearTimeout(liveTV.watchdog);
+  const watchdogTick = () => {
+    if (document.hidden) { liveTV.watchdog = setTimeout(watchdogTick, 4000); return; }
+    if (liveTV.active && !liveTV.playing) liveTVTune(false);
+  };
+  liveTV.watchdog = setTimeout(watchdogTick, 9000);
+  try {
+    if (v.canPlayType("application/vnd.apple.mpegurl")) {
+      v.src = url;
+      v.play().catch(() => {});
+    } else if (window.Hls && window.Hls.isSupported()) {
+      const h = new window.Hls({ enableWorker: true, maxBufferLength: 14 }); /* default ABR; capLevelToPlayerSize/startLevel both risk locking onto audio-only variants */
+      liveTV.hls = h;
+      h.on(window.Hls.Events.ERROR, (_ev, data) => {
+        if (data && data.fatal && liveTV.active && !liveTV.playing) {
+          try { h.destroy(); } catch (_) {}
+          if (liveTV.hls === h) { liveTV.hls = null; liveTVTune(false); }
+        }
+      });
+      h.loadSource(url);
+      h.attachMedia(v);
+      v.play().catch(() => {});
+    }
+  } catch (e) { liveTVTune(false); }
+}
+async function startLoungeLiveTV() {
+  if (liveTV.active) return;
+  liveTV.active = true;
+  try {
+    if (!liveTV.video) {
+      const v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.autoplay = true;
+      v.width = 640; v.height = 360;
+      v.crossOrigin = "anonymous";
+      v.style.display = "none";
+      document.body.appendChild(v);
+      v.addEventListener("playing", () => {
+        if (!liveTV.active) return;
+        liveTV.playing = true;
+        clearTimeout(liveTV.watchdog);
+        /* audio-only trap: if no video frames arrive, this feed is useless on a screen */
+        setTimeout(() => {
+          if (liveTV.active && liveTV.playing && v.videoWidth === 0 && !document.hidden) {
+            console.warn("liveTV: stream has no video track/frames, skipping");
+            liveTV.playing = false;
+            liveTVTune(false);
+          }
+        }, 5000);
+        try { showMsg("\ud83d\udcfa LIVE: " + liveTV.name + "  \u00b7  T = next channel"); } catch (_) {}
+      });
+      v.addEventListener("error", () => { if (liveTV.active && !liveTV.playing) liveTVTune(false); });
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && liveTV.active && v.paused) v.play().catch(() => {});
+      });
+      liveTV.video = v;
+    }
+    liveTV.chIdx = -1;
+    try { await ensureHlsJs(); } catch (e) { console.warn("liveTV:", e.message); }
+    liveTVTune(true);
+  } catch (e) {
+    console.warn("liveTV start failed", e);
+    liveTV.active = false;
+  }
+}
+function stopLoungeLiveTV() {
+  liveTV.active = false;
+  liveTV.playing = false;
+  clearTimeout(liveTV.watchdog);
+  try { if (liveTV.hls) { liveTV.hls.destroy(); liveTV.hls = null; } } catch (_) {}
+  try { if (liveTV.video) { liveTV.video.pause(); liveTV.video.removeAttribute("src"); liveTV.video.load(); } } catch (_) {}
+  try { for (const s of getLoungeMediaScreens()) s.clear(); } catch (_) {}
+}
+function updateLoungeLiveTV() {
+  if (!liveTV.active || !liveTV.playing || !liveTV.video) return;
+  liveTV.frameSkip = (liveTV.frameSkip + 1) % 3;
+  if (liveTV.frameSkip) return;
+  try {
+    const draw = liveTVCaption(liveTV.name);
+    for (const s of getLoungeMediaScreens()) s.setMedia(draw);
+  } catch (e) {
+    console.warn("liveTV frame rejected, skipping", e && e.message);
+    liveTV.playing = false;
+    liveTVTune(false);
+  }
+}
+try { window.__liveTV = liveTV; window.__liveTVTune = liveTVTune; } catch (_) {}
+
 /* legacy builder retained below but unused when independent path active */
 /* old office-overlay lounge builder removed — use buildIndependentLoungeWorld */
 
@@ -8207,6 +8379,7 @@ function activateSocialLounge() {
       pigOwnParts = null;
     }
     setLoungeBondMode(true);
+    try { startLoungeLiveTV(); } catch (_) {}
   } catch (_) {}
 }
 
@@ -8222,6 +8395,7 @@ function deactivateSocialLounge() {
   } catch (_) {}
   try { setLoungeHeroVisible(false); } catch (_) {}
   try { setLoungeBondMode(false); } catch (_) {}
+  try { stopLoungeLiveTV(); } catch (_) {}
   try { if (pig && pig.userData) pig.userData.keepInLounge = false; } catch (_) {}
   try {
     if (loungeHero) {
@@ -10770,6 +10944,11 @@ addEventListener("keydown", e => {
   /* typing a reply in the tweet reader must not drive the game */
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
+  /* T = next live TV channel while in the lounge */
+  if (socialActive && e.code === "KeyT" && typeof liveTV !== "undefined" && liveTV.active) {
+    liveTVTune(true, true);
+    return;
+  }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
   if (arcadeGame.active && e.code === "Escape") { endArcadeGame(); return; }
   keys[e.code] = true;
@@ -14252,6 +14431,7 @@ renderer.setAnimationLoop(() => {
       }
     } catch (_) {}
   });
+  safeStep("liveTV", () => updateLoungeLiveTV());
   /* keep office suppressed — some systems re-show shell meshes */
   if (socialActive && liveLoungeMode) {
     try {
@@ -14843,6 +15023,16 @@ window.__game = {
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
   get marsState() { return marsState; },
+  /* headless screenshot: force one render, downscale, return data URL */
+  snap(w = 420) {
+    renderer.render(scene, camera);
+    const src = renderer.domElement;
+    const c = document.createElement("canvas");
+    const h = Math.round(w * src.height / src.width);
+    c.width = w; c.height = h;
+    c.getContext("2d").drawImage(src, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.65);
+  },
 };
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
