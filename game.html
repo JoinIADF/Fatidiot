@@ -8785,16 +8785,21 @@ function liveTVDrawFrame(ctx2, w, h) {
   ctx2.fillText("CH " + (liveTV.chIdx + 1), w - 10, h - 14);
 }
 function liveTVApplyAudio() {
+  /* ONE audio path only: the shared decoder <video>. Never unmute a second
+     element (captureStream / #tvfVideo) — that doubled/quadrupled perceived audio. */
   const v = liveTV.video;
+  const fv = document.getElementById("tvfVideo");
+  if (fv) {
+    try { fv.muted = true; } catch (_) {}
+    try { fv.volume = 0; } catch (_) {}
+    try { if (fv.srcObject) { fv.srcObject.getAudioTracks().forEach(t => { t.enabled = false; }); } } catch (_) {}
+  }
   if (!v) return;
   const want = !!(liveTV.volumeOn && (liveTV.focused != null || liveTV.fullscreen || liveTV.audioOn));
   try { v.muted = !want; } catch (_) {}
+  try { v.volume = want ? 1 : 0; } catch (_) {}
   if (want) {
-    try { v.volume = 1; v.play().catch(() => {}); } catch (_) {}
-  }
-  const fv = document.getElementById("tvfVideo");
-  if (fv) {
-    try { fv.muted = !liveTV.volumeOn; } catch (_) {}
+    try { v.play().catch(() => {}); } catch (_) {}
   }
 }
 function liveTVTune(nextChannel = false, manual = false) {
@@ -8939,12 +8944,15 @@ function stopLoungeLiveTV() {
   liveTV.active = false;
   liveTV.focused = null;
   liveTV.audioOn = false;
+  liveTV.volumeOn = false;
   liveTV.playing = false;
   liveTV.closeGuide();
   liveTVCloseFullscreen();
   try { if (liveTV.hls) { liveTV.hls.destroy(); liveTV.hls = null; } } catch (_) {}
   try {
     if (liveTV.video) {
+      liveTV.video.muted = true;
+      liveTV.video.volume = 0;
       liveTV.video.pause();
       liveTV.video.removeAttribute("src");
       liveTV.video.load();
@@ -9079,54 +9087,85 @@ function liveTVRenderGuide() {
     cc.classList.toggle("on", liveTV.captions);
   }
 }
+function liveTVMountDecoderInFullscreen(on) {
+  const v = liveTV.video;
+  const stage = document.querySelector("#tvFullscreen .tvf-stage");
+  const fv = document.getElementById("tvfVideo");
+  if (!v || !stage) return;
+  if (on) {
+    /* show the SAME decoder element in the overlay — one media element, one audio track */
+    if (fv) fv.style.display = "none";
+    if (!liveTV._videoHome) liveTV._videoHome = v.parentElement || document.body;
+    if (v.parentElement !== stage) {
+      stage.insertBefore(v, stage.firstChild);
+    }
+    v.classList.add("tvf-live");
+    v.style.display = "block";
+    v.style.width = "100%";
+    v.style.height = "100%";
+    v.style.objectFit = "contain";
+    v.style.background = "#000";
+    v.style.position = "absolute";
+    v.style.inset = "0";
+    v.style.zIndex = "0";
+    v.playsInline = true;
+    try { v.play().catch(() => {}); } catch (_) {}
+  } else {
+    /* park decoder back off-screen; keep decoding for wall screens */
+    v.classList.remove("tvf-live");
+    v.style.display = "none";
+    v.style.position = "";
+    v.style.inset = "";
+    v.style.width = "";
+    v.style.height = "";
+    v.style.objectFit = "";
+    v.style.zIndex = "";
+    const home = liveTV._videoHome || document.body;
+    if (v.parentElement !== home) home.appendChild(v);
+    if (fv) {
+      fv.style.display = "";
+      try { fv.pause(); } catch (_) {}
+      try { fv.srcObject = null; } catch (_) {}
+      fv.removeAttribute("src");
+      try { fv.load(); } catch (_) {}
+      try { fv.muted = true; fv.volume = 0; } catch (_) {}
+    }
+  }
+}
 function liveTVOpenFullscreen() {
   liveTV.fullscreen = true;
   liveTV.audioOn = true;
-  liveTVApplyAudio();
+  /* E to watch = turn volume on for this single stream */
+  liveTV.volumeOn = true;
   const el = document.getElementById("tvFullscreen");
   if (el) {
     el.classList.remove("hidden");
     el.setAttribute("aria-hidden", "false");
   }
+  liveTVMountDecoderInFullscreen(true);
+  liveTVApplyAudio();
   liveTVSyncFullscreen();
   try { document.exitPointerLock && document.exitPointerLock(); } catch (_) {}
+  try { showMsg("Full screen · 1 stream · Esc to exit"); } catch (_) {}
 }
 function liveTVCloseFullscreen() {
   liveTV.fullscreen = false;
   if (liveTV.focused == null) liveTV.audioOn = false;
+  liveTVMountDecoderInFullscreen(false);
   liveTVApplyAudio();
   const el = document.getElementById("tvFullscreen");
   if (el) {
     el.classList.add("hidden");
     el.setAttribute("aria-hidden", "true");
   }
-  const fv = document.getElementById("tvfVideo");
-  if (fv) {
-    try { fv.pause(); } catch (_) {}
-    try { fv.srcObject = null; } catch (_) {}
-    fv.removeAttribute("src");
-    try { fv.load(); } catch (_) {}
-  }
 }
 function liveTVSyncFullscreen() {
   if (!liveTV.fullscreen) return;
   const title = document.getElementById("tvfTitle");
   if (title) title.textContent = (liveTV.name || "Live TV") + " · CH " + (liveTV.chIdx + 1);
-  const fv = document.getElementById("tvfVideo");
-  /* mirror the shared video element via captureStream when available */
-  if (fv && liveTV.video) {
-    try {
-      if (liveTV.video.captureStream) {
-        fv.srcObject = liveTV.video.captureStream();
-      } else {
-        /* fallback: same src if possible — may not work for HLS mediaSource */
-        fv.src = liveTV.video.currentSrc || "";
-      }
-      fv.muted = !liveTV.volumeOn;
-      fv.playsInline = true;
-      fv.play().catch(() => {});
-    } catch (_) {}
-  }
+  /* keep single decoder mounted; never attach a second src/captureStream */
+  liveTVMountDecoderInFullscreen(true);
+  liveTVApplyAudio();
   const vol = document.getElementById("tvfVol");
   if (vol) vol.textContent = liveTV.volumeOn ? "🔊 ON" : "🔇 OFF";
   const cc = document.getElementById("tvfCC");
