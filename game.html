@@ -1029,11 +1029,12 @@
   #liveChatToast .li-x { float: right; border: 0; background: transparent; color: #8b98a8; font-size: 16px; cursor: pointer; }
 
   #zoneTag {
-    position: fixed; top: 72px; left: 50%; transform: translateX(-50%);
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%);
     z-index: 55; pointer-events: none;
-    background: rgba(8,12,20,0.72); border: 1px solid rgba(124,255,176,0.35);
-    color: #7CFFB0; font: 800 13px/1 system-ui; letter-spacing: 0.04em;
-    padding: 8px 14px; border-radius: 999px; display: none;
+    background: rgba(8,12,20,0.45); border: 1px solid rgba(200,180,120,0.22);
+    color: rgba(232,220,180,0.85); font: 600 11px/1 system-ui; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 12px; border-radius: 6px; display: none;
   }
   body.live-lounge #zoneTag { display: block; }
 
@@ -6891,26 +6892,13 @@ function registerSeat(g, x, y, z, ry, label, zone) {
   pad.position.set(x, 0.06, z);
   pad.userData.seatId = seat.id;
   g.add(pad);
-  const tag = textSprite(label, { size: 22, color: "#cfe8ff", strokeW: 4, maxWidth: 0 });
-  tag.scale.multiplyScalar(0.42);
-  tag.position.set(x, 1.35, z);
-  g.add(tag);
+  /* no floating seat labels — sit hint HUD names the seat on approach */
   return seat;
 }
 
 function registerZone(g, name, x, z, color = "#7CFFB0") {
+  /* data only — no floating section billboards */
   g.userData.zones.push({ name, x, z, color });
-  const lab = zoneLabelSprite("▸ " + name, color);
-  lab.position.set(x, 3.55, z);
-  g.add(lab);
-  /* floor ring */
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(1.1, 1.28, 28),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.set(x, 0.07, z);
-  g.add(ring);
 }
 
 function enhanceLiveLoungeDetail(g) {
@@ -6997,53 +6985,24 @@ function enhanceLiveLoungeDetail(g) {
     g.add(box(0.2, 1.1, 4.0, 0x4a2030, bx - 2.5, 0.6, bz));
     g.add(box(0.2, 1.1, 4.0, 0x4a2030, bx + 2.5, 0.6, bz));
     g.add(box(1.6, 0.45, 1.6, 0x3a2818, bx, 0.4, bz));
-    const neon = textSprite(name + " · INVITE ONLY", { size: 28, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
-    neon.scale.multiplyScalar(0.55);
-    neon.position.set(bx, 2.1, bz - 1.7);
-    g.add(neon);
+    try {
+      const ptex = canvasTex(320, 64, (c, w, h) => {
+        c.fillStyle = "#2a1c14"; c.fillRect(0, 0, w, h);
+        c.strokeStyle = "#c9a24a"; c.lineWidth = 4; c.strokeRect(5, 5, w - 10, h - 10);
+        c.fillStyle = "#e8d49a"; c.font = "600 26px system-ui"; c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillText(name, w / 2, h / 2);
+      });
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.24), new THREE.MeshBasicMaterial({ map: ptex, toneMapped: false }));
+      pl.position.set(bx, 1.4, bz - 1.78);
+      g.add(pl);
+    } catch (_) {}
     lb(bx, bz, 2.7, 2.2, 1.2);
   }
 
-  /* GAME ARENA — racing track ring + trivia kiosk + darts already exist */
+  /* Game spots registered by wall bays (race SE corner, trivia west, darts east) — no mid-room track */
   {
-    const tx = 18, tz = 8;
-    /* mini race oval */
-    const track = new THREE.Mesh(
-      new THREE.RingGeometry(3.2, 4.6, 48),
-      new THREE.MeshLambertMaterial({ color: 0x222830 })
-    );
-    track.rotation.x = -Math.PI / 2;
-    track.position.set(tx, 0.06, tz);
-    g.add(track);
-    const lane = new THREE.Mesh(
-      new THREE.RingGeometry(3.85, 3.95, 48),
-      new THREE.MeshBasicMaterial({ color: 0xffd94a })
-    );
-    lane.rotation.x = -Math.PI / 2;
-    lane.position.set(tx, 0.07, tz);
-    g.add(lane);
-    const raceTag = textSprite("🏎️ TIMELINE GP · up to 4", { size: 32, color: "#8fd1ff", strokeW: 6, maxWidth: 0 });
-    raceTag.scale.multiplyScalar(0.65);
-    raceTag.position.set(tx, 2.4, tz - 5.2);
-    g.add(raceTag);
-    g.userData.raceCenter = new THREE.Vector3(tx, 0, tz);
-    g.userData.gameSpots.push({ kind: "race", pos: new THREE.Vector3(tx, 0, tz - 5.0), seats: 4 });
-
-    /* trivia kiosk */
-    g.add(box(1.4, 1.6, 0.8, 0x1a2230, tx - 6, 0.9, tz + 4));
-    g.add(box(1.2, 0.7, 0.08, 0x7CFFB0, tx - 6, 1.5, tz + 4.35));
-    const tr = textSprite("🧠 TRIVIA TABLE · 4 seats", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    tr.scale.multiplyScalar(0.55);
-    tr.position.set(tx - 6, 2.3, tz + 4);
-    g.add(tr);
-    g.userData.triviaPos = new THREE.Vector3(tx - 6, 0, tz + 4.8);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
-      registerSeat(g, tx - 6 + Math.cos(a) * 1.6, 0.55, tz + 4 + Math.sin(a) * 1.6, a + Math.PI,
-        "Trivia seat " + (i + 1), "Game Arena");
-    }
-    g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
-    g.userData.gameSpots.push({ kind: "darts", pos: g.userData.dartTablePos || new THREE.Vector3(tx + 4, 0, tz), seats: 4 });
+    /* keep gameSpots list alive for MP HUD; positions filled by wall builds below */
+    if (!g.userData.gameSpots) g.userData.gameSpots = [];
   }
 
   /* more realistic bar bottles + glasses */
@@ -7352,8 +7311,8 @@ function raceAddSegment(curve, y) {
     p1: { world: { y: raceLastY(), z: n * raceGame.segLen }, camera: {}, screen: {} },
     p2: { world: { y: y, z: (n + 1) * raceGame.segLen }, camera: {}, screen: {} },
     color: Math.floor(n / raceGame.rumble) % 2
-      ? { road: "#3a3f4a", grass: "#1a3a22", rumble: "#e8eef8", lane: "#ffffff" }
-      : { road: "#2a2e38", grass: "#14301c", rumble: "#d02020", lane: "#ffffff" },
+      ? { road: "#3a4254", grass: "#0c2418", rumble: "#e8eef8", lane: "#c8d0d8" }
+      : { road: "#262c3a", grass: "#0a1c14", rumble: "#d02020", lane: "#c8d0d8" },
   });
 }
 function raceAddRoad(enter, hold, leave, curve, y) {
@@ -7368,21 +7327,34 @@ function raceAddRoad(enter, hold, leave, curve, y) {
     raceAddSegment(curve * (1 - n / leave), startY + (endY - startY) * ((enter + hold + n) / total));
 }
 function raceResetRoad() {
+  /* richer OutRun-style course (javascript-racer lineage) — hills + S-curves + city night palette */
   raceGame.segments = [];
-  raceAddRoad(20, 80, 20, 0, 0);
-  raceAddRoad(20, 40, 20, 3, 0);
-  raceAddRoad(20, 60, 20, 0, 0);
-  raceAddRoad(20, 40, 20, -4, 0);
-  raceAddRoad(15, 30, 15, 2.5, 20);
-  raceAddRoad(15, 40, 15, 0, -20);
-  raceAddRoad(20, 50, 20, -3, 0);
-  raceAddRoad(20, 100, 20, 0, 0);
-  /* mark finish stripe segments */
+  raceAddRoad(12, 40, 12, 0, 0);
+  raceAddRoad(18, 50, 18, 4.2, 0);
+  raceAddRoad(12, 30, 12, 0, 0);
+  raceAddRoad(16, 45, 16, -5, 12);
+  raceAddRoad(14, 35, 14, 3.5, -18);
+  raceAddRoad(10, 25, 10, 0, 8);
+  raceAddRoad(20, 55, 20, -4.5, 0);
+  raceAddRoad(15, 40, 15, 2.8, 22);
+  raceAddRoad(12, 30, 12, 0, -22);
+  raceAddRoad(18, 70, 18, 0, 0);
+  /* roadside sprites every few segments */
+  for (let i = 8; i < raceGame.segments.length; i += 3) {
+    const s = raceGame.segments[i];
+    if (!s) continue;
+    const side = (i % 6 < 3) ? -1 : 1;
+    s.sprites.push({
+      kind: i % 5 === 0 ? "tower" : i % 3 === 0 ? "palm" : "billboard",
+      offset: side * (1.35 + (i % 4) * 0.12),
+    });
+  }
   for (let i = 0; i < raceGame.rumble * 2; i++) {
     const s = raceGame.segments[i];
-    if (s) s.color = { road: i % 2 ? "#ffffff" : "#111418", grass: "#1a3a22", rumble: "#ffd94a", lane: "#111418" };
+    if (s) s.color = { road: i % 2 ? "#f0f4f8" : "#12161e", grass: "#0e2818", rumble: "#ffd94a", lane: "#12161e" };
   }
   raceGame.trackLength = raceGame.segments.length * raceGame.segLen;
+  raceGame.countdown = 3.2;
 }
 function racePoly(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
   ctx.fillStyle = color;
@@ -7406,67 +7378,142 @@ function raceSegment(ctx, width, lanes, x1, y1, w1, x2, y2, w2, color) {
   }
 }
 function raceDrawCar(ctx, x, y, scale, color, name, steer) {
-  const w = 80 * scale, h = 40 * scale;
+  const w = 90 * scale, h = 44 * scale;
+  const lean = (steer || 0) * 0.18;
   ctx.save();
   ctx.translate(x, y);
-  /* body */
-  ctx.fillStyle = color;
+  ctx.transform(1, 0, lean, 1, 0, 0);
+  /* shadow */
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
   ctx.beginPath();
-  ctx.moveTo(-w * 0.45, -h * 0.1);
-  ctx.lineTo(-w * 0.35, -h * 0.55);
-  ctx.lineTo(w * 0.35, -h * 0.55);
-  ctx.lineTo(w * 0.45, -h * 0.1);
-  ctx.lineTo(w * 0.4, h * 0.35);
-  ctx.lineTo(-w * 0.4, h * 0.35);
+  ctx.ellipse(0, h * 0.42, w * 0.48, h * 0.12, 0, 0, Math.PI * 2);
+  ctx.fill();
+  /* body */
+  const g = ctx.createLinearGradient(0, -h * 0.6, 0, h * 0.4);
+  g.addColorStop(0, color);
+  g.addColorStop(1, "#0a0c10");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.48, h * 0.05);
+  ctx.lineTo(-w * 0.38, -h * 0.35);
+  ctx.lineTo(-w * 0.18, -h * 0.62);
+  ctx.lineTo(w * 0.18, -h * 0.62);
+  ctx.lineTo(w * 0.38, -h * 0.35);
+  ctx.lineTo(w * 0.48, h * 0.05);
+  ctx.lineTo(w * 0.42, h * 0.38);
+  ctx.lineTo(-w * 0.42, h * 0.38);
   ctx.closePath();
   ctx.fill();
-  /* windshield */
-  ctx.fillStyle = "rgba(180,220,255,0.55)";
-  ctx.fillRect(-w * 0.22, -h * 0.48, w * 0.44, h * 0.22);
+  /* cockpit glass */
+  ctx.fillStyle = "rgba(140,200,255,0.55)";
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.2, -h * 0.2);
+  ctx.lineTo(-w * 0.12, -h * 0.52);
+  ctx.lineTo(w * 0.12, -h * 0.52);
+  ctx.lineTo(w * 0.2, -h * 0.2);
+  ctx.closePath();
+  ctx.fill();
+  /* headlights */
+  ctx.fillStyle = "#fff6c8";
+  ctx.fillRect(-w * 0.4, h * 0.05, w * 0.1, h * 0.08);
+  ctx.fillRect(w * 0.3, h * 0.05, w * 0.1, h * 0.08);
   /* wheels */
-  ctx.fillStyle = "#111";
-  ctx.fillRect(-w * 0.42, h * 0.15, w * 0.16, h * 0.28);
-  ctx.fillRect(w * 0.26, h * 0.15, w * 0.16, h * 0.28);
-  /* name tag */
-  if (scale > 0.35) {
-    ctx.fillStyle = "rgba(0,0,0,0.65)";
-    const tw = Math.max(36, name.length * 7) * Math.min(1, scale);
-    ctx.fillRect(-tw / 2, -h * 0.95, tw, 14 * Math.min(1.2, scale));
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fillRect(-w * 0.46, h * 0.12, w * 0.16, h * 0.3);
+  ctx.fillRect(w * 0.3, h * 0.12, w * 0.16, h * 0.3);
+  ctx.fillStyle = "#444";
+  ctx.fillRect(-w * 0.44, h * 0.18, w * 0.12, h * 0.08);
+  ctx.fillRect(w * 0.32, h * 0.18, w * 0.12, h * 0.08);
+  if (scale > 0.28) {
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    const tw = Math.max(40, name.length * 7.5) * Math.min(1.1, scale);
+    ctx.fillRect(-tw / 2, -h * 1.05, tw, 15 * Math.min(1.2, scale));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(-tw / 2, -h * 1.05, tw, 15 * Math.min(1.2, scale));
     ctx.fillStyle = "#fff";
-    ctx.font = "bold " + Math.round(11 * Math.min(1.2, scale)) + "px system-ui";
+    ctx.font = "bold " + Math.round(11 * Math.min(1.25, scale)) + "px system-ui,sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(name, 0, -h * 0.95 + 11 * Math.min(1.2, scale));
+    ctx.fillText(name, 0, -h * 1.05 + 12 * Math.min(1.2, scale));
+  }
+  ctx.restore();
+}
+function raceDrawSprite(ctx, kind, x, y, scale) {
+  ctx.save();
+  ctx.translate(x, y);
+  const s = Math.max(0.15, scale);
+  if (kind === "palm") {
+    ctx.fillStyle = "#3a2818";
+    ctx.fillRect(-4 * s, -40 * s, 8 * s, 40 * s);
+    ctx.fillStyle = "#1a6b3c";
+    for (let i = 0; i < 5; i++) {
+      const a = -1.2 + i * 0.55;
+      ctx.beginPath();
+      ctx.ellipse(Math.cos(a) * 22 * s, -48 * s + Math.sin(a) * 6 * s, 20 * s, 7 * s, a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (kind === "tower") {
+    ctx.fillStyle = "#1a2030";
+    ctx.fillRect(-14 * s, -90 * s, 28 * s, 90 * s);
+    ctx.fillStyle = "#ffd94a";
+    for (let r = 0; r < 5; r++)
+      for (let c = 0; c < 2; c++)
+        ctx.fillRect((-8 + c * 12) * s, (-80 + r * 14) * s, 6 * s, 8 * s);
+  } else {
+    ctx.fillStyle = "#2a1a10";
+    ctx.fillRect(-22 * s, -50 * s, 44 * s, 30 * s);
+    ctx.fillStyle = "#1d9bf0";
+    ctx.fillRect(-18 * s, -46 * s, 36 * s, 18 * s);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold " + Math.round(10 * s) + "px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText("X", 0, -32 * s);
+    ctx.fillStyle = "#3a2818";
+    ctx.fillRect(-3 * s, -20 * s, 6 * s, 20 * s);
   }
   ctx.restore();
 }
 function raceCollectRacers() {
   const youName = (typeof MP !== "undefined" && MP && MP.displayName) ? MP.displayName : "You";
-  const colors = ["#1d9bf0", "#ff6a4a", "#7CFFB0", "#d48cff"];
-  const list = [{ name: youName, color: colors[0], isYou: true, isP2: false, ai: false }];
-  /* optional local P2 always available on same screen */
-  list.push({ name: "P2", color: colors[1], isYou: false, isP2: true, ai: false });
-  /* guests from multiplayer if present */
-  let guestN = 0;
+  const colors = ["#1d9bf0", "#ff6a4a", "#7CFFB0", "#d48cff", "#ffd94a", "#ff8ab0"];
+  const list = [{ name: youName, color: colors[0], isYou: true, isP2: false, ai: false, netId: null }];
+  /* local P2 (arrow keys) — same cabinet co-op */
+  list.push({ name: "P2", color: colors[1], isYou: false, isP2: true, ai: false, netId: null });
+  /* live multiplayer guests — drive from their race state when present, else AI */
   try {
     if (typeof MP !== "undefined" && MP && MP.remotes) {
-      for (const r of MP.remotes.values()) {
+      for (const [id, r] of MP.remotes.entries()) {
         if (list.length >= 4) break;
-        const nm = (r.player && (r.player.getProfile?.()?.name || r.player.id)) || ("Guest" + (++guestN));
-        list.push({ name: String(nm).slice(0, 12), color: colors[list.length % colors.length], isYou: false, isP2: false, ai: true });
+        let nm = "Guest";
+        try {
+          nm = (r.player && r.player.getState && r.player.getState("displayName"))
+            || (r.player && r.player.getProfile && r.player.getProfile()?.name)
+            || ("Guest");
+        } catch (_) {}
+        list.push({
+          name: String(nm).slice(0, 12),
+          color: colors[list.length % colors.length],
+          isYou: false, isP2: false, ai: true, netId: id
+        });
       }
     }
   } catch (_) {}
   while (list.length < 4) {
-    list.push({ name: "AI-" + list.length, color: colors[list.length % colors.length], isYou: false, isP2: false, ai: true });
+    list.push({
+      name: ["Nova", "Pixel", "Glitch", "Cipher"][list.length] || ("AI-" + list.length),
+      color: colors[list.length % colors.length],
+      isYou: false, isP2: false, ai: true, netId: null
+    });
   }
   return list.slice(0, 4).map((r, i) => ({
     ...r,
-    x: -0.45 + i * 0.3,
-    z: i * raceGame.segLen * 2,
+    x: -0.5 + i * 0.33,
+    z: 40 + i * raceGame.segLen * 1.5,
     speed: 0,
     lap: 1,
     finished: false,
     place: 0,
+    nitro: 1,
   }));
 }
 function startRaceGame() {
@@ -7509,7 +7556,7 @@ function startRaceGame() {
     if (btn) btn.onclick = () => endRaceGame(false);
   } catch (_) {}
   raceResizeCanvas();
-  showMsg("🏎️ ARCADE GP — same screen · WASD you · arrows P2 · 2 laps");
+  showMsg("🏎️ ARCADE GP · SE corner · WASD you · arrows P2 · guests sync · 2 laps");
   try { SFX.pickup(); } catch (_) {}
 }
 function raceResizeCanvas() {
@@ -7526,6 +7573,13 @@ function endRaceGame(won) {
   raceGame.finished = false;
   raceGame.racers = [];
   raceGame.segments = [];
+  try {
+    const me = MP && MP.me;
+    if (me && me.setState) {
+      me.setState("raceOn", false, true);
+      me.setState("game", null, true);
+    }
+  } catch (_) {}
   socialReading = false;
   document.body.classList.remove("darts-active", "reading-tweets");
   try { setHeroForMiniGame(false); } catch (_) {}
@@ -7553,11 +7607,38 @@ function updateRaceGame(dt) {
   const decel = -maxS / 5.5;
   const offDecel = -maxS / 2.2;
 
+  /* 3-2-1 countdown freezes cars */
+  if ((raceGame.countdown || 0) > 0) {
+    raceGame.countdown -= dt;
+    raceRender();
+    return;
+  }
+
   for (const r of raceGame.racers) {
     if (r.finished) continue;
+    /* networked guest: pull their published race pose when available */
+    if (r.netId && typeof MP !== "undefined" && MP && MP.remotes) {
+      try {
+        const rem = MP.remotes.get(r.netId);
+        const pl = rem && rem.player;
+        if (pl && pl.getState) {
+          const rz = pl.getState("raceZ");
+          const rx = pl.getState("raceX");
+          const rs = pl.getState("raceSpeed");
+          const inRace = pl.getState("game") === "race" || pl.getState("raceOn");
+          if (inRace && rz != null && !Number.isNaN(+rz)) {
+            r.z = +rz; r.x = rx != null ? +rx : r.x;
+            r.speed = rs != null ? +rs : r.speed;
+            r.ai = false;
+            continue;
+          }
+        }
+      } catch (_) {}
+      r.ai = true;
+    }
     const seg = raceFindSegment(r.z) || raceGame.segments[0];
     const sp = r.speed / maxS;
-    const dx = dt * 2.1 * Math.max(0.15, sp);
+    const dx = dt * 2.2 * Math.max(0.15, sp);
     let left = false, right = false, faster = false, slower = false;
     if (r.isYou) {
       const stickX = (typeof stick !== "undefined" && stick) ? stick.x : 0;
@@ -7597,10 +7678,10 @@ function updateRaceGame(dt) {
     }
     r.x = raceUtilLimit(r.x, -2.2, 2.2);
     r.speed = raceUtilLimit(r.speed, 0, maxS);
+    r._steer = (right ? 1 : 0) - (left ? 1 : 0);
     const prevZ = r.z;
     r.z = raceUtilIncrease(r.z, dt * r.speed, raceGame.trackLength);
     if (prevZ > r.z) {
-      /* crossed start/finish */
       r.lap++;
       if (r.lap > 2) {
         r.finished = true;
@@ -7610,6 +7691,19 @@ function updateRaceGame(dt) {
       } else {
         try { beep(520, 0.06, "square", 0.05); } catch (_) {}
       }
+    }
+    /* publish local driver to Playroom so other cabinets can ghost you */
+    if (r.isYou) {
+      try {
+        const me = MP && MP.me;
+        if (me && me.setState) {
+          me.setState("raceOn", true, false);
+          me.setState("raceZ", +r.z.toFixed(1), false);
+          me.setState("raceX", +r.x.toFixed(3), false);
+          me.setState("raceSpeed", +r.speed.toFixed(1), false);
+          me.setState("game", "race", false);
+        }
+      } catch (_) {}
     }
   }
 
@@ -7662,14 +7756,32 @@ function raceRender() {
   let maxy = height;
   let x = 0, dx = 0;
 
-  /* sky */
-  const g = ctx.createLinearGradient(0, 0, 0, height * 0.5);
-  g.addColorStop(0, "#0b1a33"); g.addColorStop(0.45, "#3a7ab8"); g.addColorStop(1, "#87c4e8");
-  ctx.fillStyle = g;
+  /* night lounge skyline — richer than flat blue */
+  const sky = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+  sky.addColorStop(0, "#050814");
+  sky.addColorStop(0.35, "#121a38");
+  sky.addColorStop(0.7, "#1e3a5c");
+  sky.addColorStop(1, "#2a4a3a");
+  ctx.fillStyle = sky;
   ctx.fillRect(0, 0, width, height);
+  /* stars */
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  for (let i = 0; i < 40; i++) {
+    const sx = (i * 97 + raceGame.t * 3) % width;
+    const sy = (i * 53) % (height * 0.35);
+    ctx.fillRect(sx, sy, 2, 2);
+  }
+  /* distant hills */
+  ctx.fillStyle = "#0a1820";
+  ctx.beginPath();
+  ctx.moveTo(0, height * 0.48);
+  for (let i = 0; i <= 12; i++) {
+    ctx.lineTo(i / 12 * width, height * 0.48 - Math.sin(i * 0.9 + raceGame.t * 0.05) * 28 - 20);
+  }
+  ctx.lineTo(width, height); ctx.lineTo(0, height); ctx.fill();
 
   const startIdx = baseSeg.index;
-  /* draw far → near so near overwrites (javascript-racer order) */
+  const spriteDraw = [];
   for (let n = 0; n < raceGame.drawDist; n++) {
     const seg = segs[(startIdx + n) % segs.length];
     const looped = seg.index < startIdx;
@@ -7688,18 +7800,31 @@ function raceRender() {
       seg.p1.screen.x, seg.p1.screen.y, seg.p1.screen.w,
       seg.p2.screen.x, seg.p2.screen.y, seg.p2.screen.w,
       seg.color);
+    /* queue roadside sprites for second pass (near last) */
+    if (seg.sprites && seg.sprites.length) {
+      for (const sp of seg.sprites) {
+        const ox = (playerX * roadW - x) + sp.offset * roadW;
+        const p = { world: { x: ox, y: seg.p1.world.y, z: seg.p1.world.z }, camera: {}, screen: {} };
+        raceUtilProject(p, playerX * roadW - x, camH, camOff, camDepth, width, height, roadW);
+        if (p.camera.z > camDepth && p.screen.scale > 0)
+          spriteDraw.push({ sp, p, depth: p.camera.z });
+      }
+    }
     maxy = seg.p1.screen.y;
     x += dx;
     dx += seg.curve;
   }
+  spriteDraw.sort((a, b) => b.depth - a.depth);
+  for (const { sp, p } of spriteDraw) {
+    const sc = Math.max(0.2, Math.min(3, p.screen.scale * 2800));
+    raceDrawSprite(ctx, sp.kind, p.screen.x, p.screen.y, sc);
+  }
 
-  /* cars: far → near, project with loop-aware camera offset */
   const drawList = [];
   for (const r of raceGame.racers) {
     let rel = r.z - camZ;
     while (rel < 0) rel += trackLen;
     while (rel >= trackLen) rel -= trackLen;
-    /* relative ahead of camera (0..trackLen) */
     if (rel > raceGame.segLen * raceGame.drawDist) continue;
     drawList.push({ r, rel });
   }
@@ -7708,28 +7833,55 @@ function raceRender() {
   for (const { r, rel } of drawList) {
     const seg = raceFindSegment(r.z);
     if (!seg) continue;
-    const looped = r.z < camZ && rel < trackLen / 2;
-    /* more reliable: project using relative depth from camera */
     const p = {
       world: { x: r.x * roadW, y: seg.p1.world.y, z: camZ + rel },
       camera: {}, screen: {}
     };
     raceUtilProject(p, playerX * roadW, camH, camZ, camDepth, width, height, roadW);
     if (p.camera.z <= camDepth || !p.screen.w) continue;
-    const scale = Math.max(0.12, Math.min(2.4, p.screen.scale * 2600));
-    raceDrawCar(ctx, p.screen.x, p.screen.y, scale, r.color, r.name, 0);
+    const scale = Math.max(0.12, Math.min(2.6, p.screen.scale * 2600));
+    const steer = r._steer || 0;
+    raceDrawCar(ctx, p.screen.x, p.screen.y, scale, r.color, r.name, steer);
   }
 
-  /* bottom HUD strip on canvas */
-  ctx.fillStyle = "rgba(0,0,0,0.5)";
-  ctx.fillRect(0, height - 36, width, 36);
+  /* countdown */
+  if ((raceGame.countdown || 0) > 0) {
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(0, 0, width, height);
+    const n = Math.ceil(raceGame.countdown);
+    ctx.fillStyle = n <= 1 ? "#7CFFB0" : "#ffd94a";
+    ctx.font = "900 96px system-ui,sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(n <= 0 ? "GO" : String(n), width / 2, height * 0.45);
+  }
+
+  /* glass HUD */
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(0, height - 40, width, 40);
   ctx.fillStyle = "#8fd1ff";
-  ctx.font = "bold 14px system-ui";
+  ctx.font = "bold 13px system-ui";
   ctx.textAlign = "left";
-  ctx.fillText("TIMELINE ARCADE · same-screen multiplayer", 12, height - 14);
+  ctx.fillText("ARCADE GP · wall cabinet · multiplayer guests sync", 12, height - 15);
   ctx.textAlign = "right";
   ctx.fillStyle = "#ffd94a";
-  ctx.fillText((raceGame.standings || []).slice(0, 4).join("  "), width - 12, height - 14);
+  ctx.fillText((raceGame.standings || []).slice(0, 4).join("  "), width - 12, height - 15);
+
+  /* speed tape */
+  const you = raceGame.racers.find(r => r.isYou);
+  if (you) {
+    const mph = Math.round((you.speed / raceGame.maxSpeed) * 240);
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(width - 110, height - 100, 98, 48);
+    ctx.strokeStyle = "#1d9bf0";
+    ctx.strokeRect(width - 110, height - 100, 98, 48);
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 22px system-ui";
+    ctx.textAlign = "center";
+    ctx.fillText(mph + "", width - 61, height - 72);
+    ctx.font = "700 10px system-ui";
+    ctx.fillStyle = "#8fd1ff";
+    ctx.fillText("KM/H", width - 61, height - 58);
+  }
 }
 try {
   window.startRaceGame = startRaceGame;
@@ -8081,24 +8233,36 @@ function buildIndependentLoungeWorld() {
 
   /* —— ZONES —— */
   const addZone = (name, x, z, color) => {
+    /* zone data only — floating billboards removed (HUD zoneTag names the area) */
     g.userData.zones.push({ name, x, z, color });
-    const lab = textSprite("▸ " + name, { size: 40, color, strokeW: 7, maxWidth: 0 });
-    lab.scale.multiplyScalar(0.7);
-    lab.position.set(x, 4.2, z);
-    g.add(lab);
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.3, 1.5, 32),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+  };
+  /** Small brass wall/floor plaque — discreet, not a floating sky label */
+  const addPlaque = (text, x, y, z, ry = 0, color = "#c9a24a") => {
+    const tex = canvasTex(512, 96, (c, w, h) => {
+      const g2 = c.createLinearGradient(0, 0, 0, h);
+      g2.addColorStop(0, "#3a3028"); g2.addColorStop(1, "#1a1410");
+      c.fillStyle = g2; c.fillRect(0, 0, w, h);
+      c.strokeStyle = color; c.lineWidth = 6; c.strokeRect(8, 8, w - 16, h - 16);
+      c.fillStyle = color;
+      c.font = "600 36px system-ui, sans-serif";
+      c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillText(text, w / 2, h / 2);
+    });
+    const m = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.55, 0.32),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, toneMapped: false, depthWrite: false })
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(x, 0.03, z);
-    g.add(ring);
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    g.add(m);
+    return m;
   };
 
   /* —— detailed bar —— */
   {
     const bx = -10, bz = -12;
     addZone("The Algorithm Bar", bx, bz + 2.2, "#c9a24a");
+    addPlaque("THE ALGORITHM BAR", bx, 2.55, bz - 0.7, 0, "#c9a24a");
     /* bar body — lowered 25% then a further 15% per request */
     g.add(box(16, 0.73, 1.35, WALNUT, bx, 0.37, bz));
     g.add(box(16.3, 0.12, 1.55, 0x1a120c, bx, 0.77, bz)); /* top */
@@ -8251,62 +8415,77 @@ function buildIndependentLoungeWorld() {
     for (let i = 0; i < 4; i++) {
       registerSeat(g, bx - 2.25 + i * 1.5, 0.69, bz + 1.95, Math.PI, name + " seat " + (i + 1), name);
     }
-    const neon = textSprite(name + " · INVITE", { size: 30, color: "#ffd94a", strokeW: 5, maxWidth: 0 });
-    neon.scale.multiplyScalar(0.55);
-    neon.position.set(bx, 2.15, bz - 2.2);
-    g.add(neon);
+    /* discreet brass nameplate on booth back wall */
+    try {
+      const ptex = canvasTex(384, 72, (c, w, h) => {
+        c.fillStyle = "#2a1c14"; c.fillRect(0, 0, w, h);
+        c.strokeStyle = "#c9a24a"; c.lineWidth = 5; c.strokeRect(6, 6, w - 12, h - 12);
+        c.fillStyle = "#e8d49a"; c.font = "600 28px system-ui"; c.textAlign = "center"; c.textBaseline = "middle";
+        c.fillText(name, w / 2, h / 2);
+      });
+      const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.28), new THREE.MeshBasicMaterial({ map: ptex, toneMapped: false }));
+      pl.position.set(bx, 1.55, bz - 2.88);
+      g.add(pl);
+    } catch (_) {}
     lb(bx, bz, 4.0, 3.4, 1.7);
   }
 
   /* —— Game bays on OPEN WALLS (not mid-room floating labels) —— */
   {
-    /* ===== TIMELINE ARCADE GP — compact cabinet bank (no floor track) ===== */
-    const rcx = 20.5, rcz = -9.5;
-    addZone("Arcade GP", rcx - 1.5, rcz, "#8fd1ff");
-    g.add(box(7.5, 0.04, 6.5, 0x10141c, rcx - 1.2, 0.02, rcz));
-    /* neon marquee */
-    const raceBanner = textSprite("ARCADE GP · SAME SCREEN", { size: 28, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
-    raceBanner.scale.multiplyScalar(0.52);
-    raceBanner.position.set(rcx - 1.2, 3.15, rcz - 2.4);
-    g.add(raceBanner);
-    /* three arcade cabinets along SE wall */
+    /* ===== ARCADE GP — SE corner, flush on EAST wall (no mid-room footprint) =====
+       Inspired by classic open-source OutRun-style racers (javascript-racer lineage)
+       with same-screen + Playroom guest slots. */
+    const wallX = W / 2 - 0.35;           /* east wall inside face */
+    const cornerZ = -D / 2 + 3.2;         /* south-east corner */
+    const rcx = wallX - 1.55;
+    const rcz = cornerZ + 2.4;
+    addZone("Arcade GP", rcx, rcz, "#8fd1ff");
+    /* dark platform tucked into corner */
+    g.add(box(5.2, 0.05, 6.4, 0x0c1018, rcx, 0.03, rcz));
+    g.add(box(5.3, 0.04, 0.12, 0x1d9bf0, rcx, 0.06, rcz - 3.1));
+    g.add(box(0.12, 0.04, 6.4, 0x1d9bf0, rcx + 2.5, 0.06, rcz));
+    /* wall marquee plaque (not floating mid-air) */
+    addPlaque("ARCADE GP", wallX - 0.08, 3.15, rcz - 0.2, -Math.PI / 2, "#8fd1ff");
+    addPlaque("E · RACE", wallX - 0.08, 2.75, rcz - 0.2, -Math.PI / 2, "#c9a24a");
+    /* cabinets along EAST wall, facing into room (-X) */
     for (let i = 0; i < 3; i++) {
-      const cx = rcx - 3.2 + i * 2.1, cz = rcz - 1.8;
-      g.add(box(1.1, 1.7, 0.85, 0x12161e, cx, 0.95, cz));
-      g.add(box(1.0, 0.12, 0.7, 0x1d9bf0, cx, 1.55, cz + 0.05));
-      /* glowing screen */
+      const cz = rcz - 1.8 + i * 1.55;
+      const cx = wallX - 0.55;
+      g.add(box(0.85, 1.85, 1.05, 0x12161e, cx, 0.95, cz));
+      g.add(box(0.12, 0.14, 0.95, 0x1d9bf0, cx - 0.4, 1.72, cz));
       const scr = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.85, 0.55),
+        new THREE.PlaneGeometry(0.72, 0.5),
         new THREE.MeshBasicMaterial({ color: i === 1 ? 0x1d9bf0 : 0x0a2035, toneMapped: false })
       );
-      scr.position.set(cx, 1.35, cz + 0.44);
+      scr.position.set(cx - 0.44, 1.35, cz);
+      scr.rotation.y = -Math.PI / 2;
       g.add(scr);
-      g.add(box(1.15, 0.08, 0.5, 0x2a2e38, cx, 0.78, cz + 0.35)); /* control shelf */
-      g.add(cyl(0.06, 0.06, 0.08, 0xd02020, cx - 0.25, 0.86, cz + 0.4, 8));
-      g.add(cyl(0.06, 0.06, 0.08, 0x1d9bf0, cx + 0.25, 0.86, cz + 0.4, 8));
+      /* shelf + sticks toward room */
+      g.add(box(0.45, 0.08, 1.0, 0x2a2e38, cx - 0.55, 0.78, cz));
+      g.add(cyl(0.05, 0.05, 0.07, 0xd02020, cx - 0.65, 0.86, cz - 0.2, 8));
+      g.add(cyl(0.05, 0.05, 0.07, 0x1d9bf0, cx - 0.65, 0.86, cz + 0.2, 8));
     }
-    /* stools facing cabinets */
+    /* stools facing the wall cabinets */
     for (let i = 0; i < 4; i++) {
-      const sx = rcx - 3.4 + i * 1.7, sz = rcz + 0.6;
-      g.add(cyl(0.24, 0.26, 0.07, 0x1d9bf0, sx, 0.72, sz, 12));
+      const sz = rcz - 1.9 + i * 1.25;
+      const sx = rcx - 0.35;
+      g.add(cyl(0.22, 0.24, 0.07, 0x1d9bf0, sx, 0.72, sz, 12));
       g.add(cyl(0.05, 0.06, 0.65, BRASS, sx, 0.34, sz, 8));
-      registerSeat(g, sx, 0.82, sz, Math.PI, "Arcade seat " + (i + 1), "Arcade GP");
+      registerSeat(g, sx, 0.82, sz, Math.PI / 2, "Arcade seat " + (i + 1), "Arcade GP");
     }
-    /* walk-up pad in front of middle cabinet */
-    g.add(box(2.4, 0.07, 2.0, 0x8fd1ff, rcx - 1.2, 0.045, rcz + 1.5));
-    const walkRace = textSprite("WALK HERE · ARCADE RACE", { size: 22, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
-    walkRace.scale.multiplyScalar(0.4);
-    walkRace.position.set(rcx - 1.2, 1.65, rcz + 1.5);
-    g.add(walkRace);
-    g.userData.raceCenter = new THREE.Vector3(rcx - 1.2, 0, rcz - 1.0);
-    g.userData.racePad = new THREE.Vector3(rcx - 1.2, 0, rcz + 1.5);
-    g.userData.raceRadius = 1.6;
+    /* discreet walk-up pad */
+    g.add(box(1.6, 0.06, 1.6, 0x1a3048, rcx - 0.9, 0.04, rcz + 2.0));
+    g.add(box(1.5, 0.02, 1.5, 0x8fd1ff, rcx - 0.9, 0.07, rcz + 2.0));
+    g.userData.raceCenter = new THREE.Vector3(rcx, 0, rcz);
+    g.userData.racePad = new THREE.Vector3(rcx - 0.9, 0, rcz + 2.0);
+    g.userData.raceRadius = 1.8;
     g.userData.gameSpots.push({ kind: "race", pos: g.userData.racePad.clone(), seats: 4 });
 
     /* ===== TRIVIA — WEST WALL bay (moved off the TV wall so all four
        screens stay unobstructed) ===== */
     const tvZ = 6; /* along the west wall, south of the hero portrait */
     addZone("Trivia Bay", -W / 2 + 4.5, tvZ, "#7CFFB0");
+    try { addPlaque("TRIVIA", -W / 2 + 2.55, 3.6, tvZ, Math.PI / 2, "#7CFFB0"); } catch (_) {}
     /* wall screen frame — rotated onto the west wall, facing +x into the room */
     const tf1 = box(5.5, 3.2, 0.18, 0x0c1018, -W / 2 + 2.3, 2.2, tvZ);
     tf1.rotation.y = Math.PI / 2; g.add(tf1);
@@ -8342,10 +8521,7 @@ function buildIndependentLoungeWorld() {
     triviaFace.material.map = tTex;
     triviaFace.material.needsUpdate = true;
     g.userData.triviaScreen = { mesh: triviaFace, canvas: tCanvas, ctx: tCtx, tex: tTex, paintIdle: paintTriviaIdle };
-    const qt = textSprite("TRIVIA · 4 PLAYERS", { size: 32, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    qt.scale.multiplyScalar(0.55);
-    qt.position.set(-W / 2 + 2.6, 4.0, tvZ);
-    g.add(qt);
+    /* wall plaque already via addPlaque("TRIVIA") — no floating billboard */
     /* 4 chairs east of the screen, facing WEST toward it */
     for (let i = 0; i < 4; i++) {
       const sz = tvZ - 2.4 + i * 1.6;
@@ -8357,10 +8533,7 @@ function buildIndependentLoungeWorld() {
       registerSeat(g, sx, 0.55, sz, -Math.PI / 2, "Trivia seat " + (i + 1), "Trivia Bay");
     }
     g.add(box(2.6, 0.07, 2.6, 0x7CFFB0, -W / 2 + 5.1, 0.045, tvZ));
-    const walkT = textSprite("WALK HERE · START TRIVIA", { size: 24, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-    walkT.scale.multiplyScalar(0.45);
-    walkT.position.set(-W / 2 + 5.1, 1.7, tvZ);
-    g.add(walkT);
+    /* floor pad is the cue — no floating "walk here" sprite */
     g.userData.triviaPos = new THREE.Vector3(-W / 2 + 5.1, 0, tvZ);
     g.userData.gameSpots.push({ kind: "trivia", pos: g.userData.triviaPos.clone(), seats: 4 });
 
@@ -8491,6 +8664,7 @@ function buildIndependentLoungeWorld() {
         registerSeat(g, ocheX - 1.15, 0.9, sz, Math.PI / 2, "Darts seat " + (i + 1), "Darts Alley");
       }
       addZone("Darts Alley", ocheX, boardZ, "#7CFFB0");
+      try { addPlaque("DARTS", ocheX + 0.5, 1.1, boardZ - 1.35, 0, "#7CFFB0"); } catch (_) {}
       const dt = textSprite("DARTS · walk to oche", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
       dt.scale.multiplyScalar(0.5);
       dt.position.set(ocheX, 2.5, boardZ + 1.6);
@@ -8507,6 +8681,7 @@ function buildIndependentLoungeWorld() {
   {
     const dx = -2, dz = 18;
     addZone("Dance Floor", dx, dz, "#d48cff");
+    try { addPlaque("DANCE", dx, 0.9, dz - 3.2, 0, "#d48cff"); } catch (_) {}
     const tile = canvasTex(128, 128, (c, w, h) => {
       c.fillStyle = "#12081e"; c.fillRect(0, 0, w, h);
       const colors = ["#2a1050", "#1a2040", "#301838", "#102030"];
@@ -8575,12 +8750,8 @@ function buildIndependentLoungeWorld() {
     const spotB = new THREE.PointLight(0xffd94a, 10, 14);
     spotB.position.set(dx + 3, 3.5, dz - 2);
     g.add(spotB);
-    const dj = textSprite("✦ DANCE · LIGHT SHOW", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
-    dj.scale.multiplyScalar(0.6);
-    dj.position.set(dx, 2.5, dz - 4.5);
-    g.add(dj);
     g.userData.danceFloor = {
-      mesh: df, mat: dfMat, light: discoL, label: dj,
+      mesh: df, mat: dfMat, light: discoL, label: null,
       center: new THREE.Vector3(dx, 0, dz),
       halfW: 6, halfD: 5,
       party: true, beatT: 0, musicT: 99999,
@@ -8596,6 +8767,7 @@ function buildIndependentLoungeWorld() {
   {
     const fx = -W / 2 + 1.15, fz = 10; /* hard against west plaster */
     addZone("Fireside Library", fx + 2.2, fz, "#ffb347");
+    try { addPlaque("LIBRARY", fx + 2.2, 1.2, fz - 2.0, 0, "#ffb347"); } catch (_) {}
     /* hearth built into wall */
     g.add(box(0.55, 2.6, 5.2, 0x2a2220, fx, 1.3, fz));
     g.add(box(0.38, 1.2, 2.0, 0x0c0806, fx + 0.22, 0.85, fz));
@@ -8796,7 +8968,8 @@ function liveTVApplyAudio() {
     try { if (fv.srcObject) { fv.srcObject.getAudioTracks().forEach(t => { t.enabled = false; }); } } catch (_) {}
   }
   if (!v) return;
-  const want = !!(liveTV.volumeOn && (liveTV.focused != null || liveTV.fullscreen || liveTV.audioOn));
+  /* personal feed: volumeOn alone gates audio for this client */
+  const want = !!liveTV.volumeOn;
   try { v.muted = !want; } catch (_) {}
   try { v.volume = want ? 1 : 0; } catch (_) {}
   if (want) {
@@ -9136,8 +9309,8 @@ function liveTVMountDecoderInFullscreen(on) {
 function liveTVOpenFullscreen() {
   liveTV.fullscreen = true;
   liveTV.audioOn = true;
-  /* E to watch = turn volume on for this single stream */
-  liveTV.volumeOn = true;
+  /* keep personal V mute preference — do not force volume on for all */
+
   const el = document.getElementById("tvFullscreen");
   if (el) {
     el.classList.remove("hidden");
@@ -9147,7 +9320,7 @@ function liveTVOpenFullscreen() {
   liveTVApplyAudio();
   liveTVSyncFullscreen();
   try { document.exitPointerLock && document.exitPointerLock(); } catch (_) {}
-  try { showMsg("Full screen · 1 stream · Esc to exit"); } catch (_) {}
+  try { showMsg("Full screen · V mutes your audio · Esc exits"); } catch (_) {}
 }
 function liveTVCloseFullscreen() {
   liveTV.fullscreen = false;
@@ -13219,13 +13392,15 @@ addEventListener("keydown", e => {
   if (typeof liveTV !== "undefined" && liveTV.fullscreen && e.code === "Escape") {
     e.preventDefault(); liveTVCloseFullscreen(); return;
   }
-  /* V still engages audio near a screen (legacy) */
+  /* V = personal TV volume mute/unmute (this client only, persists in lounge) */
   if (socialActive && typeof liveTV !== "undefined" && liveTV.active && e.code === "KeyV") {
     e.preventDefault();
-    const near = liveTVNearestTV(9);
-    if (near != null) liveTVEngage(near);
-    else if (liveTV.focused != null) liveTVEngage(liveTV.focused);
-    else { try { showMsg("Walk up to a TV, then press E for full screen or V for audio"); } catch (_) {} }
+    liveTVSetVolume(!liveTV.volumeOn);
+    try {
+      showMsg(liveTV.volumeOn
+        ? "🔊 TV audio ON for you · V to mute"
+        : "🔇 TV audio OFF for you · V to unmute");
+    } catch (_) {}
     return;
   }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
