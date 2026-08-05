@@ -1684,6 +1684,116 @@
   body.mp-chat-focus #mobileUI { pointer-events: none; opacity: 0.35; }
   #overlay .modeBtn.mp { border-color: #d48cff; color: #d48cff; }
 
+
+  /* —— Lounge TV Guide + Fullscreen —— */
+  #tvGuide.hidden, #tvFullscreen.hidden { display: none !important; }
+  #tvGuide {
+    position: fixed; inset: 0; z-index: 95;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(4, 8, 14, 0.82); padding: 16px;
+  }
+  #tvGuide .tvg-card {
+    width: min(520px, 94vw); max-height: min(80vh, 640px);
+    background: linear-gradient(160deg, #121820 0%, #0a0e16 100%);
+    border: 1px solid rgba(201,162,74,0.45);
+    border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  #tvGuide .tvg-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  #tvGuide .tvg-head h2 {
+    margin: 0; font: 800 18px/1.2 system-ui; color: #f0e6d4; letter-spacing: 0.02em;
+  }
+  #tvGuide .tvg-head button {
+    border: 0; background: transparent; color: #8b98a8; font-size: 20px; cursor: pointer;
+  }
+  #tvGuide .tvg-sub {
+    margin: 0; padding: 8px 16px 0; font: 600 12px/1.3 system-ui; color: #8b98a8;
+  }
+  #tvGuide .tvg-list {
+    flex: 1; overflow-y: auto; padding: 10px 12px 14px; display: flex; flex-direction: column; gap: 8px;
+  }
+  #tvGuide .tvg-row {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03);
+    color: #e8eef8; font: 600 14px/1.25 system-ui; transition: border-color 0.15s, background 0.15s;
+  }
+  #tvGuide .tvg-row:hover { border-color: rgba(29,155,240,0.5); background: rgba(29,155,240,0.08); }
+  #tvGuide .tvg-row.on {
+    border-color: rgba(124,255,176,0.55); background: rgba(124,255,176,0.1);
+  }
+  #tvGuide .tvg-ch {
+    width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #1a2434; font: 800 13px system-ui; color: #8fd1ff;
+  }
+  #tvGuide .tvg-meta { flex: 1; min-width: 0; }
+  #tvGuide .tvg-name { font: 800 14px/1.2 system-ui; display: block; }
+  #tvGuide .tvg-desc { font: 600 12px/1.25 system-ui; color: #8b98a8; margin-top: 2px; display: block; }
+  #tvGuide .tvg-foot {
+    display: flex; gap: 10px; padding: 12px 16px 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  #tvGuide .tvg-foot button {
+    flex: 1; border-radius: 10px; padding: 12px 10px; cursor: pointer;
+    font: 800 13px system-ui; border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05); color: #e8eef8;
+  }
+  #tvGuide .tvg-foot button.on {
+    border-color: rgba(124,255,176,0.5); background: rgba(124,255,176,0.12); color: #7CFFB0;
+  }
+  #tvFullscreen {
+    position: fixed; inset: 0; z-index: 96;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.92); padding: 0;
+  }
+  #tvFullscreen .tvf-stage {
+    position: relative; width: min(96vw, 1400px); height: min(86vh, 788px);
+    background: #000; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 30px 80px rgba(0,0,0,0.6);
+  }
+  #tvFullscreen video {
+    width: 100%; height: 100%; object-fit: contain; background: #000; display: block;
+  }
+  #tvFullscreen .tvf-captions {
+    position: absolute; left: 0; right: 0; bottom: 48px;
+    text-align: center; pointer-events: none; padding: 0 24px;
+  }
+  #tvFullscreen .tvf-captions span {
+    display: inline-block; max-width: 90%;
+    background: rgba(0,0,0,0.72); color: #fff;
+    font: 700 18px/1.4 system-ui, sans-serif;
+    padding: 8px 16px; border-radius: 6px;
+  }
+  #tvFullscreen .tvf-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  }
+  #tvFullscreen .tvf-bar button, #tvFullscreen .tvf-close {
+    border: 1px solid rgba(255,255,255,0.18); background: rgba(20,24,32,0.9);
+    color: #e8eef8; font: 700 12px system-ui; padding: 8px 12px;
+    border-radius: 8px; cursor: pointer;
+  }
+  #tvFullscreen .tvf-close {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+  }
+  #tvFullscreen .tvf-title {
+    flex: 1; font: 700 13px system-ui; color: #cfd6e0; text-align: left;
+  }
+  #tvHint {
+    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+    z-index: 56; pointer-events: none; display: none;
+    background: rgba(8,12,20,0.78); border: 1px solid rgba(29,155,240,0.4);
+    color: #8fd1ff; font: 700 13px/1 system-ui; letter-spacing: 0.03em;
+    padding: 9px 14px; border-radius: 999px;
+  }
+  #tvHint.show { display: block; }
+  body.lounge-ui #tvHint.show, body.live-lounge #tvHint.show { display: block; }
+
 </style>
 </head>
 <body>
@@ -1869,6 +1979,35 @@
 <div id="liveChatToast" aria-live="polite"></div>
 <div id="zoneTag">LOBBY</div>
 <div id="sitHint">[E] Sit</div>
+
+<div id="tvHint">[E] TV Guide · Remote</div>
+<div id="tvGuide" class="hidden" aria-hidden="true">
+  <div class="tvg-card" role="dialog" aria-labelledby="tvgTitle">
+    <div class="tvg-head">
+      <h2 id="tvgTitle">Channel Guide</h2>
+      <button type="button" id="tvgClose" aria-label="Close">✕</button>
+    </div>
+    <p class="tvg-sub">All bar screens share one channel for smooth playback. Choice sticks while you're in the lounge.</p>
+    <div class="tvg-list" id="tvgList"></div>
+    <div class="tvg-foot">
+      <button type="button" id="tvgVol">🔊 Volume · OFF</button>
+      <button type="button" id="tvgCC" class="on">CC · ON</button>
+    </div>
+  </div>
+</div>
+<div id="tvFullscreen" class="hidden" aria-hidden="true">
+  <div class="tvf-stage">
+    <button type="button" class="tvf-close" id="tvfClose">✕ Esc</button>
+    <video id="tvfVideo" playsinline webkit-playsinline></video>
+    <div class="tvf-captions" id="tvfCaptions"><span></span></div>
+    <div class="tvf-bar">
+      <span class="tvf-title" id="tvfTitle">Channel</span>
+      <button type="button" id="tvfVol">🔊</button>
+      <button type="button" id="tvfCC">CC</button>
+    </div>
+  </div>
+</div>
+
 <div id="triviaGame" class="hidden" aria-hidden="true">
   <div class="tg-card">
     <div class="tg-top">
@@ -5386,11 +5525,11 @@ const DEMO_X_FEED = [
       "Survey (n=1, me): would you launch a pig into space for science? Yes, but only if the pig consents and gets equity.",
       "My ratio insurance just lapsed and now every quote-tweet feels personal. This is fine. Everything is fine."
     ]},
-  { id: "u6", handle: "balaji", name: "Balaji", color: "#ffd200", interacted: "followed · 40m",
+  { id: "u6", handle: "MrBeast", name: "MrBeast", color: "#ffd200", interacted: "followed · 40m",
     tweets: [
-      "Network state office hours never end because the cloud does not observe national holidays.",
-      "Exit > voice. Sometimes the only product decision that matters is which window you jump out of.",
-      "Decentralize the sleeping bags. Centralize the uptime. Never reverse those two."
+      "Just planted another million trees. Next challenge: make the algorithm plant one every time someone quote-tweets without reading.",
+      "Gave away a private island once. Still cheaper than a bad enterprise software contract.",
+      "If your product can't survive a 24-hour livestream stress test, it isn't ready for the real world."
     ]},
   { id: "u7", handle: "paulg", name: "Paul Graham", color: "#ff8c40", interacted: "liked · 45m",
     tweets: [
@@ -5428,11 +5567,11 @@ const DEMO_X_FEED = [
       "Square is still square. The feed is not. Building calm software in a loud room is the whole game.",
       "Open protocols age better than open offices. One of these still works on weekends."
     ]},
-  { id: "u13", handle: "paraga", name: "Parag Agrawal", color: "#8fd1ff", interacted: "mentioned · 2h",
+  { id: "u13", handle: "NASA", name: "NASA", color: "#8fd1ff", interacted: "mentioned · 2h",
     tweets: [
-      "I too once believed free speech absolutism was a Saturday project. It is an operational discipline, not a slogan.",
-      "Moderation is a product decision wearing a hard hat. Anyone who says otherwise has never owned the pager.",
-      "Good luck with the kitchen sink. Symbolism scales surprisingly well in a lobby."
+      "Another clean day on orbit. The universe does not observe weekends — neither do the instruments.",
+      "When the data is beautiful and the error bars are honest, you don't need a hotter take.",
+      "Exploration is the original open-source project. We just publish in a different journal."
     ]},
   { id: "u14", handle: "cathywood", name: "Cathie Wood", color: "#ffd94a", interacted: "liked · 3h",
     tweets: [
@@ -5493,6 +5632,36 @@ const DEMO_X_FEED = [
       "The 4-hour workweek is still the goal. The 40-hour outage is still the boss fight. Design for recovery, not just output.",
       "Tools of titans this week: a notebook, a kill list of meetings, and yes — an X boomerang for metaphorical spam.",
       "Fear-setting exercise: what if the phrase hits you? Write the worst case, the fix, and the first 5 minutes. Then ship anyway."
+    ]},
+  { id: "u25", handle: "MKBHD", name: "Marques Brownlee", color: "#4ad2ff", interacted: "liked · 15h",
+    tweets: [
+      "Reviewed the weekend. Camera is fine. Battery is fine. The product decision to ship without a recovery path is not fine.",
+      "Unbox less. Ship more. The best gadget is the one that still works when the hype thread dies.",
+      "If your launch video needs a thousand cuts to hide the lag, the lag is the product."
+    ]},
+  { id: "u26", handle: "veritasium", name: "Veritasium", color: "#ffcc40", interacted: "reposted · 16h",
+    tweets: [
+      "The surprising reason your timeline feels worse: engagement is optimized, understanding is not. Same physics, different loss function.",
+      "Curiosity is a renewable resource. Outrage is not. Budget accordingly.",
+      "Experiment idea: measure how long a calm post survives next to a dunk. Hypothesis: calm loses on day one, wins on day thirty."
+    ]},
+  { id: "u27", handle: "BillGates", name: "Bill Gates", color: "#60c080", interacted: "liked · 18h",
+    tweets: [
+      "Optimism is a strategy when the data supports it. Pair it with malaria nets, vaccines, and fewer status meetings.",
+      "The best climate tech is boring, measurable, and already shipping. Flashy decks are optional.",
+      "Reading one hard book beats a hundred hot takes. Still true in the age of infinite scroll."
+    ]},
+  { id: "u28", handle: "OpenAI", name: "OpenAI", color: "#10a37f", interacted: "mentioned · 20h",
+    tweets: [
+      "Models get better when the evals get honest. Vibes are not a benchmark.",
+      "Safety and usefulness are not opposite ends of a slider. They are constraints on the same system.",
+      "Ship carefully. Measure publicly. Update the system card when reality disagrees with the launch post."
+    ]},
+  { id: "u29", handle: "SpaceX", name: "SpaceX", color: "#1d9bf0", interacted: "liked · 22h",
+    tweets: [
+      "Static fire complete. Next: more rapid reusability, fewer PowerPoint decks about rapid reusability.",
+      "The pad does not care about your weekend plans. Neither does the countdown clock.",
+      "Flight-proven hardware beats flight-proven narratives. Every time."
     ]},
 ];
 
@@ -6601,7 +6770,7 @@ const SOCIAL_BUBBLE_SQ = SOCIAL_BUBBLE * SOCIAL_BUBBLE;
 const LOUNGE_BLOCKS = []; /* obstacle specs, added only while lounge is active */
 const LOUNGE_POCKETS = [[-12, 6, 2.6], [12, 6, 2.6], [0, 10, 2.4]]; /* center pocket clear of clout striker */
 
-const DANCE_CENTER = new THREE.Vector3(18 * LOUNGE_SCALE, 0, 20 * LOUNGE_SCALE);
+const DANCE_CENTER = new THREE.Vector3(-2, 0, 18); /* matches independent lounge dance floor */
 
 /* ===================== INDEPENDENT LIVE LOUNGE ===================== */
 let liveLoungeMode = false; /* Create Live Lounge private session */
@@ -7883,6 +8052,8 @@ function buildIndependentLoungeWorld() {
     for (let i = 0; i < 4; i++) {
       mkMediaScreen(ids[i], -15 + i * 10, screenY, wallZ, 7.4, 3.6);
     }
+    /* all four share one channel for smooth playback */
+    g.userData.tvScreenPositions = ids.map((_, i) => new THREE.Vector3(-15 + i * 10, 0, wallZ));
     /* side ambient night windows lower / smaller — not the yellow blocks */
     const nightTex = canvasTex(256, 256, (c, w, h) => {
       const g2 = c.createLinearGradient(0, 0, 0, h);
@@ -7960,6 +8131,41 @@ function buildIndependentLoungeWorld() {
     esp.position.set(bx + 7.2, 2.45, bz + 0.5);
     g.add(esp);
     g.userData.espPos = new THREE.Vector3(bx + 7.2, 0, bz + 1.2);
+
+    /* main TV remote on the bar — walk up + E for channel guide */
+    {
+      const rx = bx - 1.5, rz = bz + 0.15;
+      const remote = new THREE.Group();
+      remote.name = "TVRemote";
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(0.55, 0.08, 1.15),
+        new THREE.MeshStandardMaterial({ color: 0x1a1e28, roughness: 0.45, metalness: 0.25 })
+      );
+      remote.add(body);
+      const accent = new THREE.Mesh(
+        new THREE.BoxGeometry(0.42, 0.02, 0.28),
+        new THREE.MeshBasicMaterial({ color: 0x1d9bf0 })
+      );
+      accent.position.set(0, 0.05, -0.32);
+      remote.add(accent);
+      for (let i = 0; i < 6; i++) {
+        const btn = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.03, 0.1),
+          new THREE.MeshStandardMaterial({ color: i === 0 ? 0x7CFFB0 : 0x2a3140, roughness: 0.5 })
+        );
+        btn.position.set(-0.14 + (i % 3) * 0.14, 0.05, 0.05 + Math.floor(i / 3) * 0.18);
+        remote.add(btn);
+      }
+      remote.position.set(rx, 1.32, rz);
+      remote.rotation.y = 0.15;
+      g.add(remote);
+      const rlab = textSprite("📺 REMOTE · E", { size: 26, color: "#8fd1ff", strokeW: 5, maxWidth: 0 });
+      rlab.scale.multiplyScalar(0.42);
+      rlab.position.set(rx, 1.7, rz + 0.55);
+      g.add(rlab);
+      g.userData.tvRemotePos = new THREE.Vector3(rx, 0, rz + 0.8);
+      g.userData.tvRemoteMesh = remote;
+    }
   }
 
   /* —— conversation lounges with detailed sofas —— */
@@ -8296,27 +8502,79 @@ function buildIndependentLoungeWorld() {
     } catch (err) { console.warn("darts alley build", err); }
   }
 
-  /* dance floor — lights + music when 3+ people are on it */
+  /* dance floor — pure visual light show (no music / SFX) */
   {
     const dx = -2, dz = 18;
     addZone("Dance Floor", dx, dz, "#d48cff");
     const tile = canvasTex(128, 128, (c, w, h) => {
-      c.fillStyle = "#1a1030"; c.fillRect(0, 0, w, h);
-      c.fillStyle = "#2a1848"; c.fillRect(0, 0, w / 2, h / 2);
-      c.fillRect(w / 2, h / 2, w / 2, h / 2);
+      c.fillStyle = "#12081e"; c.fillRect(0, 0, w, h);
+      const colors = ["#2a1050", "#1a2040", "#301838", "#102030"];
+      for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+        c.fillStyle = colors[(x + y) % colors.length];
+        c.fillRect(x * 16, y * 16, 15, 15);
+      }
     });
-    tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(6, 6);
+    tile.wrapS = tile.wrapT = THREE.RepeatWrapping; tile.repeat.set(6, 5);
     const dfMat = new THREE.MeshStandardMaterial({
-      map: tile, emissive: 0x2a1050, emissiveIntensity: 0.25, roughness: 0.4
+      map: tile, emissive: 0x4a2080, emissiveIntensity: 0.55, roughness: 0.35, metalness: 0.15
     });
     const df = new THREE.Mesh(new THREE.PlaneGeometry(12, 10), dfMat);
     df.rotation.x = -Math.PI / 2;
     df.position.set(dx, 0.04, dz);
+    df.name = "DanceFloor";
     g.add(df);
-    const discoL = new THREE.PointLight(0xff60d0, 0, 16);
-    discoL.position.set(dx, 3.8, dz);
+    const danceTiles = [];
+    const tileColors = [0xff2d95, 0x7CFFB0, 0x5ad1ff, 0xffd94a, 0xc9a0ff, 0xff6a4a];
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 5; col++) {
+        const tmesh = new THREE.Mesh(
+          new THREE.BoxGeometry(2.1, 0.06, 2.1),
+          new THREE.MeshBasicMaterial({
+            color: tileColors[(row + col) % tileColors.length],
+            transparent: true, opacity: 0.35
+          })
+        );
+        tmesh.position.set(dx - 4 + col * 2.2, 0.07, dz - 3.5 + row * 2.2);
+        tmesh.userData.baseColor = tileColors[(row + col) % tileColors.length];
+        tmesh.userData.phase = (row * 1.3 + col * 0.7);
+        g.add(tmesh);
+        danceTiles.push(tmesh);
+      }
+    }
+    const disco = new THREE.Mesh(
+      new THREE.SphereGeometry(0.55, 24, 18),
+      new THREE.MeshStandardMaterial({
+        color: 0xe8eef8, metalness: 0.95, roughness: 0.15,
+        emissive: 0xffffff, emissiveIntensity: 0.25
+      })
+    );
+    disco.position.set(dx, 4.6, dz);
+    g.add(disco);
+    for (let i = 0; i < 18; i++) {
+      const facet = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.18, 0.18),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })
+      );
+      const phi = Math.acos(2 * Math.random() - 1);
+      const theta = Math.random() * Math.PI * 2;
+      facet.position.set(
+        Math.sin(phi) * Math.cos(theta) * 0.56,
+        Math.cos(phi) * 0.56,
+        Math.sin(phi) * Math.sin(theta) * 0.56
+      );
+      facet.lookAt(0, 0, 0);
+      disco.add(facet);
+    }
+    const discoL = new THREE.PointLight(0xff90e0, 12, 18);
+    discoL.position.set(dx, 4.2, dz);
     g.add(discoL);
-    const dj = textSprite("♪ DANCE · 3+ FOR PARTY", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
+    const spotA = new THREE.PointLight(0x5ad1ff, 10, 14);
+    spotA.position.set(dx - 3, 3.5, dz + 2);
+    g.add(spotA);
+    const spotB = new THREE.PointLight(0xffd94a, 10, 14);
+    spotB.position.set(dx + 3, 3.5, dz - 2);
+    g.add(spotB);
+    const dj = textSprite("✦ DANCE · LIGHT SHOW", { size: 32, color: "#d48cff", strokeW: 6, maxWidth: 0 });
     dj.scale.multiplyScalar(0.6);
     dj.position.set(dx, 2.5, dz - 4.5);
     g.add(dj);
@@ -8324,10 +8582,13 @@ function buildIndependentLoungeWorld() {
       mesh: df, mat: dfMat, light: discoL, label: dj,
       center: new THREE.Vector3(dx, 0, dz),
       halfW: 6, halfD: 5,
-      party: false, beatT: 0, musicT: 0,
+      party: true, beatT: 0, musicT: 99999,
+      tiles: danceTiles, spots: [spotA, spotB],
     };
-    g.userData.disco = null;
+    g.userData.disco = disco;
     g.userData.discoL = discoL;
+    g.userData.danceTiles = danceTiles;
+    g.userData.danceSpots = [spotA, spotB];
   }
 
   /* fireplace library — flush against WEST wall */
@@ -8405,34 +8666,41 @@ function getLoungeMediaScreens() {
 try { window.getLoungeMediaScreens = getLoungeMediaScreens; } catch (_) {}
 
 /* ============================== LOUNGE LIVE TV ==============================
- * Four TVs always on, one fixed channel each (TV n = channel n).
- * Closed captions always on. No remotes / no T/C channel hotkeys.
- * Walk up to a screen and press V to engage — focuses that channel and
- * unmutes volume for this user only. Walk away or V again to disengage.
- * Dead/geo-blocked streams auto-skip. Failure never breaks the game. */
+ * ONE shared channel across all four bar screens (single HLS decode → smooth ≥20fps).
+ * Channel guide via bar remote (E). Volume on/off persists in the lounge.
+ * Approach a screen + E = mostly-fullscreen feed with volume. CC on by default. */
 const LIVE_TV_CHANNELS = [
-  { name: "CBS News 24/7", urls: [
+  { name: "CBS News 24/7", desc: "Breaking news, 24/7", urls: [
     "https://jmp2.uk/plu-6350fdd266e9ea0007bedec5.m3u8",
     "https://jmp2.uk/plu-6231ede1be5b460007f91bc1.m3u8",
     "https://jmp2.uk/plu-62441d6ded1827000763dcda.m3u8",
   ]},
-  { name: "ABC News Live", urls: [
+  { name: "ABC News Live", desc: "Live ABC coverage", urls: [
     "https://pb-0n3n2ej0w8pl9.akamaized.net/ABCNewsLive_Disney.m3u8",
     "https://aegis-cloudfront-1.tubi.video/d6cbb0de-68e4-4f3b-82f9-bf5d526e0bde/index.m3u8",
     "https://jmp2.uk/plu-6508be683a0d700008c534e4.m3u8",
   ]},
-  { name: "CNBC", urls: [
+  { name: "CNBC", desc: "Markets & business", urls: [
     "https://gpuserver3.tier1streams.com/CNBC/index.m3u8",
   ]},
-  { name: "LiveNOW from FOX", urls: [
+  { name: "LiveNOW from FOX", desc: "Live national desk", urls: [
     "https://cdn-uw2-prod.tsv2.amagi.tv/linear/amg00488-foxdigital-livenowbyfox-lgus/playlist.m3u8",
     "https://pb-k5p02dtnr2162.akamaized.net/LiveNOW_from_FOX.m3u8",
     "https://fox-foxnewsnow-vizio.amagi.tv/playlist.m3u8",
   ]},
+  { name: "Bloomberg TV+", desc: "Markets live", urls: [
+    "https://bloomberg.com/media-manifest/streams/phoenix-us.m3u8",
+  ]},
 ];
 const liveTV = {
-  active: false, tuners: [], remotes: [], heldRemote: null,
-  captions: true, audioTV: null, focused: null, frameSkip: 0,
+  active: false,
+  /* single shared tuner — all screens paint from this one video */
+  video: null, hls: null, chIdx: 0, urlIdx: 0, name: "", playing: false,
+  watchdog: 0, hopCount: 0, dead: false, caps: null,
+  captions: true, volumeOn: false, audioOn: false,
+  focused: null, frame: 0, lastVT: -1, paintAge: 0,
+  guideOpen: false, fullscreen: false,
+  nearRemote: false, nearScreen: false,
 };
 function ensureHlsJs() {
   return new Promise((resolve, reject) => {
@@ -8444,227 +8712,224 @@ function ensureHlsJs() {
     document.head.appendChild(sc);
   });
 }
-function liveTVActiveCue(t) {
+function liveTVActiveCue() {
   try {
-    const tracks = t.video.textTracks;
+    const v = liveTV.video;
+    if (!v) return null;
+    const tracks = v.textTracks;
     for (let i = 0; i < tracks.length; i++) {
       const tr = tracks[i];
       if (tr.kind !== "captions" && tr.kind !== "subtitles") continue;
-      if (tr.mode === "disabled") tr.mode = "hidden";
-      const cues = tr.activeCues;
-      if (cues && cues.length) {
-        let txt = "";
-        for (let c = 0; c < cues.length; c++) txt += (c ? " " : "") + (cues[c].text || "");
-        return txt.replace(/<[^>]+>/g, "").trim();
+      try { tr.mode = liveTV.captions ? "hidden" : "disabled"; } catch (_) {}
+      if (!liveTV.captions) continue;
+      const active = tr.activeCues;
+      if (active && active.length) {
+        let s = "";
+        for (let c = 0; c < active.length; c++) s += (active[c].text || "") + " ";
+        s = s.replace(/\n+/g, " ").trim();
+        if (s) return s;
       }
     }
   } catch (_) {}
-  return "";
+  return null;
 }
-function liveTVDrawFrame(t) {
-  return (ctx2, w, h) => {
-    const v = t.video;
-    ctx2.fillStyle = "#000"; ctx2.fillRect(0, 0, w, h);
-    if (v && v.readyState >= 2 && v.videoWidth) {
-      const ar = v.videoWidth / v.videoHeight, tar = w / h;
-      let dw = w, dh = h, dx = 0, dy = 0;
-      if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
-      ctx2.drawImage(v, dx, dy, dw, dh);
-    }
-    /* closed captions — always on */
-    {
-      const cue = liveTVActiveCue(t);
-      if (cue) {
-        ctx2.font = "bold 18px system-ui, sans-serif";
-        ctx2.textAlign = "center"; ctx2.textBaseline = "bottom";
-        /* naive 2-line wrap */
-        const words = cue.split(/\s+/);
-        const lines = [];
-        let cur = "";
-        for (const wd of words) {
-          const trial = cur ? cur + " " + wd : wd;
-          if (ctx2.measureText(trial).width > w - 60 && cur) { lines.push(cur); cur = wd; }
-          else cur = trial;
-        }
-        if (cur) lines.push(cur);
-        const show = lines.slice(-2);
-        let yy = h - 44;
-        for (let li = show.length - 1; li >= 0; li--) {
-          const tw = ctx2.measureText(show[li]).width;
-          ctx2.fillStyle = "rgba(0,0,0,0.75)";
-          ctx2.fillRect(w / 2 - tw / 2 - 8, yy - 22, tw + 16, 26);
-          ctx2.fillStyle = "#fff";
-          ctx2.fillText(show[li], w / 2, yy);
-          yy -= 28;
-        }
+function liveTVDrawFrame(ctx2, w, h) {
+  const v = liveTV.video;
+  ctx2.fillStyle = "#000"; ctx2.fillRect(0, 0, w, h);
+  if (v && v.readyState >= 2 && v.videoWidth) {
+    const ar = v.videoWidth / v.videoHeight, tar = w / h;
+    let dw = w, dh = h, dx = 0, dy = 0;
+    if (ar > tar) { dh = w / ar; dy = (h - dh) / 2; } else { dw = h * ar; dx = (w - dw) / 2; }
+    ctx2.drawImage(v, dx, dy, dw, dh);
+  }
+  /* closed captions — on by default */
+  if (liveTV.captions) {
+    const cue = liveTVActiveCue();
+    if (cue) {
+      ctx2.font = "bold 18px system-ui, sans-serif";
+      ctx2.textAlign = "center"; ctx2.textBaseline = "bottom";
+      const words = cue.split(/\s+/);
+      const lines = [];
+      let cur = "";
+      for (const wd of words) {
+        const trial = cur ? cur + " " + wd : wd;
+        if (ctx2.measureText(trial).width > w - 60 && cur) { lines.push(cur); cur = wd; }
+        else cur = trial;
+      }
+      if (cur) lines.push(cur);
+      const show = lines.slice(-2);
+      let yy = h - 44;
+      for (let li = show.length - 1; li >= 0; li--) {
+        const tw = ctx2.measureText(show[li]).width;
+        ctx2.fillStyle = "rgba(0,0,0,0.75)";
+        ctx2.fillRect(w / 2 - tw / 2 - 8, yy - 22, tw + 16, 26);
+        ctx2.fillStyle = "#fff";
+        ctx2.fillText(show[li], w / 2, yy);
+        yy -= 28;
       }
     }
-    /* status strip */
-    ctx2.fillStyle = "rgba(0,0,0,0.62)";
-    ctx2.fillRect(0, h - 30, w, 30);
-    ctx2.fillStyle = "#ff3b3b";
-    ctx2.beginPath(); ctx2.arc(18, h - 15, 6, 0, Math.PI * 2); ctx2.fill();
-    ctx2.fillStyle = "#fff";
-    ctx2.font = "bold 15px system-ui, sans-serif";
-    ctx2.textAlign = "left"; ctx2.textBaseline = "middle";
-    ctx2.fillText("LIVE \u00b7 " + t.name + (liveTV.audioTV === t.idx ? "  \ud83d\udd0a" : ""), 32, h - 14);
-    ctx2.textAlign = "right";
-    ctx2.fillStyle = "#9ec4e0";
-    ctx2.font = "600 12px system-ui, sans-serif";
-    ctx2.fillText("TV-" + (t.idx + 1), w - 10, h - 14);
-  };
+  }
+  /* status strip */
+  ctx2.fillStyle = "rgba(0,0,0,0.62)";
+  ctx2.fillRect(0, h - 30, w, 30);
+  ctx2.fillStyle = "#ff3b3b";
+  ctx2.beginPath(); ctx2.arc(18, h - 15, 6, 0, Math.PI * 2); ctx2.fill();
+  ctx2.fillStyle = "#fff";
+  ctx2.font = "bold 15px system-ui, sans-serif";
+  ctx2.textAlign = "left"; ctx2.textBaseline = "middle";
+  const vol = liveTV.volumeOn ? "  \ud83d\udd0a" : "";
+  ctx2.fillText("LIVE \u00b7 " + (liveTV.name || "…") + vol, 32, h - 14);
+  ctx2.textAlign = "right";
+  ctx2.fillStyle = "#9ec4e0";
+  ctx2.font = "600 12px system-ui, sans-serif";
+  ctx2.fillText("CH " + (liveTV.chIdx + 1), w - 10, h - 14);
 }
-function liveTVTuneTV(idx, nextChannel, manual = false) {
-  const t = liveTV.tuners[idx];
-  if (!t || !liveTV.active) return;
-  t.playing = false;
+function liveTVApplyAudio() {
+  const v = liveTV.video;
+  if (!v) return;
+  const want = !!(liveTV.volumeOn && (liveTV.focused != null || liveTV.fullscreen || liveTV.audioOn));
+  try { v.muted = !want; } catch (_) {}
+  if (want) {
+    try { v.volume = 1; v.play().catch(() => {}); } catch (_) {}
+  }
+  const fv = document.getElementById("tvfVideo");
+  if (fv) {
+    try { fv.muted = !liveTV.volumeOn; } catch (_) {}
+  }
+}
+function liveTVTune(nextChannel = false, manual = false) {
+  if (!liveTV.active || !liveTV.video) return;
+  liveTV.playing = false;
   if (nextChannel) {
-    t.chIdx = (t.chIdx + 1) % LIVE_TV_CHANNELS.length;
-    t.urlIdx = 0;
+    liveTV.chIdx = (liveTV.chIdx + 1) % LIVE_TV_CHANNELS.length;
+    liveTV.urlIdx = 0;
   } else {
-    t.urlIdx++;
-    if (t.urlIdx >= LIVE_TV_CHANNELS[Math.max(0, t.chIdx)].urls.length) {
-      t.chIdx = (t.chIdx + 1) % LIVE_TV_CHANNELS.length;
-      t.urlIdx = 0;
-      t.hopCount = (t.hopCount || 0) + 1;
-      if (t.hopCount > LIVE_TV_CHANNELS.length) { t.dead = true; return; } /* full loop failed — rest */
+    liveTV.urlIdx++;
+    const ch0 = LIVE_TV_CHANNELS[Math.max(0, liveTV.chIdx)];
+    if (liveTV.urlIdx >= ch0.urls.length) {
+      liveTV.chIdx = (liveTV.chIdx + 1) % LIVE_TV_CHANNELS.length;
+      liveTV.urlIdx = 0;
+      liveTV.hopCount = (liveTV.hopCount || 0) + 1;
+      if (liveTV.hopCount > LIVE_TV_CHANNELS.length) { liveTV.dead = true; return; }
     }
   }
-  const ch = LIVE_TV_CHANNELS[t.chIdx];
-  const url = ch.urls[t.urlIdx];
-  t.name = ch.name;
-  if (manual) { t.hopCount = 0; t.dead = false; try { showMsg("\ud83d\udcfa TV-" + (idx + 1) + " tuning: " + ch.name); } catch (_) {} }
-  const v = t.video;
-  try { if (t.hls) { t.hls.destroy(); t.hls = null; } } catch (_) {}
-  clearTimeout(t.watchdog);
+  const ch = LIVE_TV_CHANNELS[liveTV.chIdx];
+  const url = ch.urls[liveTV.urlIdx];
+  liveTV.name = ch.name;
+  if (manual) {
+    liveTV.hopCount = 0; liveTV.dead = false;
+    try { showMsg("📺 Channel · " + ch.name); } catch (_) {}
+  }
+  const v = liveTV.video;
+  try { if (liveTV.hls) { liveTV.hls.destroy(); liveTV.hls = null; } } catch (_) {}
+  clearTimeout(liveTV.watchdog);
   const tick = () => {
-    if (document.hidden) { t.watchdog = setTimeout(tick, 4000); return; }
-    if (liveTV.active && !t.playing) liveTVTuneTV(idx, false);
+    if (document.hidden) { liveTV.watchdog = setTimeout(tick, 4000); return; }
+    if (liveTV.active && !liveTV.playing) liveTVTune(false);
   };
-  t.watchdog = setTimeout(tick, 9000);
+  liveTV.watchdog = setTimeout(tick, 9000);
   try {
     if (v.canPlayType("application/vnd.apple.mpegurl")) {
       v.src = url;
       v.play().catch(() => {});
     } else if (window.Hls && window.Hls.isSupported()) {
-      /* generous forward buffer — live news feeds stall badly on the 10s default
-         when four tuners share the pipe; start ABR conservative so first frames
-         come up fast instead of over-reaching then rebuffering */
       const h = new window.Hls({
         enableWorker: true,
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
         backBufferLength: 10,
-        abrEwmaDefaultEstimate: 800000,
+        abrEwmaDefaultEstimate: 1200000,
         fragLoadingMaxRetry: 6,
         levelLoadingMaxRetry: 6,
       });
-      t.hls = h;
+      liveTV.hls = h;
       h.on(window.Hls.Events.MANIFEST_PARSED, () => {
-        /* remember per-height caps; actual cap is applied dynamically by
-           liveTVAdaptQuality() based on how close the player is */
         try {
-          t.caps = { 480: -1, 360: -1, 240: -1 };
+          liveTV.caps = { 720: -1, 480: -1, 360: -1 };
           (h.levels || []).forEach((lv, li) => {
             if (!lv.height) return;
-            for (const k of [480, 360, 240]) if (lv.height <= k) t.caps[k] = li;
+            for (const k of [720, 480, 360]) if (lv.height <= k) liveTV.caps[k] = li;
           });
-          /* fallback: if no level fits a bucket, use the lowest video level */
           let lowest = -1;
           (h.levels || []).forEach((lv, li) => { if (lv.height && lowest < 0) lowest = li; });
-          for (const k of [480, 360, 240]) if (t.caps[k] < 0) t.caps[k] = lowest;
-          if (t.caps[480] >= 0) h.autoLevelCapping = t.caps[480];
+          for (const k of [720, 480, 360]) if (liveTV.caps[k] < 0) liveTV.caps[k] = lowest;
+          /* single stream → allow higher quality */
+          if (liveTV.caps[720] >= 0) h.autoLevelCapping = liveTV.caps[720];
+          else if (liveTV.caps[480] >= 0) h.autoLevelCapping = liveTV.caps[480];
         } catch (_) {}
       });
       h.on(window.Hls.Events.ERROR, (_ev, data) => {
-        if (data && data.fatal && liveTV.active && !t.playing) {
+        if (data && data.fatal && liveTV.active && !liveTV.playing) {
           try { h.destroy(); } catch (_) {}
-          if (t.hls === h) { t.hls = null; liveTVTuneTV(idx, false); }
+          if (liveTV.hls === h) { liveTV.hls = null; liveTVTune(false); }
         }
       });
       h.loadSource(url);
       h.attachMedia(v);
       v.play().catch(() => {});
     }
-  } catch (e) { liveTVTuneTV(idx, false); }
+  } catch (e) { liveTVTune(false); }
+  liveTVRenderGuide();
+  liveTVSyncFullscreen();
 }
-function liveTVBuildRemotes() {
-  return; /* remotes removed — engage TVs with V near a screen */
-  if (liveTV.remotes.length || !loungeDecor) return;
-  /* four remotes along the (lowered) bar top: one per TV */
-  const spots = [[-16.5, -11.3], [-12.2, -11.3], [-7.8, -11.3], [-3.4, -11.3]];
-  for (let i = 0; i < 4; i++) {
-    const grp = new THREE.Group();
-    grp.name = "TVRemote_" + (i + 1);
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.045, 0.32),
-      new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.5 }));
-    grp.add(body);
-    const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.015, 8),
-      new THREE.MeshBasicMaterial({ color: 0xd02020 }));
-    btn.position.set(0, 0.03, -0.1);
-    grp.add(btn);
-    for (let b = 0; b < 6; b++) {
-      const k = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.012, 0.03),
-        new THREE.MeshStandardMaterial({ color: 0x3a3f48 }));
-      k.position.set((b % 2) ? 0.03 : -0.03, 0.028, 0.02 + Math.floor(b / 2) * 0.07);
-      grp.add(k);
-    }
-    const tag = textSprite("TV-" + (i + 1), { size: 26, color: "#9ec4e0", strokeW: 5, maxWidth: 0 });
-    tag.scale.multiplyScalar(0.35);
-    tag.position.set(0, 0.35, 0);
-    tag.userData.maxDist = 10;
-    grp.add(tag);
-    grp.position.set(spots[i][0], 0.87, spots[i][1]);
-    grp.rotation.y = 0.4 - i * 0.25;
-    loungeDecor.add(grp);
-    liveTV.remotes.push({ idx: i, mesh: grp, tag, held: false });
-  }
+function liveTVSetChannel(idx) {
+  if (idx < 0 || idx >= LIVE_TV_CHANNELS.length) return;
+  liveTV.chIdx = idx;
+  liveTV.urlIdx = -1; /* tune(false) will +1 → 0 */
+  liveTV.hopCount = 0;
+  liveTV.dead = false;
+  liveTVTune(false, true);
+}
+function liveTVSetVolume(on) {
+  liveTV.volumeOn = !!on;
+  liveTVApplyAudio();
+  liveTVRenderGuide();
+  liveTVSyncFullscreen();
+}
+function liveTVSetCaptions(on) {
+  liveTV.captions = !!on;
+  liveTVRenderGuide();
+  liveTVSyncFullscreen();
 }
 async function startLoungeLiveTV() {
   if (liveTV.active) return;
   liveTV.active = true;
   try {
     try { await ensureHlsJs(); } catch (e) { console.warn("liveTV:", e.message); }
-    if (!liveTV.tuners.length) {
-      for (let i = 0; i < 4; i++) {
-        const v = document.createElement("video");
-        v.muted = true; v.playsInline = true; v.autoplay = true;
-        v.width = 640; v.height = 360;
-        v.crossOrigin = "anonymous";
-        v.style.display = "none";
-        document.body.appendChild(v);
-        const t = { idx: i, video: v, hls: null, chIdx: i - 1, urlIdx: 0, name: "", playing: false, watchdog: 0, hopCount: 0, dead: false };
-        v.addEventListener("playing", () => {
-          if (!liveTV.active) return;
-          t.playing = true;
-          t.hopCount = 0;
-          clearTimeout(t.watchdog);
-          /* audio-only trap: no video frames means useless on a screen */
-          setTimeout(() => {
-            if (liveTV.active && t.playing && v.videoWidth === 0 && !document.hidden) {
-              t.playing = false;
-              liveTVTuneTV(i, false);
-            }
-          }, 5000);
-        });
-        v.addEventListener("error", () => { if (liveTV.active && !t.playing) liveTVTuneTV(i, false); });
-        liveTV.tuners.push(t);
-      }
+    if (!liveTV.video) {
+      const v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.autoplay = true;
+      v.width = 960; v.height = 540;
+      v.crossOrigin = "anonymous";
+      v.style.display = "none";
+      document.body.appendChild(v);
+      liveTV.video = v;
+      v.addEventListener("playing", () => {
+        if (!liveTV.active) return;
+        liveTV.playing = true;
+        liveTV.hopCount = 0;
+        clearTimeout(liveTV.watchdog);
+        setTimeout(() => {
+          if (liveTV.active && liveTV.playing && v.videoWidth === 0 && !document.hidden) {
+            liveTV.playing = false;
+            liveTVTune(false);
+          }
+        }, 5000);
+      });
+      v.addEventListener("error", () => {
+        if (liveTV.active && !liveTV.playing) liveTVTune(false);
+      });
       document.addEventListener("visibilitychange", () => {
         if (document.hidden || !liveTV.active) return;
-        for (const t of liveTV.tuners) {
-          if (t.playing) { t.video.play().catch(() => {}); continue; }
-          if (t.dead) continue;
-          /* hls may have been destroyed while hidden — reload the SAME url
-             (tune(false) pre-increments, so step back one first) */
-          t.urlIdx--;
-          liveTVTuneTV(t.idx, false);
-        }
+        if (liveTV.playing) { liveTV.video.play().catch(() => {}); return; }
+        if (liveTV.dead) return;
+        liveTV.urlIdx--;
+        liveTVTune(false);
       });
     }
-    liveTVBuildRemotes();
-    /* TV n starts on channel n */
-    for (let i = 0; i < liveTV.tuners.length; i++) liveTVTuneTV(i, true);
+    /* start on channel 0 for all screens */
+    liveTV.chIdx = LIVE_TV_CHANNELS.length - 1;
+    liveTVTune(true, false);
   } catch (e) {
     console.warn("liveTV start failed", e);
     liveTV.active = false;
@@ -8672,58 +8937,48 @@ async function startLoungeLiveTV() {
 }
 function stopLoungeLiveTV() {
   liveTV.active = false;
-  liveTV.audioTV = null;
   liveTV.focused = null;
-  liveTV.heldRemote = null;
-  for (const t of liveTV.tuners) {
-    t.playing = false;
-    clearTimeout(t.watchdog);
-    try { if (t.hls) { t.hls.destroy(); t.hls = null; } } catch (_) {}
-    try { t.video.muted = true; t.video.pause(); t.video.removeAttribute("src"); t.video.load(); } catch (_) {}
-  }
-  for (const r of liveTV.remotes) { r.held = false; try { r.mesh.visible = true; } catch (_) {} }
-  try { for (const s of getLoungeMediaScreens()) s.clear(); } catch (_) {}
-}
-function liveTVScreenWorldX(i) {
-  const scr = getLoungeMediaScreens()[i];
-  if (!scr) return 0;
-  const p = new THREE.Vector3();
-  scr.mesh.getWorldPosition(p);
-  return p;
+  liveTV.audioOn = false;
+  liveTV.playing = false;
+  liveTV.closeGuide();
+  liveTVCloseFullscreen();
+  try { if (liveTV.hls) { liveTV.hls.destroy(); liveTV.hls = null; } } catch (_) {}
+  try {
+    if (liveTV.video) {
+      liveTV.video.pause();
+      liveTV.video.removeAttribute("src");
+      liveTV.video.load();
+    }
+  } catch (_) {}
+  clearTimeout(liveTV.watchdog);
 }
 function liveTVNearestTV(maxDist = 8) {
-  let best = null, bd = maxDist;
   const screens = getLoungeMediaScreens();
+  if (!screens.length || !pig) return null;
+  let best = null, bd = maxDist;
   for (let i = 0; i < screens.length; i++) {
-    const p = new THREE.Vector3();
-    screens[i].mesh.getWorldPosition(p);
-    const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
-    if (d < bd) { bd = d; best = i; }
+    try {
+      const p = new THREE.Vector3();
+      screens[i].mesh.getWorldPosition(p);
+      const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
+      if (d < bd) { bd = d; best = i; }
+    } catch (_) {}
   }
   return best;
-}
-function liveTVSetAudio(idx) {
-  liveTV.audioTV = idx;
-  for (const t of liveTV.tuners) {
-    try { t.video.muted = (idx == null || t.idx !== idx); } catch (_) {}
-  }
-  if (idx != null) {
-    const t = liveTV.tuners[idx];
-    try { t.video.volume = 1; t.video.play().catch(() => {}); } catch (_) {}
-  }
 }
 function liveTVEngage(idx) {
   if (idx == null || !liveTV.active) return;
   if (liveTV.focused === idx) {
     liveTV.focused = null;
-    liveTVSetAudio(null);
-    try { showMsg("TV disengaged · muted"); } catch (_) {}
+    liveTV.audioOn = false;
+    liveTVApplyAudio();
+    try { showMsg("TV disengaged"); } catch (_) {}
     return;
   }
   liveTV.focused = idx;
-  liveTVSetAudio(idx);
-  const t = liveTV.tuners[idx];
-  try { showMsg("Watching " + ((t && t.name) || ("TV-" + (idx + 1))) + " · CC on · V to leave"); } catch (_) {}
+  liveTV.audioOn = true;
+  liveTVApplyAudio();
+  try { showMsg("Watching " + (liveTV.name || "Live TV") + " · E full screen · Esc leave"); } catch (_) {}
   try {
     const scr = getLoungeMediaScreens()[idx];
     if (scr && scr.mesh) {
@@ -8735,148 +8990,217 @@ function liveTVEngage(idx) {
 }
 function updateLoungeLiveTV() {
   if (!liveTV.active) return;
-  /* engaged TV: mute when player walks away (volume only while focused) */
-  if (liveTV.focused != null) {
-    const p = new THREE.Vector3();
+  /* disengage when walking away from focused screen */
+  if (liveTV.focused != null && !liveTV.fullscreen) {
     const scr = getLoungeMediaScreens()[liveTV.focused];
     if (scr) {
-      scr.mesh.getWorldPosition(p);
-      if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) > 9) {
-        liveTV.focused = null;
-        liveTVSetAudio(null);
-        try { showMsg("Left the TV · muted"); } catch (_) {}
-      }
-    }
-  }
-  /* paint frames — staggered so only ONE canvas→GPU texture upload happens
-     per rendered frame (all four on the same frame caused visible hitches).
-     Nearest TV repaints every 3rd frame (~20fps), the rest every 9th (~7fps),
-     and a tuner whose video hasn't advanced skips the upload entirely. */
-  liveTV.frame = (liveTV.frame || 0) + 1;
-  const screens = getLoungeMediaScreens();
-  if (liveTV.nearTV === undefined || liveTV.frame % 30 === 0) liveTV.nearTV = liveTVNearestTV(14);
-  const nearTV = liveTV.nearTV;
-  const i = liveTV.frame % Math.max(1, Math.min(liveTV.tuners.length, screens.length));
-  const t = liveTV.tuners[i];
-  if (t && t.playing) {
-    const period = (i === nearTV || i === liveTV.audioTV || i === liveTV.focused) ? 3 : 9;
-    t.paintAge = (t.paintAge || 0) + 1;
-    const vt = t.video ? t.video.currentTime : 0;
-    if (t.paintAge >= period && (vt !== t.lastVT || t.paintAge >= 60)) {
-      t.paintAge = 0;
-      t.lastVT = vt;
       try {
-        screens[i].setMedia(liveTVDrawFrame(t));
-      } catch (e) {
-        t.playing = false;
-        liveTVTuneTV(i, false);
-      }
+        const p = new THREE.Vector3();
+        scr.mesh.getWorldPosition(p);
+        if (Math.hypot(pig.position.x - p.x, pig.position.z - p.z) > 9) {
+          liveTV.focused = null;
+          liveTV.audioOn = false;
+          liveTVApplyAudio();
+        }
+      } catch (_) {}
     }
   }
-  /* every ~2s: re-cap stream quality by proximity — far TVs drop to 240p so
-     four streams stop fighting for bandwidth (the main cause of stalls) */
-  if (liveTV.frame % 120 === 0) liveTVAdaptQuality();
-}
-function liveTVAdaptQuality() {
+  /* single stream → paint ALL four screens when video advances
+     (one decode, ~20fps+ canvas uploads are cheap at 512×288) */
+  liveTV.frame = (liveTV.frame || 0) + 1;
+  if (!liveTV.playing) return;
+  const v = liveTV.video;
+  const vt = v ? v.currentTime : 0;
+  liveTV.paintAge = (liveTV.paintAge || 0) + 1;
+  /* repaint when time advances, or force every ~20 frames */
+  if (vt === liveTV.lastVT && liveTV.paintAge < 3) return;
+  if (liveTV.paintAge < 2 && vt === liveTV.lastVT) return;
+  liveTV.paintAge = 0;
+  liveTV.lastVT = vt;
   const screens = getLoungeMediaScreens();
-  for (let i = 0; i < liveTV.tuners.length && i < screens.length; i++) {
-    const t = liveTV.tuners[i];
-    if (!t.hls || !t.caps) continue;
-    let maxH = 240;
+  for (let i = 0; i < screens.length; i++) {
     try {
-      const p = new THREE.Vector3();
-      screens[i].mesh.getWorldPosition(p);
-      const d = Math.hypot(pig.position.x - p.x, pig.position.z - p.z);
-      maxH = d < 10 ? 480 : d < 20 ? 360 : 240;
+      screens[i].setMedia((ctx, w, h) => liveTVDrawFrame(ctx, w, h));
     } catch (_) {}
-    if (liveTV.audioTV === i || liveTV.focused === i) maxH = 480;
-    const cap = t.caps[maxH];
-    if (cap != null && cap >= 0 && t.hls.autoLevelCapping !== cap) t.hls.autoLevelCapping = cap;
   }
+  /* fullscreen caption overlay */
+  if (liveTV.fullscreen) {
+    const span = document.querySelector("#tvfCaptions span");
+    if (span) {
+      if (liveTV.captions) {
+        const cue = liveTVActiveCue();
+        span.textContent = cue || "";
+      } else span.textContent = "";
+    }
+  }
+}
+function liveTVOpenGuide() {
+  liveTV.guideOpen = true;
+  const el = document.getElementById("tvGuide");
+  if (el) {
+    el.classList.remove("hidden");
+    el.setAttribute("aria-hidden", "false");
+  }
+  liveTVRenderGuide();
+  try { document.exitPointerLock && document.exitPointerLock(); } catch (_) {}
+}
+function liveTVCloseGuide() {
+  liveTV.guideOpen = false;
+  const el = document.getElementById("tvGuide");
+  if (el) {
+    el.classList.add("hidden");
+    el.setAttribute("aria-hidden", "true");
+  }
+}
+liveTV.closeGuide = liveTVCloseGuide;
+function liveTVRenderGuide() {
+  const list = document.getElementById("tvgList");
+  if (!list) return;
+  list.innerHTML = "";
+  LIVE_TV_CHANNELS.forEach((ch, i) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "tvg-row" + (i === liveTV.chIdx ? " on" : "");
+    row.innerHTML =
+      '<span class="tvg-ch">' + (i + 1) + "</span>" +
+      '<span class="tvg-meta"><span class="tvg-name">' + ch.name + "</span>" +
+      '<span class="tvg-desc">' + (ch.desc || "") + "</span></span>";
+    row.addEventListener("click", () => liveTVSetChannel(i));
+    list.appendChild(row);
+  });
+  const vol = document.getElementById("tvgVol");
+  if (vol) {
+    vol.textContent = liveTV.volumeOn ? "🔊 Volume · ON" : "🔇 Volume · OFF";
+    vol.classList.toggle("on", liveTV.volumeOn);
+  }
+  const cc = document.getElementById("tvgCC");
+  if (cc) {
+    cc.textContent = liveTV.captions ? "CC · ON" : "CC · OFF";
+    cc.classList.toggle("on", liveTV.captions);
+  }
+}
+function liveTVOpenFullscreen() {
+  liveTV.fullscreen = true;
+  liveTV.audioOn = true;
+  liveTVApplyAudio();
+  const el = document.getElementById("tvFullscreen");
+  if (el) {
+    el.classList.remove("hidden");
+    el.setAttribute("aria-hidden", "false");
+  }
+  liveTVSyncFullscreen();
+  try { document.exitPointerLock && document.exitPointerLock(); } catch (_) {}
+}
+function liveTVCloseFullscreen() {
+  liveTV.fullscreen = false;
+  if (liveTV.focused == null) liveTV.audioOn = false;
+  liveTVApplyAudio();
+  const el = document.getElementById("tvFullscreen");
+  if (el) {
+    el.classList.add("hidden");
+    el.setAttribute("aria-hidden", "true");
+  }
+  const fv = document.getElementById("tvfVideo");
+  if (fv) {
+    try { fv.pause(); } catch (_) {}
+    try { fv.srcObject = null; } catch (_) {}
+    fv.removeAttribute("src");
+    try { fv.load(); } catch (_) {}
+  }
+}
+function liveTVSyncFullscreen() {
+  if (!liveTV.fullscreen) return;
+  const title = document.getElementById("tvfTitle");
+  if (title) title.textContent = (liveTV.name || "Live TV") + " · CH " + (liveTV.chIdx + 1);
+  const fv = document.getElementById("tvfVideo");
+  /* mirror the shared video element via captureStream when available */
+  if (fv && liveTV.video) {
+    try {
+      if (liveTV.video.captureStream) {
+        fv.srcObject = liveTV.video.captureStream();
+      } else {
+        /* fallback: same src if possible — may not work for HLS mediaSource */
+        fv.src = liveTV.video.currentSrc || "";
+      }
+      fv.muted = !liveTV.volumeOn;
+      fv.playsInline = true;
+      fv.play().catch(() => {});
+    } catch (_) {}
+  }
+  const vol = document.getElementById("tvfVol");
+  if (vol) vol.textContent = liveTV.volumeOn ? "🔊 ON" : "🔇 OFF";
+  const cc = document.getElementById("tvfCC");
+  if (cc) cc.textContent = liveTV.captions ? "CC ON" : "CC OFF";
 }
 try {
   window.__liveTV = liveTV;
-  window.__liveTVTune = liveTVTuneTV;
+  window.__liveTVTune = () => liveTVTune(true, true);
+  window.__liveTVSetChannel = liveTVSetChannel;
 } catch (_) {}
+
+(function wireTvUi() {
+  const closeG = document.getElementById("tvgClose");
+  if (closeG) closeG.addEventListener("click", () => liveTVCloseGuide());
+  const volG = document.getElementById("tvgVol");
+  if (volG) volG.addEventListener("click", () => liveTVSetVolume(!liveTV.volumeOn));
+  const ccG = document.getElementById("tvgCC");
+  if (ccG) ccG.addEventListener("click", () => liveTVSetCaptions(!liveTV.captions));
+  const closeF = document.getElementById("tvfClose");
+  if (closeF) closeF.addEventListener("click", () => liveTVCloseFullscreen());
+  const volF = document.getElementById("tvfVol");
+  if (volF) volF.addEventListener("click", () => liveTVSetVolume(!liveTV.volumeOn));
+  const ccF = document.getElementById("tvfCC");
+  if (ccF) ccF.addEventListener("click", () => liveTVSetCaptions(!liveTV.captions));
+  const rootG = document.getElementById("tvGuide");
+  if (rootG) rootG.addEventListener("click", (e) => { if (e.target === rootG) liveTVCloseGuide(); });
+})();
 
 /* legacy builder retained below but unused when independent path active */
 /* old office-overlay lounge builder removed — use buildIndependentLoungeWorld */
 
-/* jukebox riffs: quick chiptune licks */
-function playJukeRiff() {
-  const riffs = [
-    [440, 554, 659, 880, 659, 554],
-    [392, 494, 587, 784, 587, 494],
-    [330, 415, 494, 659, 494, 415],
-  ];
-  const r = pick(riffs);
-  r.forEach((f, i) => setTimeout(() => beep(f, 0.12, "square", 0.07), i * 110));
-}
-
-function countPeopleOnDanceFloor(L) {
-  if (!L || !L.danceFloor || !pig) return 0;
-  const d = L.danceFloor;
-  const hw = d.halfW, hd = d.halfD, cx = d.center.x, cz = d.center.z;
-  const on = (x, z) => Math.abs(x - cx) <= hw && Math.abs(z - cz) <= hd;
-  let n = 0;
-  if (on(pig.position.x, pig.position.z)) n++;
-  try {
-    for (const e of enemies) {
-      if (!e || e.type !== "xuser" || !e.mesh) continue;
-      if (on(e.mesh.position.x, e.mesh.position.z)) n++;
-    }
-  } catch (_) {}
-  try {
-    if (typeof MP !== "undefined" && MP && MP.remotes) {
-      for (const r of MP.remotes.values()) {
-        if (r && r.mesh && on(r.mesh.position.x, r.mesh.position.z)) n++;
-      }
-    }
-  } catch (_) {}
-  return n;
-}
-function playDanceBeat() {
-  try {
-    const bass = [110, 110, 165, 110, 98, 110, 131, 110];
-    const lead = [330, 392, 440, 392, 494, 440, 392, 330];
-    bass.forEach((f, i) => setTimeout(() => {
-      try { thump(f, 0.1, 0.12); beep(f * 2, 0.08, "square", 0.035); } catch (_) {}
-    }, i * 140));
-    lead.forEach((f, i) => setTimeout(() => {
-      try { beep(f, 0.1, "triangle", 0.045); } catch (_) {}
-    }, i * 140 + 40));
-  } catch (_) {}
-}
+/* dance floor — visual light show only (no music / SFX) */
 function updateDanceFloorParty(dt) {
   const L = loungeDecor && loungeDecor.userData;
   if (!L || !L.danceFloor) return;
   const d = L.danceFloor;
-  const n = countPeopleOnDanceFloor(L);
-  const want = n >= 3;
-  if (want && !d.party) {
-    d.party = true;
-    try { showMsg("♪ DANCE PARTY · " + n + " on the floor"); } catch (_) {}
-    try { SFX.wave(); } catch (_) {}
-  } else if (!want && d.party) {
-    d.party = false;
-    if (d.mat) { d.mat.emissiveIntensity = 0.25; d.mat.emissive.setHex(0x2a1050); }
-    if (d.light) d.light.intensity = 0;
-  }
-  if (!d.party) return;
   d.beatT = (d.beatT || 0) + dt;
-  d.musicT = (d.musicT || 0) - dt;
-  if (d.musicT <= 0) {
-    d.musicT = 1.15;
-    playDanceBeat();
+  const t = d.beatT;
+  /* always-on dynamic light show */
+  if (L.disco) L.disco.rotation.y += dt * 1.4;
+  if (L.discoL) {
+    L.discoL.color.setHSL((t * 0.18) % 1, 0.85, 0.55);
+    L.discoL.intensity = 12 + Math.sin(t * 5.5) * 5 + Math.sin(t * 11) * 2;
   }
-  const pulse = 0.55 + 0.55 * Math.abs(Math.sin(d.beatT * 8));
   if (d.mat) {
-    d.mat.emissiveIntensity = 0.35 + pulse * 1.4;
-    d.mat.emissive.setHSL((d.beatT * 0.15) % 1, 0.85, 0.35);
+    d.mat.emissiveIntensity = 0.35 + 0.4 * (0.5 + 0.5 * Math.sin(t * 2.4));
+    d.mat.emissive.setHSL((t * 0.12) % 1, 0.8, 0.35);
   }
-  if (d.light) {
-    d.light.intensity = 4 + pulse * 10;
-    d.light.color.setHSL((d.beatT * 0.22 + 0.4) % 1, 0.9, 0.55);
+  if (d.light && d.light !== L.discoL) {
+    d.light.intensity = 4 + Math.abs(Math.sin(t * 6)) * 8;
+    d.light.color.setHSL((t * 0.2 + 0.3) % 1, 0.9, 0.55);
+  }
+  if (L.danceSpots) {
+    const sa = L.danceSpots[0], sb = L.danceSpots[1];
+    if (sa) {
+      sa.color.setHSL((t * 0.22 + 0.3) % 1, 0.9, 0.55);
+      sa.position.x = -2 + Math.sin(t * 1.7) * 4;
+      sa.position.z = 18 + Math.cos(t * 1.3) * 3;
+      sa.intensity = 8 + Math.sin(t * 4.2) * 4;
+    }
+    if (sb) {
+      sb.color.setHSL((t * 0.19 + 0.6) % 1, 0.9, 0.55);
+      sb.position.x = -2 + Math.cos(t * 1.5) * 4;
+      sb.position.z = 18 + Math.sin(t * 1.9) * 3;
+      sb.intensity = 8 + Math.cos(t * 3.8) * 4;
+    }
+  }
+  if (L.danceTiles) {
+    for (const tile of L.danceTiles) {
+      const pulse = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(t * 3.2 + tile.userData.phase));
+      tile.material.opacity = pulse;
+      const h = ((t * 0.15) + tile.userData.phase * 0.08) % 1;
+      tile.material.color.setHSL(h, 0.85, 0.55);
+    }
   }
 }
 
@@ -10572,15 +10896,7 @@ function updateSocialLounge(dt) {
     if (L.disco) L.disco.rotation.y += dt * 1.1;
     if (L.discoL) L.discoL.color.setHSL((t * 0.12) % 1, 0.8, 0.6);
     if (L.fountainWater) L.fountainWater.material.opacity = 0.65 + Math.sin(t * 4) * 0.12;
-    L.jukeCool = Math.max(0, (L.jukeCool || 0) - dt);
     L.espCool = Math.max(0, (L.espCool || 0) - dt);
-    /* jukebox: walk up to spin a track */
-    if (L.jukeCool <= 0 && L.jukePos && pig.position.distanceTo(new THREE.Vector3(L.jukePos.x, 0, L.jukePos.z)) < 2.0) {
-      L.jukeCool = 4;
-      playJukeRiff();
-      if (L.jukeGlow) L.jukeGlow.material.color.setHex(pick([0xff90e0, 0x7CFFB0, 0x5ad1ff, 0xffb347]));
-      floatText(L.jukePos.clone().add(new THREE.Vector3(0, 1.6, 0)), "♪♫", { size: 44, color: "#ff90e0", strokeW: 6 }, 1.2);
-    }
     /* espresso boost */
     if (L.espCool <= 0 && L.espPos && pig.position.distanceTo(L.espPos) < 1.7) {
       L.espCool = 14;
@@ -10588,6 +10904,33 @@ function updateSocialLounge(dt) {
       SFX.pickup();
       floatText(L.espPos.clone().add(new THREE.Vector3(0, 2.2, 0)), "ESPRESSO! ZOOM ☕", { size: 40, color: "#ffd94a", strokeW: 6 }, 1.3);
     }
+    /* TV remote / screen proximity hints */
+    try {
+      const tvh = document.getElementById("tvHint");
+      if (tvh && typeof liveTV !== "undefined" && !liveTV.guideOpen && !liveTV.fullscreen && !socialReading) {
+        let msg = "";
+        if (L.tvRemotePos && pig.position.distanceTo(L.tvRemotePos) < 2.6) {
+          msg = "[E] Channel Guide · Remote";
+          liveTV.nearRemote = true;
+          liveTV.nearScreen = false;
+        } else {
+          const near = typeof liveTVNearestTV === "function" ? liveTVNearestTV(8.5) : null;
+          liveTV.nearScreen = near != null;
+          liveTV.nearRemote = false;
+          if (near != null) msg = "[E] Full screen TV · volume";
+        }
+        if (msg) {
+          tvh.textContent = msg;
+          tvh.classList.add("show");
+        } else {
+          tvh.classList.remove("show");
+          liveTV.nearRemote = false;
+          liveTV.nearScreen = false;
+        }
+      } else if (tvh) {
+        tvh.classList.remove("show");
+      }
+    } catch (_) {}
     /* mini-games: walk-up start (darts, race, trivia) — generous radii */
     {
       const sc = L.independent ? 1 : (typeof LOUNGE_SCALE !== "undefined" ? LOUNGE_SCALE : 1);
@@ -12424,9 +12767,28 @@ let weaponIdx = 0; // 0 boomerang, 1 rifle, 2 flamethrower
 let flameUnlocked = false, flameFuel = 0, flameCd = 0, flameFiring = false;
 let flameOnlyMode = false; /* scroll/Q: boom+rifle bank ↔ flame-only */
 let lastComboWeapon = 0;
+/* separate arming sources so mouse/key/mobile don't stomp each other */
+let flameKeyHeld = false;
+let flameMouseHeld = false;
+let chargeMouseHeld = false;
 let flameWpn = null;
 let resumeStarbase = false;
 let charging = false, chargeT = 0, boomsOut = 0;
+/** Keep flameFiring in sync with weapon + which inputs are held */
+function syncFlameFiring() {
+  flameFiring = !!(
+    mode === "play" &&
+    weaponIdx === 2 &&
+    flameUnlocked &&
+    (flameKeyHeld || flameMouseHeld || mobileFireHeld)
+  );
+}
+/** Cancel boom charge without throwing (weapon swap, blur, etc.) */
+function cancelBoomCharge() {
+  charging = false;
+  chargeT = 0;
+  chargeMouseHeld = false;
+}
 /* attach flamethrower model now that pig + lets exist */
 flameWpn = buildFlamethrower();
 flameWpn.visible = false;
@@ -12614,13 +12976,20 @@ addEventListener("keydown", e => {
   if (e.target && (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT")) return;
   if (dartGame.active && e.code === "Escape") { endDartGame(); return; }
   if (raceGame.active && e.code === "Escape") { endRaceGame(false); return; }
-  /* lounge TV: V near a screen = engage (volume for you only). No remotes/T/C. */
+  /* lounge TV guide / fullscreen Esc */
+  if (typeof liveTV !== "undefined" && liveTV.guideOpen && e.code === "Escape") {
+    e.preventDefault(); liveTVCloseGuide(); return;
+  }
+  if (typeof liveTV !== "undefined" && liveTV.fullscreen && e.code === "Escape") {
+    e.preventDefault(); liveTVCloseFullscreen(); return;
+  }
+  /* V still engages audio near a screen (legacy) */
   if (socialActive && typeof liveTV !== "undefined" && liveTV.active && e.code === "KeyV") {
     e.preventDefault();
     const near = liveTVNearestTV(9);
     if (near != null) liveTVEngage(near);
     else if (liveTV.focused != null) liveTVEngage(liveTV.focused);
-    else { try { showMsg("Walk up to a TV, then press V to watch"); } catch (_) {} }
+    else { try { showMsg("Walk up to a TV, then press E for full screen or V for audio"); } catch (_) {} }
     return;
   }
   if (strikerGame.active && e.code === "Escape") { strikerGame.active = false; strikerGame.cool = 4; socialReading = false; try { setHeroForMiniGame(false); setStrikerAudienceHidden(false); setMiniTouch(false); } catch (_) {} return; }
@@ -12646,7 +13015,11 @@ addEventListener("keydown", e => {
   }
   if (mode === "play" && e.code === "KeyF") {
     e.preventDefault();
-    if (flameUnlocked) { selectWeapon(2); flameFiring = true; }
+    if (flameUnlocked) {
+      selectWeapon(2);
+      flameKeyHeld = true;
+      syncFlameFiring();
+    }
     else showMsg("PICK UP FLAMETHROWER BY THE CYBERTRUCKS");
   }
   if (mode === "portal" && e.code === "Enter") { resumeFromPortal(); return; }
@@ -12661,12 +13034,21 @@ addEventListener("keydown", e => {
     e.preventDefault();
     startGame({ social: true });
   }
-  if (mode === "play" && socialActive && !socialReading && !miniGameActive() && (e.code === "KeyE" || e.code === "KeyR")) {
+  if (mode === "play" && socialActive && !socialReading && !miniGameActive() && typeof liveTV !== "undefined" && !liveTV.guideOpen && !liveTV.fullscreen && (e.code === "KeyE" || e.code === "KeyR")) {
     e.preventDefault();
     if (e.code === "KeyE") {
       if (seated) { standUp(); return; }
-      /* game pads FIRST — sitting must not steal race/trivia start */
       const L = loungeDecor && loungeDecor.userData;
+      /* TV remote → channel guide */
+      if (L && L.tvRemotePos && pig.position.distanceTo(L.tvRemotePos) < 2.4) {
+        liveTVOpenGuide(); return;
+      }
+      /* approach any bar screen → mostly-fullscreen feed */
+      if (typeof liveTV !== "undefined" && liveTV.active) {
+        const near = liveTVNearestTV(8.5);
+        if (near != null) { liveTVOpenFullscreen(); return; }
+      }
+      /* game pads FIRST — sitting must not steal race/trivia start */
       if (L) {
         const sc = L.independent ? 1 : LOUNGE_SCALE;
         if (!triviaGame.active && (triviaGame.cool || 0) <= 0 && L.triviaPos) {
@@ -12709,7 +13091,10 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => {
   keys[e.code] = false;
   if (e.key && e.key.length === 1) keys["Key" + e.key.toUpperCase()] = false;
-  if (e.code === "KeyF") flameFiring = false;
+  if (e.code === "KeyF") {
+    flameKeyHeld = false;
+    syncFlameFiring();
+  }
 });
 
 function aimArcadeFromClient(clientX, clientY) {
@@ -12823,14 +13208,31 @@ renderer.domElement.addEventListener("mousedown", e => {
   if (!isMobile() && document.pointerLockElement !== renderer.domElement) {
     try { renderer.domElement.requestPointerLock(); } catch (_) {}
   }
+  /* Primary fire = CURRENT weapon only. Secondary (RMB) = rifle alt-fire when boom/rifle;
+     flame when flame is equipped. Never throw boom from rifle/flame inputs. */
   if (e.button === 0) {
-    if (weaponIdx === 0) { charging = true; chargeT = 0; }
-    else if (weaponIdx === 2) { flameFiring = true; }
-    else fireRifle();
+    if (weaponIdx === 0) {
+      cancelBoomCharge();
+      charging = true;
+      chargeT = 0;
+      chargeMouseHeld = true;
+    } else if (weaponIdx === 2) {
+      cancelBoomCharge();
+      flameMouseHeld = true;
+      syncFlameFiring();
+    } else {
+      cancelBoomCharge();
+      fireRifle();
+    }
   }
   if (e.button === 2) {
-    if (weaponIdx === 2) flameFiring = true;
-    else fireRifle();
+    if (weaponIdx === 2) {
+      flameMouseHeld = true;
+      syncFlameFiring();
+    } else {
+      /* alt-fire rifle while boom or rifle selected */
+      fireRifle();
+    }
   }
 });
 
@@ -12863,6 +13265,20 @@ renderer.domElement.addEventListener("pointercancel", () => {
 addEventListener("blur", () => {
   loungePtr.down = false;
   loungePtr.dragged = false;
+  cancelBoomCharge();
+  flameMouseHeld = false;
+  flameKeyHeld = false;
+  mobileFireHeld = false;
+  syncFlameFiring();
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    cancelBoomCharge();
+    flameMouseHeld = false;
+    flameKeyHeld = false;
+    mobileFireHeld = false;
+    syncFlameFiring();
+  }
 });
 addEventListener("contextmenu", e => e.preventDefault());
 /* mouse wheel: boom/rifle bank ↔ flamethrower-only (Starbase after pickup) */
@@ -12880,11 +13296,25 @@ addEventListener("wheel", e => {
 }, { passive: false });
 addEventListener("mouseup", e => {
   if (dartGame.active && e.button === 0) { releaseDartThrow(); return; }
-  if (mode === "play" && e.button === 0 && weaponIdx === 0 && charging) {
-    throwBoomerang(chargeT > 0.45);
-    charging = false; chargeT = 0;
+  if (mode !== "play") {
+    cancelBoomCharge();
+    flameMouseHeld = false;
+    syncFlameFiring();
+    return;
   }
-  if (e.button === 0 || e.button === 2) flameFiring = false;
+  if (e.button === 0) {
+    /* release boom only if we were actually charging that weapon */
+    if (charging && chargeMouseHeld && weaponIdx === 0) {
+      throwBoomerang(chargeT > 0.45);
+    }
+    cancelBoomCharge();
+    flameMouseHeld = false;
+    syncFlameFiring();
+  }
+  if (e.button === 2) {
+    flameMouseHeld = false;
+    syncFlameFiring();
+  }
 });
 overlay.addEventListener("click", (ev) => {
   /* level buttons handle themselves — don't double-fire */
@@ -12958,6 +13388,7 @@ function startGame(opts = {}) {
   if (typeof deactivateSocialLounge === "function") deactivateSocialLounge();
   if (typeof deactivateStarbase === "function") deactivateStarbase();
   flameUnlocked = false; flameFuel = 0; flameFiring = false; weaponIdx = 0; flameOnlyMode = false; lastComboWeapon = 0;
+  flameKeyHeld = false; flameMouseHeld = false; mobileFireHeld = false; cancelBoomCharge();
   if (flameWpn) flameWpn.visible = false;
   if (rifleSlung) rifleSlung.visible = true;
   vendingsOpened = 0;
@@ -13460,8 +13891,13 @@ function enterLoungeAfterMars() {
   bossFight.kills = 0;
   bossFight.warned = false;
   /* weapons: lounge wants rifle, unlimited ammo */
+  flameKeyHeld = false;
+  flameMouseHeld = false;
+  mobileFireHeld = false;
+  cancelBoomCharge();
   flameFiring = false;
   weaponIdx = 1;
+  flameOnlyMode = false;
   try { if (flameWpn) flameWpn.visible = false; } catch (_) {}
   try { if (rifleSlung) rifleSlung.visible = true; } catch (_) {}
   try { applyWeaponHud(); } catch (_) {}
@@ -14469,16 +14905,19 @@ function selectWeapon(idx) {
     showMsg("FIND NOT-A-FLAMETHROWER BY THE TRUCKS");
     return;
   }
+  /* always drop boom charge on swap so rifle/flame never "release" a boom */
+  cancelBoomCharge();
   if (idx === 2) {
     flameOnlyMode = true;
     if (weaponIdx === 0 || weaponIdx === 1) lastComboWeapon = weaponIdx;
     weaponIdx = 2;
   } else {
     flameOnlyMode = false;
-    flameFiring = false;
+    flameMouseHeld = false;
     weaponIdx = idx === 1 ? 1 : 0;
     lastComboWeapon = weaponIdx;
   }
+  syncFlameFiring();
   locked = false; lockTarget = null; lockT = 0;
   applyWeaponHud();
   if (weaponIdx === 2) showMsg("🔥 FLAME MODE — hold fire · scroll/Q = boom+rifle");
@@ -14496,7 +14935,7 @@ function toggleWeaponBank() {
   }
   if (flameOnlyMode || weaponIdx === 2) {
     flameOnlyMode = false;
-    flameFiring = false;
+    flameMouseHeld = false;
     selectWeapon(lastComboWeapon === 1 ? 1 : 0);
     showMsg("BOOM / RIFLE · scroll or Q → flame");
   } else {
@@ -15404,6 +15843,8 @@ function update(dt) {
       if (pu.kind === "flamethrower") {
         flameUnlocked = true;
         flameFuel = 200;
+        cancelBoomCharge();
+        flameMouseHeld = false;
         weaponIdx = 2;
         if (flameWpn) flameWpn.visible = true;
         if (rifleSlung) rifleSlung.visible = false;
@@ -15411,6 +15852,7 @@ function update(dt) {
         const am = $("ammoV"); if (am) am.textContent = `${ammo} · 🔥${Math.ceil(flameFuel)}`;
         flameOnlyMode = true;
         lastComboWeapon = 0;
+        syncFlameFiring();
         showMsg("🔥 FLAME MODE — scroll or Q for boom/rifle");
         floatText(pu.mesh.position.clone(), "🔥 SCROLL TO SWAP", { size: 40, color: "#ff6a00", strokeW: 8, life: 1.8 }, 1.0);
         SFX.purge();
@@ -16496,10 +16938,7 @@ function bindMobileControls() {
       return;
     }
     if (typeof cycleWeapon === "function") cycleWeapon();
-    else {
-      weaponIdx = 1 - weaponIdx;
-      if ($("weaponV")) $("weaponV").textContent = weaponIdx ? "DEMONETIZER" : "X BOOMERANG";
-    }
+    else selectWeapon(weaponIdx === 0 ? 1 : 0);
   });
   hold($("mBoom"), () => {
     if (socialActive) {
@@ -16507,11 +16946,11 @@ function bindMobileControls() {
       else showMsg("Face a guest first");
       return;
     }
-    weaponIdx = 0;
-    if ($("weaponV")) $("weaponV").textContent = "X BOOMERANG";
+    /* always go through selectWeapon so flameOnlyMode / flameFiring can't stick */
+    selectWeapon(0);
     throwBoomerang(0.9);
   });
-  /* RIFLE / NEXT POST */
+  /* RIFLE / NEXT POST / current-weapon fire */
   const mR = $("mRifle");
   if (mR) {
     const on = (e) => {
@@ -16523,14 +16962,24 @@ function bindMobileControls() {
         mobileFireHeld = true; /* hold-repeat next post */
         return;
       }
-      if (weaponIdx === 2) { flameFiring = true; mobileFireHeld = true; }
-      else if (weaponIdx === 1) { fireRifle(); mobileFireHeld = true; }
-      else throwBoomerang(false);
+      /* FIRE always uses the equipped weapon — never boom while rifle/flame HUD is up */
+      if (weaponIdx === 2) {
+        flameMouseHeld = true;
+        mobileFireHeld = true;
+        syncFlameFiring();
+      } else if (weaponIdx === 1) {
+        fireRifle();
+        mobileFireHeld = true;
+      } else {
+        /* boom equipped: instant throw (mobile has no charge hold on this button) */
+        throwBoomerang(false);
+      }
     };
     const off = () => {
       mR.classList.remove("held");
-      flameFiring = false;
       mobileFireHeld = false;
+      flameMouseHeld = false;
+      syncFlameFiring();
     };
     mR.addEventListener("pointerdown", on);
     mR.addEventListener("pointerup", off);
@@ -16675,7 +17124,10 @@ setInterval(() => {
   if (mode !== "play") return;
   if (mobileFireHeld && socialActive) { fireRifle(); return; }
   if (mobileFireHeld && weaponIdx === 1) fireRifle();
-  if (mobileFireHeld && weaponIdx === 2) flameFiring = true;
+  if (mobileFireHeld && weaponIdx === 2) {
+    flameMouseHeld = true;
+    syncFlameFiring();
+  }
 }, 160);
 
 function previewLevel2() {
