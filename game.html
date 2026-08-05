@@ -9558,17 +9558,22 @@ function buildLoungeHero() {
   /* Framed portrait on the empty WEST wall (between the bar and the
      Fireside Library). Photo fills the frame opening; plaque above
      holds the house motto on two lines so nothing clips. */
-  const px = -28.3, py = 2.5, pz = 0;
-  const frameOuter = 2.55, photoSide = 2.12; /* photo nearly fills frame */
+  /* Portrait frame matches lounge-bond-hero.jpg (~1500×2151 ≈ 2:3).
+     Old square + center-crop cut the top of his head off. */
+  const px = -28.3, py = 2.65, pz = 0;
+  const photoW = 1.72;
+  const photoH = photoW * (2151 / 1500); /* ~2.47 — full figure in frame */
+  const frameOuterW = photoW + 0.28;
+  const frameOuterH = photoH + 0.28;
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(frameOuter, frameOuter, 0.12),
+    new THREE.BoxGeometry(frameOuterW, frameOuterH, 0.12),
     new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.7, metalness: 0.15 })
   );
   frame.position.set(0, 0, 0);
   g.add(frame);
-  /* gold liner so the photo edge reads as matted into the frame */
+  /* gold liner / mat */
   const liner = new THREE.Mesh(
-    new THREE.BoxGeometry(photoSide + 0.08, photoSide + 0.08, 0.04),
+    new THREE.BoxGeometry(photoW + 0.1, photoH + 0.1, 0.04),
     new THREE.MeshStandardMaterial({ color: 0xc9a24a, metalness: 0.65, roughness: 0.35 })
   );
   liner.position.set(0, 0, 0.05);
@@ -9577,7 +9582,7 @@ function buildLoungeHero() {
     color: 0x334455,
     toneMapped: false
   });
-  const plane = new THREE.Mesh(new THREE.PlaneGeometry(photoSide, photoSide), mat);
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(photoW, photoH), mat);
   plane.position.set(0, 0, 0.09);
   g.add(plane);
   try {
@@ -9585,26 +9590,21 @@ function buildLoungeHero() {
     loader.load("lounge-bond-hero.jpg", (tex) => {
       try {
         tex.colorSpace = THREE.SRGBColorSpace;
-        tex.anisotropy = 4;
-        /* cover-crop into square so photo fills frame (no letterbox bars) */
-        const img = tex.image;
-        if (img && img.width && img.height) {
-          const side = Math.min(img.width, img.height);
-          /* slight zoom so edges tuck under the liner */
-          const zoom = 1.06;
-          tex.repeat.set((side / img.width) * zoom, (side / img.height) * zoom);
-          tex.offset.set(
-            (1 - (side / img.width) * zoom) / 2,
-            (1 - (side / img.height) * zoom) / 2
-          );
-        }
+        tex.anisotropy = 8;
+        tex.wrapS = THREE.ClampToEdgeWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        /* show FULL portrait — no square crop. Tiny inset so edges sit under the mat. */
+        const inset = 0.012;
+        tex.repeat.set(1 - inset * 2, 1 - inset * 2);
+        tex.offset.set(inset, inset);
+        tex.center.set(0.5, 0.5);
         plane.material.map = tex;
         plane.material.color.set(0xffffff);
         plane.material.needsUpdate = true;
       } catch (_) {}
     }, undefined, () => {});
   } catch (_) {}
-  /* brass plaque: two-line motto so text fits inside plaque bounds */
+  /* brass plaque under the portrait */
   const plaqueTex = canvasTex(768, 200, (c2, w, h) => {
     const grad = c2.createLinearGradient(0, 0, 0, h);
     grad.addColorStop(0, "#d8b25e"); grad.addColorStop(0.5, "#b8923e"); grad.addColorStop(1, "#96742c");
@@ -9617,23 +9617,24 @@ function buildLoungeHero() {
     c2.fillText("them all", w / 2, h * 0.68);
   });
   const plaque = new THREE.Mesh(
-    new THREE.BoxGeometry(2.4, 0.62, 0.06),
+    new THREE.BoxGeometry(photoW + 0.15, 0.58, 0.06),
     [null, null, null, null,
       new THREE.MeshBasicMaterial({ map: plaqueTex }),
       new THREE.MeshStandardMaterial({ color: 0x96742c })
     ].map(m => m || new THREE.MeshStandardMaterial({ color: 0x96742c, metalness: 0.6, roughness: 0.4 }))
   );
-  plaque.position.set(0, 1.72, 0.04);
+  plaque.position.set(0, -(photoH / 2) - 0.48, 0.04);
   g.add(plaque);
   /* a soft picture light over the portrait */
-  const lamp = new THREE.PointLight(0xffe0b0, 3, 6);
-  lamp.position.set(0, 1.9, 0.8);
+  const lamp = new THREE.PointLight(0xffe0b0, 3.2, 7);
+  lamp.position.set(0, photoH * 0.35, 0.9);
   g.add(lamp);
   g.position.set(px, py, pz);
   g.rotation.y = Math.PI / 2; /* on the west wall, facing into the room */
   g.visible = false;
   g.userData.isLoungeHero = true;
   g.userData.keepInLounge = true;
+  g.userData.frameVersion = 2;
   if (loungeDecor) loungeDecor.add(g);
   else scene.add(g);
   loungeHero = g;
@@ -9651,14 +9652,20 @@ function clampPigToLounge() {
 function setLoungeHeroVisible(on) {
   try {
     if (on) {
+      /* rebuild if missing or old square-frame version (v1) so portrait fix always applies */
+      if (loungeHero && loungeHero.userData.frameVersion !== 2) {
+        try { if (loungeHero.parent) loungeHero.parent.remove(loungeHero); } catch (_) {}
+        try { scene.remove(loungeHero); } catch (_) {}
+        loungeHero = null;
+      }
       if (!loungeHero) loungeHero = buildLoungeHero();
-      /* re-parent if lounge was rebuilt after hero */
       if (loungeDecor && loungeHero.parent !== loungeDecor) {
         try { if (loungeHero.parent) loungeHero.parent.remove(loungeHero); } catch (_) {}
         loungeDecor.add(loungeHero);
       }
       loungeHero.visible = true;
       loungeHero.userData.keepInLounge = true;
+      loungeHero.userData.frameVersion = 2;
       if (loungeDecor && loungeDecor.userData) {
         loungeDecor.userData.walkBounds = getLoungeWalkBounds();
       }
