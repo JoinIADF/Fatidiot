@@ -6,9 +6,9 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="fatidiot-build" content="20260805f" />
-<!-- build 20260805f: V-audio, SE arcade, discreet zones, portrait, dart markers -->
-<title>Fa'tidiot — Working at X · 20260805f</title>
+<meta name="fatidiot-build" content="20260805g" />
+<!-- build 20260805g: V-audio, SE arcade, discreet zones, portrait, dart markers -->
+<title>Fa'tidiot — Working at X · 20260805g</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #111;
@@ -67,8 +67,48 @@
   @media (max-width: 900px), (pointer: coarse) {
     #bossBarWrap { bottom: max(168px, calc(env(safe-area-inset-bottom, 0px) + 150px)); }
   }
-  #msg { top: 34%; left: 50%; transform: translate(-50%,-50%); width: 100%; text-align: center;
-    font-size: 44px; color: #ffd94a; -webkit-text-stroke: 2px #000; }
+  /* Quiet toast — replaces the giant yellow arcade captions */
+  #msg {
+    top: auto;
+    bottom: max(24px, env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    width: auto;
+    max-width: min(380px, calc(100vw - 32px));
+    text-align: center;
+    font: 500 12.5px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: 0.01em;
+    color: rgba(236, 240, 248, 0.92);
+    -webkit-text-stroke: 0;
+    text-shadow: none;
+    background: rgba(10, 12, 18, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 9px 14px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    z-index: 80;
+  }
+  #msg.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  body.live-lounge #msg,
+  body.lounge-ui #msg,
+  body.darts-active #msg {
+    bottom: max(96px, calc(env(safe-area-inset-bottom, 0px) + 84px));
+  }
+  @media (max-width: 900px), (pointer: coarse) {
+    #msg {
+      font-size: 12px;
+      max-width: min(340px, calc(100vw - 24px));
+      bottom: max(110px, calc(env(safe-area-inset-bottom, 0px) + 100px));
+    }
+  }
   #crosshair { top: 50%; left: 50%; transform: translate(-50%,-50%); color: #4ff; font-size: 22px; }
   #overlay { position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center;
     justify-content: center; background: rgba(6,8,14,0.82); color: #fff; text-align: center; cursor: pointer;
@@ -1805,7 +1845,7 @@
 <body>
 <div id="buildChip" style="position:fixed;bottom:8px;right:10px;z-index:9999;pointer-events:none;
   font:600 10px/1 system-ui,sans-serif;letter-spacing:0.08em;color:rgba(255,255,255,0.45);
-  background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:4px">build 20260805f</div>
+  background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:4px">build 20260805g</div>
 <div id="hud">
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox"><span id="waveLabel">LEVEL</span><br><span id="waveV">1</span></div>
@@ -7155,7 +7195,7 @@ function startTriviaGame() {
   const root = document.getElementById("triviaGame");
   if (root) { root.classList.remove("hidden"); root.setAttribute("aria-hidden", "false"); }
   renderTriviaQ();
-  showMsg("🧠 TRIVIA — 8 questions · 4 players · ~2.5 min");
+  showMsg("Trivia — 8 questions");
   try { SFX.pickup(); } catch (_) {}
 }
 function renderTriviaQ() {
@@ -7563,7 +7603,7 @@ function startRaceGame() {
     if (btn) btn.onclick = () => endRaceGame(false);
   } catch (_) {}
   raceResizeCanvas();
-  showMsg("🏎️ ARCADE GP · SE corner · WASD you · arrows P2 · guests sync · 2 laps");
+  showMsg("Arcade GP — WASD · arrows P2 · 2 laps");
   try { SFX.pickup(); } catch (_) {}
 }
 function raceResizeCanvas() {
@@ -7902,7 +7942,7 @@ function startDartLeague() {
   dartGame.pScores = [0, 0, 0, 0];
   dartGame.mode = dartGame.mode || "201";
   startDartGame();
-  showMsg("🎯 DARTS — pick 201 or Cricket · hold LMB for power · mouse aims");
+  showMsg("Darts — hold click to throw");
 }
 try { window.startDartLeague = startDartLeague; window.startDartGame = startDartGame; } catch (_) {}
 
@@ -9324,7 +9364,7 @@ function liveTVOpenFullscreen() {
   liveTVApplyAudio();
   liveTVSyncFullscreen();
   try { document.exitPointerLock && document.exitPointerLock(); } catch (_) {}
-  try { showMsg("Full screen · V mutes your audio · Esc exits"); } catch (_) {}
+  try { showMsg("Fullscreen · V mute · Esc exit"); } catch (_) {}
 }
 function liveTVCloseFullscreen() {
   liveTV.fullscreen = false;
@@ -10224,7 +10264,7 @@ async function mpStartSession({ name, roomCode }) {
   mpSetHudVisible(true);
   mpUpdateRoomChip();
   mpPushChat({ sys: true, name: "SYSTEM", text: "You joined as unverified guest · " + MP.displayName, t: Date.now() });
-  showMsg("MULTIPLAYER · room " + (MP.roomCode || "····") + " · max 30");
+  showMsg("Room " + (MP.roomCode || "····"));
 }
 
 function mpStopSession() {
@@ -10552,7 +10592,7 @@ function activateSocialLounge() {
         }
       }
     }
-    showMsg((liveLoungeMode ? "Live Lounge open · " : "") + `${Math.min(SOCIAL_VISIBLE, users.length)} in the room · zones labeled for future multiplayer`);
+    showMsg(`${Math.min(SOCIAL_VISIBLE, users.length)} people in the lounge`);
     try { syncLoungeMobileUI(); } catch (_) {}
   });
   try { syncLoungeMobileUI(); } catch (_) {}
@@ -13877,8 +13917,19 @@ function beginWave() {
 let msgT = 0;
 function showMsg(t) {
   const el = $("msg");
-  if (el) el.textContent = t;
-  msgT = 2.8;
+  if (!el) return;
+  /* keep toasts short — strip noisy multiplayer marketing copy */
+  let s = String(t == null ? "" : t).replace(/\s+/g, " ").trim();
+  if (!s) return;
+  s = s
+    .replace(/\s*·\s*zones labeled for future multiplayer/gi, "")
+    .replace(/^Live Lounge open\s*·\s*/i, "")
+    .replace(/\s*·\s*same screen.*/i, "")
+    .trim();
+  if (s.length > 96) s = s.slice(0, 93) + "…";
+  el.textContent = s;
+  el.classList.add("show");
+  msgT = 2.2;
 }
 function paintWallTimer() {
   if (!wallTimerCtx || !wallTimerCanvas) return;
@@ -16837,7 +16888,13 @@ function updateFx(dt) {
     if (r.life <= 0) { scene.remove(r.mesh); rings.splice(i, 1); }
   }
   msgT -= dt;
-  if (msgT <= 0) $("msg").textContent = "";
+  if (msgT <= 0) {
+    const m = $("msg");
+    if (m) {
+      m.textContent = "";
+      m.classList.remove("show");
+    }
+  }
 }
 
 /* lock bracket sprite */
