@@ -11378,7 +11378,7 @@ function setHeroForMiniGame(on) {
 const DART_SECTORS = [6,13,4,18,1,20,5,12,9,14,11,8,16,7,19,3,17,2,15,10];
 const dartGame = {
   active: false, mode: "201", /* "201" | "cricket" */
-  throwsLeft: 0, total: 0, cool: 0, darts: [], flying: [],
+  throwsLeft: 0, total: 0, cool: 0, darts: [], flying: [], fx: [],
   aimY: 0, aimZ: 0, power: 0, charging: false, chargeT: 0,
   arm: null, heldDart: null, reticle: null,
   throwPos: null, boardPos: null, boardR: 0.45,
@@ -11425,39 +11425,137 @@ function forceHideLoungeControls() {
   } catch (_) {}
 }
 function mkDartMesh(color = 0xd44a90) {
+  /* Flight dart — tip along local +X. Used in hand + mid-air. */
   const dart = new THREE.Group();
   dart.name = "Dart";
   const shaft = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.01, 0.012, 0.34, 8),
-    new THREE.MeshBasicMaterial({ color: 0xfff6e0, toneMapped: false, depthTest: false })
+    new THREE.CylinderGeometry(0.008, 0.011, 0.28, 8),
+    new THREE.MeshBasicMaterial({ color: 0xfff6e0, toneMapped: false })
   );
   shaft.rotation.z = Math.PI / 2;
   dart.add(shaft);
   const tip = new THREE.Mesh(
-    new THREE.ConeGeometry(0.01, 0.09, 8),
-    new THREE.MeshBasicMaterial({ color: 0xd0d8e0, toneMapped: false })
+    new THREE.ConeGeometry(0.009, 0.08, 8),
+    new THREE.MeshBasicMaterial({ color: 0xc8d0d8, toneMapped: false })
   );
   tip.rotation.z = -Math.PI / 2;
-  tip.position.x = 0.21;
+  tip.position.x = 0.175;
   dart.add(tip);
   const barrel = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.018, 0.015, 0.1, 10),
+    new THREE.CylinderGeometry(0.015, 0.012, 0.08, 10),
     new THREE.MeshBasicMaterial({ color, toneMapped: false })
   );
   barrel.rotation.z = Math.PI / 2;
-  barrel.position.x = -0.02;
+  barrel.position.x = -0.01;
   dart.add(barrel);
   for (let i = 0; i < 3; i++) {
     const fl = new THREE.Mesh(
-      new THREE.BoxGeometry(0.01, 0.075, 0.055),
+      new THREE.BoxGeometry(0.008, 0.06, 0.042),
       new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false })
     );
-    fl.position.set(-0.14, 0, 0);
+    fl.position.set(-0.12, 0, 0);
     fl.rotation.x = (i / 3) * Math.PI * 2;
     dart.add(fl);
   }
-  dart.scale.setScalar(1.35);
+  dart.scale.setScalar(1.25);
+  dart.userData.dartColor = color;
   return dart;
+}
+/** Compact "stuck in the cork" marker — tip buried, short shaft + flights toward thrower. */
+function mkDartImpactMarker(color = 0xd44a90) {
+  const g = new THREE.Group();
+  g.name = "DartMarker";
+  /* tip (metal) points local +X into the board */
+  const tip = new THREE.Mesh(
+    new THREE.ConeGeometry(0.01, 0.055, 8),
+    new THREE.MeshBasicMaterial({ color: 0xb8c0c8, toneMapped: false })
+  );
+  tip.rotation.z = -Math.PI / 2;
+  tip.position.x = 0.03;
+  g.add(tip);
+  /* short barrel poking out of cork */
+  const barrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.013, 0.011, 0.05, 10),
+    new THREE.MeshBasicMaterial({ color, toneMapped: false })
+  );
+  barrel.rotation.z = Math.PI / 2;
+  barrel.position.x = -0.01;
+  g.add(barrel);
+  /* miniature flights (read clearly from oche) */
+  for (let i = 0; i < 3; i++) {
+    const fl = new THREE.Mesh(
+      new THREE.BoxGeometry(0.006, 0.042, 0.028),
+      new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, toneMapped: false })
+    );
+    fl.position.set(-0.04, 0, 0);
+    fl.rotation.x = (i / 3) * Math.PI * 2;
+    g.add(fl);
+  }
+  /* small impact disc on the face so the hit is obvious even when darts cluster */
+  const pin = new THREE.Mesh(
+    new THREE.CircleGeometry(0.022, 14),
+    new THREE.MeshBasicMaterial({
+      color: 0x0a0c10, transparent: true, opacity: 0.55,
+      side: THREE.DoubleSide, toneMapped: false, depthWrite: false
+    })
+  );
+  pin.rotation.y = Math.PI / 2;
+  pin.position.x = 0.055;
+  g.add(pin);
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.02, 0.034, 18),
+    new THREE.MeshBasicMaterial({
+      color: 0xffe27a, transparent: true, opacity: 0.9,
+      side: THREE.DoubleSide, toneMapped: false, depthWrite: false
+    })
+  );
+  ring.rotation.y = Math.PI / 2;
+  ring.position.x = 0.056;
+  g.add(ring);
+  g.userData.impactRing = ring;
+  g.userData.dartColor = color;
+  g.scale.setScalar(1.15);
+  return g;
+}
+/** Orient a dart/marker so tip (+X local) goes into the board along -normal. */
+function orientDartIntoBoard(mesh, hitPos, boardPos, normal) {
+  const n = (normal && normal.clone) ? normal.clone() : new THREE.Vector3(-1, 0, 0);
+  if (n.lengthSq() < 1e-6) n.set(-1, 0, 0);
+  n.normalize();
+  const into = n.clone().multiplyScalar(-1); /* into cork */
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), into);
+  /* natural scatter angle — real darts never stick perfectly straight */
+  const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+    (Math.random() - 0.5) * 0.28,
+    (Math.random() - 0.5) * 0.22,
+    (Math.random() - 0.5) * 0.18,
+    "XYZ"
+  ));
+  mesh.quaternion.copy(q).multiply(tilt);
+  /* embed tip slightly into cork; leave marker body proud of the face */
+  mesh.position.copy(hitPos).addScaledVector(into, 0.035);
+}
+function spawnDartImpactFX(hitPos, normal, good) {
+  /* brief gold flash ring that fades — sells the thwack */
+  try {
+    const n = (normal && normal.clone) ? normal.clone().normalize() : new THREE.Vector3(-1, 0, 0);
+    const into = n.clone().multiplyScalar(-1);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.03, 0.09, 20),
+      new THREE.MeshBasicMaterial({
+        color: good ? 0xffe27a : 0xff6a6a,
+        transparent: true, opacity: 0.95,
+        side: THREE.DoubleSide, toneMapped: false, depthWrite: false
+      })
+    );
+    ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n.clone().multiplyScalar(-1));
+    ring.position.copy(hitPos).addScaledVector(n, -0.02);
+    scene.add(ring);
+    dartOnLoungeLayer(ring);
+    const life = { mesh: ring, t: 0, dur: 0.35 };
+    if (!dartGame.fx) dartGame.fx = [];
+    dartGame.fx.push(life);
+  } catch (_) {}
 }
 function mkThrowingArm() {
   /* Compact FP arm that FITS the camera frustum (hand visible lower-right).
@@ -11553,6 +11651,10 @@ function resetDartMatch() {
   for (const d of dartGame.darts) try { scene.remove(d); } catch (_) {}
   dartGame.darts = [];
   dartGame.flying = [];
+  if (dartGame.fx) {
+    for (const fx of dartGame.fx) try { scene.remove(fx.mesh); } catch (_) {}
+    dartGame.fx = [];
+  }
   updateDartHud();
   showMsg(dartGame.mode === "201"
     ? "201 — count down to 0 · finish on a DOUBLE"
@@ -11855,22 +11957,48 @@ function finishDartFlight(f) {
   f.alive = false;
   const bp = dartGame.boardPos;
   const R = dartGame.boardR || 0.45;
+  const L = loungeDecor && loungeDecor.userData;
+  const normal = (L && L.dartBoardNormal) ? L.dartBoardNormal.clone() : new THREE.Vector3(-1, 0, 0);
   const hitY = f.end.y, hitZ = f.end.z;
   const offY = hitY - bp.y, offZ = hitZ - bp.z;
   const off = Math.hypot(offY, offZ);
   const onBoard = off <= R * 1.02 && f.power >= 0.25 && f.power <= 0.98;
   const hit = onBoard ? scoreDartHit(offY, offZ, R) : { mult: 0, num: 0, pts: 0, label: f.power < 0.25 ? "SHORT" : "MISS" };
   const msg = applyDartScore(hit);
-  /* stick dart into board (or floor if short) */
-  f.mesh.position.set(f.end.x, f.end.y, f.end.z);
-  f.mesh.rotation.set(0, 0, 0);
-  /* point tip into board (+X local after rot) — board faces -X so tip toward +X from room is -wait: tip is +X of dart mesh */
-  f.mesh.rotation.y = Math.PI / 2; /* tip along +X → into wall from room? board at high X, throw from low X, tip should point +X */
-  f.mesh.rotation.z = (Math.random() - 0.5) * 0.12;
-  f.mesh.rotation.x = (Math.random() - 0.5) * 0.08;
-  dartGame.darts.push(f.mesh);
-  try { SFX.hit(); } catch (_) {}
-  floatText(new THREE.Vector3(bp.x - 0.5, hitY + 0.35, hitZ), msg,
+  /* remove the bulky in-flight mesh — leave a small stuck marker instead */
+  try { scene.remove(f.mesh); } catch (_) {}
+  try { if (f.mesh.parent) f.mesh.parent.remove(f.mesh); } catch (_) {}
+  const color = (f.mesh && f.mesh.userData && f.mesh.userData.dartColor) || 0xff4a8a;
+  const hitPos = new THREE.Vector3(bp.x, hitY, hitZ);
+  if (onBoard) {
+    /* snap to board plane so markers sit on the cork face */
+    hitPos.x = bp.x;
+    const marker = mkDartImpactMarker(color);
+    orientDartIntoBoard(marker, hitPos, bp, normal);
+    scene.add(marker);
+    dartOnLoungeLayer(marker);
+    dartGame.darts.push(marker);
+    spawnDartImpactFX(hitPos, normal, hit.pts > 0);
+    /* punchy hit feel */
+    try {
+      if (hit.pts >= 50) { beep(880, 0.06, "square", 0.06); beep(1320, 0.08, "triangle", 0.05); }
+      else if (hit.pts > 0) { thump(140, 0.07, 0.1); beep(420 + hit.pts * 4, 0.05, "triangle", 0.04); }
+      else { noiseBurst(0.05, 0.05, 1800, 400); }
+      SFX.hit();
+    } catch (_) {}
+    dartGame.shake = Math.max(dartGame.shake, hit.pts >= 50 ? 0.55 : hit.pts > 0 ? 0.32 : 0.18);
+  } else {
+    /* miss / short — dart drops as a small floor marker, not a floating flat bar */
+    const drop = mkDartImpactMarker(color);
+    drop.scale.setScalar(0.85);
+    drop.position.set(f.end.x, 0.06, f.end.z);
+    drop.rotation.set(Math.PI / 2, Math.random() * Math.PI, 0);
+    scene.add(drop);
+    dartOnLoungeLayer(drop);
+    dartGame.darts.push(drop);
+    try { noiseBurst(0.06, 0.07, 900, 200); } catch (_) {}
+  }
+  floatText(new THREE.Vector3(bp.x - 0.55, hitY + 0.38, hitZ), msg,
     { size: 36, color: hit.pts >= 50 ? "#7CFFB0" : hit.pts > 0 ? "#ffd94a" : "#ff6a6a", strokeW: 6 }, 1.1);
   updateDartHud();
   /* new dart in hand */
@@ -11997,14 +12125,45 @@ function updateDartGame(dt) {
     f.mesh.position.lerpVectors(f.start, f.end, e);
     /* gravity arc peaks mid-flight */
     f.mesh.position.y += Math.sin(u * Math.PI) * f.arc;
-    /* tip follows velocity */
-    const u2 = Math.min(1, u + 0.04);
+    /* tip (+X) follows velocity for a real thrown-dart silhouette */
+    const u2 = Math.min(1, u + 0.05);
     const next = new THREE.Vector3().lerpVectors(f.start, f.end, 1 - Math.pow(1 - u2, 1.35));
     next.y += Math.sin(u2 * Math.PI) * f.arc;
-    f.mesh.lookAt(next);
-    f.mesh.rotateY(Math.PI / 2);
-    f.mesh.rotateX(u * (f.spin || 0) * 0.15);
+    const vel = next.clone().sub(f.mesh.position);
+    if (vel.lengthSq() > 1e-8) {
+      vel.normalize();
+      f.mesh.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), vel);
+      /* light spin on roll axis while airborne */
+      f.mesh.rotateX(u * (f.spin || 0) * 0.2);
+    }
     if (u >= 1) finishDartFlight(f);
+  }
+  /* impact FX fade */
+  if (dartGame.fx && dartGame.fx.length) {
+    for (let i = dartGame.fx.length - 1; i >= 0; i--) {
+      const fx = dartGame.fx[i];
+      fx.t += dt;
+      const k = Math.min(1, fx.t / fx.dur);
+      if (fx.mesh) {
+        try {
+          fx.mesh.scale.setScalar(1 + k * 1.8);
+          if (fx.mesh.material) fx.mesh.material.opacity = 0.95 * (1 - k);
+        } catch (_) {}
+      }
+      if (k >= 1) {
+        try { scene.remove(fx.mesh); } catch (_) {}
+        dartGame.fx.splice(i, 1);
+      }
+    }
+  }
+  /* stuck markers: settle ring pulse once */
+  for (const d of dartGame.darts) {
+    if (d.userData && d.userData.impactRing && d.userData.ringT == null) d.userData.ringT = 0;
+    if (d.userData && d.userData.impactRing && d.userData.ringT < 0.5) {
+      d.userData.ringT += dt;
+      const k = Math.min(1, d.userData.ringT / 0.5);
+      try { d.userData.impactRing.material.opacity = 0.9 * (1 - k * 0.75); } catch (_) {}
+    }
   }
 }
 function dartAimFromMouse(dx, dy) {
