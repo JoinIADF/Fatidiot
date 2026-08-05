@@ -3,8 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<!-- dart-markers-v2 -->
-<title>Fa'tidiot — Working at X</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="fatidiot-build" content="20260805e" />
+<!-- build 20260805e: V-audio, SE arcade, discreet zones, portrait, dart markers -->
+<title>Fa'tidiot — Working at X · 20260805e</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #111;
@@ -1799,6 +1803,9 @@
 </style>
 </head>
 <body>
+<div id="buildChip" style="position:fixed;bottom:8px;right:10px;z-index:9999;pointer-events:none;
+  font:600 10px/1 system-ui,sans-serif;letter-spacing:0.08em;color:rgba(255,255,255,0.45);
+  background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:4px">build 20260805e</div>
 <div id="hud">
   <div id="score" class="hudBox">SCORE<br><span id="scoreV">0</span></div>
   <div id="wave" class="hudBox"><span id="waveLabel">LEVEL</span><br><span id="waveV">1</span></div>
@@ -7023,7 +7030,7 @@ function enhanceLiveLoungeDetail(g) {
     lb(cx, cz, 0.55, 0.55, 4);
   }
 
-  g.userData.liveLoungeV = 4;
+  g.userData.liveLoungeV = 12;
 }
 
 function nearestSeat(maxDist = 1.85) {
@@ -7995,7 +8002,7 @@ function buildIndependentLoungeWorld() {
   g.name = "LiveLoungeWorld";
   g.userData.liveLounge = true;
   g.userData.independent = true;
-  g.userData.liveLoungeV = 11;
+  g.userData.liveLoungeV = 12;
   g.userData.seats = [];
   g.userData.zones = [];
   g.userData.gameSpots = [];
@@ -8665,10 +8672,7 @@ function buildIndependentLoungeWorld() {
       }
       addZone("Darts Alley", ocheX, boardZ, "#7CFFB0");
       try { addPlaque("DARTS", ocheX + 0.5, 1.1, boardZ - 1.35, 0, "#7CFFB0"); } catch (_) {}
-      const dt = textSprite("DARTS · walk to oche", { size: 28, color: "#7CFFB0", strokeW: 5, maxWidth: 0 });
-      dt.scale.multiplyScalar(0.5);
-      dt.position.set(ocheX, 2.5, boardZ + 1.6);
-      g.add(dt);
+      /* discreet darts plaque only */
       const title = textSprite("DARTBOARD", { size: 32, color: "#ffd94a", strokeW: 6, maxWidth: 0 });
       title.scale.multiplyScalar(0.45);
       title.position.set(boardX - 0.2, boardY + boardR + 0.35, boardZ);
