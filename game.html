@@ -14067,9 +14067,11 @@ function startRocketIgnition(preferredMesh) {
     return;
   }
   rocketLift = { mesh, t: 0, phase: "ignite", smokeT: 0 };
-  showMsg("IGNITION — STARSHIP IS LIFTING OFF");
+  if (!(marsState && marsState.phase === "cutscene")) {
+    showMsg("Starship lifting off");
+  }
   try { SFX.wave(); SFX.purge(); SFX.bossRage(); } catch (_) {}
-  shake = Math.max(shake, 0.7);
+  shake = Math.max(shake, 0.85);
   /* engine plume */
   const plume = new THREE.Group();
   for (let i = 0; i < 5; i++) {
@@ -14117,8 +14119,9 @@ function updateRocketLift(dt) {
       showMsg("STARSHIP ASCENDING — GROK PORTAL OPENING");
     }
   } else if (r.phase === "lift") {
-    /* slow majestic climb */
-    m.position.y += 3.8 * dt;
+    /* majestic climb — faster when hero is aboard (final escape) */
+    const heroRide = !!(marsState && (marsState.phase === "cutscene" || marsState.phase === "done"));
+    m.position.y += (heroRide ? 6.5 : 3.8) * dt;
     m.rotation.z = Math.sin(r.t * 1.5) * 0.02;
     if (m.userData.plume) {
       m.userData.plume.children.forEach((c, i) => {
@@ -14211,51 +14214,540 @@ function updateMarsEscape(dt) {
     const d = Math.hypot(pig.position.x - M.rocket.position.x, pig.position.z - M.rocket.position.z);
     if (d < 5.5 && !onGround) startEscapeCutscene();
   } else if (M.phase === "cutscene") {
-    window.__camLock = true;
-    const R = M.rocket;
-    if (M.t < 3.0) {
-      /* the hero turns to the crowd and raises the finger */
-      pig.position.set(R.position.x, 0, R.position.z + 5.2);
-      const camP = new THREE.Vector3(R.position.x, 1.6, R.position.z + 11);
-      camera.position.lerp(camP, Math.min(1, dt * 4));
-      camera.lookAt(pig.position.x, 1.4, pig.position.z);
-      pig.rotation.y = 0; /* face the lot (and the camera) */
-      if (!M.finger) {
-        M.finger = textSprite("🖕", { size: 90, color: "#ffd0a0", strokeW: 6, maxWidth: 0 });
-        M.finger.position.set(R.position.x, 3.2, R.position.z + 5.2);
-        M.finger.scale.multiplyScalar(0.01);
-        scene.add(M.finger);
-        try { say("So long, losers.", { rate: 0.9 }); } catch (_) {}
-      }
-      M.finger.scale.setScalar(Math.min(2.4, M.t * 1.6));
-    } else if (M.t < 4.0) {
-      /* board */
-      if (M.finger) { scene.remove(M.finger); M.finger = null; }
-      pig.visible = false;
-      if (M.tag) { scene.remove(M.tag); M.tag = null; }
-    } else if (M.t < 4.2 && !M.launched) {
-      M.launched = true;
-      rocketLift = null; /* free the launcher for rocket 2 */
-      try { startRocketIgnition(M.rocket); } catch (_) {}
-    } else if (M.t >= 4.2) {
-      /* low hero-shot of the climb — the hero is aboard, keep him hidden */
-      pig.visible = false;
-      const camP = new THREE.Vector3(M.rocket.position.x + 9, 2.5, M.rocket.position.z + 16);
-      camera.position.lerp(camP, Math.min(1, dt * 2));
-      camera.lookAt(M.rocket.position.x, Math.max(6, M.rocket.position.y + 14), M.rocket.position.z);
-      if (M.t >= 12) marsVictory();
-    }
+    updateEscapeCutscene(dt);
   }
+}
+/* —— Dramatic Starbase boarding cutscene ——
+ * close-up → slow walk (spacesuit, helmet at side) → helmet on → turn to war-torn pad
+ * → fist → middle finger → enter rocket → blast-off with Mars in the sky. */
+function buildEscapeSpacesuit() {
+  const g = new THREE.Group();
+  g.name = "EscapeSuit";
+  const WHITE = 0xe8eef4, WHITE2 = 0xc8d0dc, ORANGE = 0xff6a20, NAVY = 0x1a2840, VISOR = 0x1a3048;
+  /* torso / PLSS backpack */
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 0.95, 14),
+    new THREE.MeshLambertMaterial({ color: WHITE, flatShading: true }));
+  torso.position.y = 0.95;
+  g.add(torso);
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.55, 0.35),
+    new THREE.MeshLambertMaterial({ color: WHITE2, flatShading: true }));
+  chest.position.set(0, 1.05, 0.35);
+  g.add(chest);
+  /* NASA-ish orange stripes */
+  for (const y of [0.7, 1.15]) {
+    g.add(box(0.9, 0.06, 0.72, ORANGE, 0, y, 0.05));
+  }
+  const pack = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.7, 0.35),
+    new THREE.MeshLambertMaterial({ color: WHITE2, flatShading: true }));
+  pack.position.set(0, 1.1, -0.45);
+  g.add(pack);
+  /* legs */
+  for (const s of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.7, 10),
+      new THREE.MeshLambertMaterial({ color: WHITE, flatShading: true }));
+    leg.position.set(0.22 * s, 0.35, 0.05);
+    g.add(leg);
+    g.add(box(0.28, 0.12, 0.36, NAVY, 0.22 * s, 0.06, 0.08));
+  }
+  /* arms */
+  for (const s of [-1, 1]) {
+    const arm = new THREE.Group();
+    arm.add(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.13, 0.55, 8),
+      new THREE.MeshLambertMaterial({ color: WHITE, flatShading: true })));
+    const glove = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 8),
+      new THREE.MeshLambertMaterial({ color: ORANGE, flatShading: true }));
+    glove.position.y = -0.35;
+    arm.add(glove);
+    arm.position.set(0.62 * s, 1.15, 0.1);
+    arm.rotation.z = 0.35 * s;
+    g.add(arm);
+    if (s < 0) g.userData.armL = arm;
+    else g.userData.armR = arm;
+  }
+  /* helmet (held, then worn) — spherical with gold visor */
+  const helm = new THREE.Group();
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12),
+    new THREE.MeshLambertMaterial({ color: WHITE, flatShading: true }));
+  helm.add(dome);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.55),
+    new THREE.MeshBasicMaterial({ color: 0xc9a24a, transparent: true, opacity: 0.75 }));
+  visor.position.set(0, -0.02, 0.18);
+  visor.rotation.x = 0.35;
+  helm.add(visor);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.04, 8, 20),
+    new THREE.MeshLambertMaterial({ color: NAVY, flatShading: true }));
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = -0.18;
+  helm.add(rim);
+  helm.position.set(-0.55, 0.85, 0.35); /* at side initially */
+  helm.scale.setScalar(0.85);
+  g.add(helm);
+  g.userData.helmet = helm;
+  g.userData.helmetWorn = false;
+  /* neck ring when helmet off */
+  const neck = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 8, 16),
+    new THREE.MeshLambertMaterial({ color: NAVY, flatShading: true }));
+  neck.rotation.x = Math.PI / 2;
+  neck.position.set(0, 1.45, 0.05);
+  g.add(neck);
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+  return g;
+}
+function spawnBattlefieldCorpses(around) {
+  const corpses = [];
+  const n = 14;
+  for (let i = 0; i < n; i++) {
+    const g = new THREE.Group();
+    const isSpam = i % 3 === 0;
+    if (isSpam) {
+      const tin = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.45, 0.45, 0.7, 12),
+        new THREE.MeshLambertMaterial({ color: 0x04246b, flatShading: true })
+      );
+      tin.rotation.z = Math.PI / 2;
+      tin.rotation.y = rand(0, Math.PI);
+      tin.position.y = 0.35;
+      g.add(tin);
+    } else {
+      /* downed bot torso + head */
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7, 0.35, 1.1),
+        new THREE.MeshLambertMaterial({ color: pick([0x3a4050, 0x2a3040, 0x4a3020]), flatShading: true })
+      );
+      body.position.y = 0.25;
+      body.rotation.z = rand(-0.4, 0.4);
+      body.rotation.y = rand(0, Math.PI * 2);
+      g.add(body);
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.22, 8, 8),
+        new THREE.MeshLambertMaterial({ color: 0x1a1e28, flatShading: true })
+      );
+      head.position.set(rand(-0.2, 0.2), 0.35, 0.55);
+      g.add(head);
+      /* scorch / blood-ish mark on ground */
+      const stain = new THREE.Mesh(
+        new THREE.CircleGeometry(rand(0.4, 0.9), 10),
+        new THREE.MeshBasicMaterial({ color: 0x1a0808, transparent: true, opacity: 0.55, depthTest: false })
+      );
+      stain.rotation.x = -Math.PI / 2;
+      stain.position.y = 0.02;
+      g.add(stain);
+    }
+    const ang = (i / n) * Math.PI * 2 + rand(-0.2, 0.2);
+    const dist = 6 + rand(0, 14);
+    g.position.set(
+      around.x + Math.cos(ang) * dist,
+      0,
+      around.z + Math.sin(ang) * dist + rand(2, 10)
+    );
+    g.rotation.y = rand(0, Math.PI * 2);
+    scene.add(g);
+    corpses.push(g);
+  }
+  /* tip over any remaining live enemies near the pad */
+  try {
+    for (const e of enemies) {
+      if (!e || !e.mesh) continue;
+      const d = Math.hypot(e.mesh.position.x - around.x, e.mesh.position.z - around.z);
+      if (d < 40) {
+        e.mesh.rotation.z = Math.PI / 2 * (Math.random() > 0.5 ? 1 : -1);
+        e.mesh.position.y = 0.3;
+        e.hp = 0;
+        e.dead = true;
+      }
+    }
+  } catch (_) {}
+  return corpses;
+}
+function placeEscapeMarsSky() {
+  /* small reddish Mars disc in the upper sky */
+  const mars = new THREE.Mesh(
+    new THREE.SphereGeometry(3.2, 24, 16),
+    new THREE.MeshBasicMaterial({ color: 0xc45a32, toneMapped: false })
+  );
+  /* subtle dark maria */
+  const spot = new THREE.Mesh(
+    new THREE.SphereGeometry(3.25, 16, 12),
+    new THREE.MeshBasicMaterial({ color: 0x8a3a22, transparent: true, opacity: 0.35, toneMapped: false })
+  );
+  spot.scale.set(0.7, 0.5, 0.8);
+  mars.add(spot);
+  mars.position.set(28, 42, -55);
+  scene.add(mars);
+  return mars;
+}
+function cleanupEscapeCutscene(M) {
+  try {
+    if (M.suit && M.suit.parent) M.suit.parent.remove(M.suit);
+  } catch (_) {}
+  try {
+    if (M.corpses) for (const c of M.corpses) scene.remove(c);
+  } catch (_) {}
+  try { if (M.marsSky) scene.remove(M.marsSky); } catch (_) {}
+  try { if (M.finger) scene.remove(M.finger); } catch (_) {}
+  try { if (M.fist) scene.remove(M.fist); } catch (_) {}
+  try {
+    pig.scale.setScalar(1);
+    pig.children.forEach(ch => {
+      if (ch && ch.name === "EscapeSuit") return;
+      ch.visible = true;
+    });
+    if (rifleSlung) rifleSlung.visible = true;
+    if (rifleHeld) rifleHeld.visible = false;
+    if (flameWpn) flameWpn.visible = false;
+  } catch (_) {}
+  M.suit = null; M.corpses = null; M.marsSky = null; M.finger = null; M.fist = null;
 }
 function startEscapeCutscene() {
   if (!marsState || marsState.phase !== "board") return;
-  marsState.phase = "cutscene";
-  marsState.t = 0;
+  const M = marsState;
+  M.phase = "cutscene";
+  M.t = 0;
+  M.act = "closeup";
+  M.launched = false;
+  M._said = {};
   pigVy = 0; pigY = 0; onGround = true;
-  invuln = 999; /* nothing interrupts the exit */
+  invuln = 999;
   spawnQueue = 0;
-  showMsg("🖕 SEE YOU NEVER");
+  /* freeze combat noise */
+  try {
+    for (const e of enemies) { if (e) e.hp = 0; }
+  } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+  try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
+  window.__camLock = true;
+  /* strip combat weapons from view; don spacesuit */
+  try {
+    if (rifleSlung) rifleSlung.visible = false;
+    if (rifleHeld) rifleHeld.visible = false;
+    if (flameWpn) flameWpn.visible = false;
+  } catch (_) {}
+  /* hide hog combat silhouette pieces under the suit (body still anchors transform) */
+  try {
+    pig.children.forEach(ch => {
+      if (ch === rifleSlung || ch === rifleHeld || ch === flameWpn) return;
+      if (ch.userData && ch.userData.keepForCutscene) return;
+      ch.visible = false;
+    });
+  } catch (_) {}
+  M.suit = buildEscapeSpacesuit();
+  pig.add(M.suit);
+  pig.visible = true;
+  const R = M.rocket;
+  /* start a few meters from the rocket on the pad */
+  M.walkFrom = new THREE.Vector3(R.position.x + 2.2, 0, R.position.z + 14);
+  M.walkTo = new THREE.Vector3(R.position.x + 0.4, 0, R.position.z + 4.2);
+  pig.position.copy(M.walkFrom);
+  pig.rotation.y = Math.atan2(-(M.walkTo.x - M.walkFrom.x), -(M.walkTo.z - M.walkFrom.z));
+  if (M.tag) { try { scene.remove(M.tag); } catch (_) {} M.tag = null; }
+  M.corpses = spawnBattlefieldCorpses(R.position);
+  M.marsSky = placeEscapeMarsSky();
+  /* dramatic dusk sky for the exit */
+  try {
+    scene.background = new THREE.Color(0x0a0618);
+    scene.fog = new THREE.Fog(0x0a0618, 40, 160);
+  } catch (_) {}
+  showMsg("Your ride home");
+  try { say("Time to leave.", { rate: 0.88 }); } catch (_) {}
+  try { SFX.wave(); beep(220, 0.4, "sine", 0.06); } catch (_) {}
+  shake = Math.max(shake, 0.15);
+}
+function updateEscapeCutscene(dt) {
+  const M = marsState;
+  if (!M || M.phase !== "cutscene") return;
+  window.__camLock = true;
+  const R = M.rocket;
+  const suit = M.suit;
+  const helm = suit && suit.userData.helmet;
+  const t = M.t;
+  /* easing helper */
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const smooth = (a, b, u) => a + (b - a) * (u * u * (3 - 2 * u));
+
+  /* ===== ACT TIMES (seconds) ===== */
+  const T_CLOSE = 2.6;
+  const T_WALK_END = 8.0;
+  const T_HELM_END = 10.2;
+  const T_APPROACH = 12.0;
+  const T_TURN = 15.2;
+  const T_FIST = 17.2;
+  const T_FINGER = 20.2;
+  const T_ENTER = 22.4;
+  const T_IGNITE = 23.0;
+  const T_VICTORY = 34.0;
+
+  if (t < T_CLOSE) {
+    /* CLOSE-UP — suit, helmet at side, face toward camera */
+    M.act = "closeup";
+    pig.position.copy(M.walkFrom);
+    pig.rotation.y = Math.PI; /* face camera approach from south */
+    const camP = new THREE.Vector3(
+      pig.position.x + 0.4,
+      1.55,
+      pig.position.z + 2.4
+    );
+    camera.position.lerp(camP, Math.min(1, dt * 3.5));
+    camera.lookAt(pig.position.x, 1.35, pig.position.z);
+    if (helm) {
+      helm.position.set(-0.55, 0.85, 0.35);
+      helm.rotation.set(0.15, 0.4, 0.2);
+    }
+    if (suit && suit.userData.armL) suit.userData.armL.rotation.z = -0.5;
+    if (suit && suit.userData.armR) suit.userData.armR.rotation.z = 0.25;
+    /* slow push-in */
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 55, 38, dt * 1.2);
+    camera.updateProjectionMatrix();
+  } else if (t < T_WALK_END) {
+    /* SLOW WALK toward rocket with helmet swinging at side */
+    M.act = "walk";
+    if (!M._said.walk) {
+      M._said.walk = true;
+      showMsg("Boarding the Starship");
+      try { beep(180, 0.15, "triangle", 0.04); } catch (_) {}
+    }
+    const u = clamp01((t - T_CLOSE) / (T_WALK_END - T_CLOSE));
+    const e = u * u * (3 - 2 * u);
+    pig.position.lerpVectors(M.walkFrom, M.walkTo, e);
+    pig.position.y = Math.abs(Math.sin(u * Math.PI * 6)) * 0.04; /* subtle steps */
+    const face = Math.atan2(M.walkTo.x - M.walkFrom.x, M.walkTo.z - M.walkFrom.z);
+    pig.rotation.y = face;
+    /* camera tracks from the side, slightly low and heroic */
+    const side = new THREE.Vector3(
+      pig.position.x + Math.cos(face) * 5.5,
+      1.7 + Math.sin(u * Math.PI) * 0.4,
+      pig.position.z + Math.sin(face) * 5.5 + 2.5
+    );
+    camera.position.lerp(side, Math.min(1, dt * 2.2));
+    camera.lookAt(pig.position.x, 1.3, pig.position.z);
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 45, 48, dt * 2);
+    camera.updateProjectionMatrix();
+    if (helm) {
+      helm.position.set(-0.58, 0.75 + Math.sin(t * 6) * 0.04, 0.3);
+      helm.rotation.set(0.2 + Math.sin(t * 5) * 0.08, 0.5, 0.25);
+    }
+    if (suit && suit.userData.armL) {
+      suit.userData.armL.rotation.z = -0.55;
+      suit.userData.armL.rotation.x = Math.sin(t * 6) * 0.15;
+    }
+    if (suit && suit.userData.armR) {
+      suit.userData.armR.rotation.z = 0.3;
+      suit.userData.armR.rotation.x = Math.sin(t * 6 + Math.PI) * 0.25;
+    }
+  } else if (t < T_HELM_END) {
+    /* PUT HELMET ON */
+    M.act = "helmet";
+    if (!M._said.helm) {
+      M._said.helm = true;
+      showMsg("Helmet sealed");
+      try { noiseBurst(0.12, 0.1, 2500, 400); beep(440, 0.08, "square", 0.05); } catch (_) {}
+    }
+    pig.position.copy(M.walkTo);
+    pig.position.y = 0;
+    const face = Math.atan2(R.position.x - pig.position.x, R.position.z - pig.position.z);
+    pig.rotation.y = face;
+    const u = clamp01((t - T_WALK_END) / (T_HELM_END - T_WALK_END));
+    if (helm) {
+      /* arc from hip → overhead → head */
+      const hip = new THREE.Vector3(-0.55, 0.85, 0.35);
+      const up = new THREE.Vector3(0.1, 2.0, 0.2);
+      const head = new THREE.Vector3(0, 1.55, 0.05);
+      if (u < 0.55) {
+        const k = u / 0.55;
+        helm.position.lerpVectors(hip, up, k * k * (3 - 2 * k));
+      } else {
+        const k = (u - 0.55) / 0.45;
+        helm.position.lerpVectors(up, head, k * k * (3 - 2 * k));
+        if (k > 0.85) {
+          suit.userData.helmetWorn = true;
+          helm.scale.setScalar(1.0);
+        }
+      }
+      helm.rotation.set(0.1 * (1 - u), 0.4 * (1 - u), 0);
+    }
+    if (suit && suit.userData.armL) {
+      suit.userData.armL.rotation.z = -0.2 - u * 0.8;
+      suit.userData.armL.rotation.x = -u * 1.1;
+    }
+    const camP = new THREE.Vector3(pig.position.x + 2.2, 1.7, pig.position.z + 3.2);
+    camera.position.lerp(camP, Math.min(1, dt * 3));
+    camera.lookAt(pig.position.x, 1.45, pig.position.z);
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 48, 40, dt * 2);
+    camera.updateProjectionMatrix();
+  } else if (t < T_APPROACH) {
+    /* step to hatch */
+    M.act = "approach";
+    const u = clamp01((t - T_HELM_END) / (T_APPROACH - T_HELM_END));
+    const hatch = new THREE.Vector3(R.position.x + 0.2, 0, R.position.z + 2.4);
+    pig.position.lerpVectors(M.walkTo, hatch, u * u * (3 - 2 * u));
+    pig.rotation.y = Math.atan2(R.position.x - pig.position.x, R.position.z - pig.position.z);
+    if (helm && suit.userData.helmetWorn) {
+      helm.position.set(0, 1.55, 0.05);
+      helm.rotation.set(0, 0, 0);
+      helm.scale.setScalar(1);
+    }
+    const camP = new THREE.Vector3(pig.position.x + 3.5, 2.0, pig.position.z + 5.5);
+    camera.position.lerp(camP, Math.min(1, dt * 2.5));
+    camera.lookAt(R.position.x, 6, R.position.z);
+  } else if (t < T_TURN) {
+    /* TURN BACK toward Starbase battlefield — corpses in frame */
+    M.act = "turn";
+    if (!M._said.turn) {
+      M._said.turn = true;
+      showMsg("Look what we did");
+      try { say("Look at that mess.", { rate: 0.9 }); } catch (_) {}
+      try { thump(55, 0.3, 0.12); } catch (_) {}
+    }
+    const hatch = new THREE.Vector3(R.position.x + 0.2, 0, R.position.z + 2.6);
+    pig.position.copy(hatch);
+    const u = clamp01((t - T_APPROACH) / (T_TURN - T_APPROACH));
+    /* rotate from facing rocket to facing the lot (south / +Z-ish battlefield) */
+    const fromY = Math.atan2(R.position.x - hatch.x, R.position.z - hatch.z);
+    const toY = 0; /* face +Z toward corpses spread on pad */
+    pig.rotation.y = smooth(fromY, toY + Math.PI, u); /* face away from rocket toward field */
+    /* camera over shoulder → wide war-torn reveal */
+    const camNear = new THREE.Vector3(hatch.x - 1.5, 2.0, hatch.z + 3.5);
+    const camWide = new THREE.Vector3(hatch.x + 2.0, 3.2, hatch.z + 12);
+    camera.position.lerpVectors(camNear, camWide, u * u);
+    const look = new THREE.Vector3(
+      hatch.x + Math.sin(pig.rotation.y) * 8,
+      1.0,
+      hatch.z + Math.cos(pig.rotation.y) * 10
+    );
+    camera.lookAt(look.x, 0.8, look.z);
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 45, 55, dt * 2);
+    camera.updateProjectionMatrix();
+    if (suit && suit.userData.armR) {
+      suit.userData.armR.rotation.z = 0.2;
+      suit.userData.armR.rotation.x = 0;
+    }
+  } else if (t < T_FIST) {
+    /* FIST RAISE */
+    M.act = "fist";
+    if (!M._said.fist) {
+      M._said.fist = true;
+      showMsg("For the purge");
+      try { beep(160, 0.2, "sawtooth", 0.07); thump(70, 0.25, 0.14); } catch (_) {}
+      try { say("For the purge.", { rate: 0.85 }); } catch (_) {}
+    }
+    const hatch = new THREE.Vector3(R.position.x + 0.2, 0, R.position.z + 2.6);
+    pig.position.copy(hatch);
+    pig.rotation.y = Math.PI; /* face battlefield / camera */
+    const u = clamp01((t - T_TURN) / (T_FIST - T_TURN));
+    if (suit && suit.userData.armR) {
+      suit.userData.armR.rotation.z = 0.2 - u * 0.1;
+      suit.userData.armR.rotation.x = -u * 2.4; /* raise overhead */
+    }
+    if (!M.fist && u > 0.3) {
+      M.fist = textSprite("✊", { size: 96, color: "#ffd0a0", strokeW: 4, maxWidth: 0 });
+      M.fist.position.set(pig.position.x + 0.35, 2.6, pig.position.z + 0.2);
+      scene.add(M.fist);
+    }
+    if (M.fist) {
+      M.fist.position.set(pig.position.x + 0.4, 2.4 + u * 0.5, pig.position.z + 0.15);
+      M.fist.scale.setScalar(0.8 + u * 1.4);
+    }
+    const camP = new THREE.Vector3(pig.position.x, 1.8, pig.position.z + 5.5);
+    camera.position.lerp(camP, Math.min(1, dt * 3));
+    camera.lookAt(pig.position.x, 1.7, pig.position.z);
+    shake = Math.max(shake, 0.12);
+  } else if (t < T_FINGER) {
+    /* MIDDLE FINGER */
+    M.act = "finger";
+    if (!M._said.finger) {
+      M._said.finger = true;
+      if (M.fist) { try { scene.remove(M.fist); } catch (_) {} M.fist = null; }
+      showMsg("So long");
+      try { say("So long, losers.", { rate: 0.9 }); } catch (_) {}
+      try { beep(90, 0.25, "square", 0.06); noiseBurst(0.15, 0.1, 1800, 200); } catch (_) {}
+    }
+    const hatch = new THREE.Vector3(R.position.x + 0.2, 0, R.position.z + 2.6);
+    pig.position.copy(hatch);
+    pig.rotation.y = Math.PI;
+    const u = clamp01((t - T_FIST) / (T_FINGER - T_FIST));
+    if (suit && suit.userData.armR) {
+      suit.userData.armR.rotation.x = -1.2;
+      suit.userData.armR.rotation.z = 0.1;
+    }
+    if (!M.finger) {
+      M.finger = textSprite("🖕", { size: 110, color: "#ffd0a0", strokeW: 5, maxWidth: 0 });
+      M.finger.position.set(pig.position.x + 0.45, 2.5, pig.position.z + 0.3);
+      scene.add(M.finger);
+    }
+    M.finger.position.set(pig.position.x + 0.5, 2.3 + Math.sin(t * 3) * 0.05, pig.position.z + 0.25);
+    M.finger.scale.setScalar(Math.min(2.8, 0.5 + u * 2.6));
+    const camP = new THREE.Vector3(pig.position.x - 0.5, 1.65, pig.position.z + 4.2);
+    camera.position.lerp(camP, Math.min(1, dt * 3.5));
+    camera.lookAt(pig.position.x, 1.6, pig.position.z);
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 50, 36, dt * 2);
+    camera.updateProjectionMatrix();
+    shake = Math.max(shake, 0.08);
+  } else if (t < T_ENTER) {
+    /* TURN and ENTER rocket */
+    M.act = "enter";
+    if (!M._said.enter) {
+      M._said.enter = true;
+      if (M.finger) { try { scene.remove(M.finger); } catch (_) {} M.finger = null; }
+      showMsg("Ignition sequence");
+      try { thump(50, 0.4, 0.16); SFX.wave(); } catch (_) {}
+    }
+    const u = clamp01((t - T_FINGER) / (T_ENTER - T_FINGER));
+    const hatch = new THREE.Vector3(R.position.x + 0.2, 0, R.position.z + 2.6);
+    const door = new THREE.Vector3(R.position.x, 0.4, R.position.z + 0.6);
+    pig.position.lerpVectors(hatch, door, u * u * (3 - 2 * u));
+    pig.position.y = u * 1.2; /* climb hatch */
+    pig.rotation.y = smooth(Math.PI, 0, u); /* turn into rocket */
+    pig.scale.setScalar(1 - u * 0.35);
+    if (u > 0.85) pig.visible = false;
+    const camP = new THREE.Vector3(R.position.x + 6, 3 + u * 2, R.position.z + 10);
+    camera.position.lerp(camP, Math.min(1, dt * 2));
+    camera.lookAt(R.position.x, 4 + u * 4, R.position.z);
+  } else if (t < T_IGNITE) {
+    /* brief hold then launch */
+    M.act = "ignite";
+    pig.visible = false;
+    if (!M.launched) {
+      M.launched = true;
+      rocketLift = null;
+      try { startRocketIgnition(R); } catch (_) {}
+      try {
+        showMsg("Liftoff");
+        SFX.purge();
+        SFX.bossRage && SFX.bossRage();
+        noiseBurst(0.5, 0.28, 1200, 40);
+        thump(40, 0.6, 0.22);
+      } catch (_) {}
+      shake = Math.max(shake, 0.9);
+    }
+  } else {
+    /* DRAMATIC BLAST-OFF — Mars visible, camera pulls to heroic angle */
+    M.act = "liftoff";
+    pig.visible = false;
+    const ry = Math.max(6, R.position.y);
+    /* cinematic orbit pull-back */
+    const ang = (t - T_IGNITE) * 0.18;
+    const dist = 18 + (t - T_IGNITE) * 2.2;
+    const camP = new THREE.Vector3(
+      R.position.x + Math.cos(ang) * dist,
+      4 + (t - T_IGNITE) * 1.4,
+      R.position.z + Math.sin(ang) * dist + 8
+    );
+    camera.position.lerp(camP, Math.min(1, dt * 1.6));
+    camera.lookAt(R.position.x, ry + 10, R.position.z);
+    camera.fov = THREE.MathUtils.lerp(camera.fov || 50, 58, dt * 0.8);
+    camera.updateProjectionMatrix();
+    /* keep Mars in frame — slowly drift it if needed */
+    if (M.marsSky) {
+      M.marsSky.position.x = R.position.x + 22;
+      M.marsSky.position.y = 38 + Math.sin(t * 0.3) * 1.5;
+      M.marsSky.position.z = R.position.z - 48;
+      M.marsSky.rotation.y += dt * 0.05;
+    }
+    shake = Math.max(shake, 0.25 * Math.max(0, 1 - (t - T_IGNITE) / 8));
+    if (t >= T_VICTORY) {
+      cleanupEscapeCutscene(M);
+      marsVictory();
+    }
+  }
 }
 function marsVictory() {
   if (!marsState) marsState = { phase: "done", t: 0 };
@@ -14301,10 +14793,10 @@ function marsVictory() {
     const h1 = ov.querySelector("h1");
     const p = ov.querySelector("p");
     const go = $("overlayGo");
-    if (h1) h1.textContent = "YOU ESCAPED X";
+    if (h1) h1.textContent = "LIFTOFF — YOU ESCAPED X";
     if (p) p.innerHTML =
-      `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the night off.</div>` +
-      `<div class="mars-line">🚀 We'll be landing on Mars shortly...</div>` +
+      `<div class="death-sub">Helmet sealed. Fist raised. Message delivered.<br>The pad burns behind you — spam and bots stay in the dust.</div>` +
+      `<div class="mars-line">🚀 Starship clear of Starbase · Mars on the horizon</div>` +
       `<br>SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
       `RANK: <b style="color:#ffd94a">${rank}</b>`;
     if (go) go.textContent = "CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE";
@@ -14332,6 +14824,16 @@ function enterLoungeAfterMars() {
   resumeStarbase = false;
   invuln = 2.5;
   pig.visible = true;
+  pig.scale.setScalar(1);
+  try {
+    pig.children.forEach(ch => { ch.visible = true; });
+    if (rifleHeld) rifleHeld.visible = false;
+    if (flameWpn) flameWpn.visible = false;
+    /* strip leftover cutscene suit if any */
+    for (const ch of [...pig.children]) {
+      if (ch && ch.name === "EscapeSuit") pig.remove(ch);
+    }
+  } catch (_) {}
   window.__camLock = false;
   /* wipe combat leftovers but keep score/lives */
   try {
