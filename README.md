@@ -22,6 +22,15 @@ npx --yes serve .
 | Shoot (ban / mute) | Left click or X |
 | Pause | P |
 | Start / Restart | Any key / Enter / Click |
+| **QA: Starbase escape cutscene dry-run** | **F9** (or **Shift+9**) |
+
+### Dev / QA shortcuts
+
+| Action | How |
+|--------|-----|
+| Jump to Starbase (level 2) | Title screen: press `2` · or open `?level=2` |
+| **Skip grind → play escape cutscene** | **`F9`** anytime · or open `?cutscene=1` · or console `__skipEscapeCutscene()` |
+| Force BOTZILLA climax (still fight boss) | Console: `__forceClimax()` |
 
 ## Gameplay
 

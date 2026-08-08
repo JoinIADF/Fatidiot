@@ -316,15 +316,17 @@
   }
   /* —— ESCAPE CUTSCENE: letterbox bars + HUD fade-out —— */
   .cine-bar {
-    position: fixed; left: 0; right: 0; height: 11vh; background: #000;
+    position: fixed; left: 0; right: 0; height: 13vh; background: #000;
     z-index: 40; pointer-events: none;
     transform: scaleY(0);
-    transition: transform 0.9s cubic-bezier(0.7, 0, 0.3, 1);
+    transition: transform 1.1s cubic-bezier(0.7, 0, 0.3, 1);
+    box-shadow: inset 0 0 40px #000;
   }
   .cine-bar.top { top: 0; transform-origin: top; }
   .cine-bar.bot { bottom: 0; transform-origin: bottom; }
   body.cine .cine-bar { transform: scaleY(1); }
   body.cine #hud, body.cine #mobileUI { opacity: 0 !important; transition: opacity 0.5s ease; }
+  body.cine canvas { filter: contrast(1.06) saturate(1.08); }
 
   @keyframes escapeTextIn {
     from { opacity: 0; transform: translateY(16px); }
@@ -13547,6 +13549,12 @@ addEventListener("keydown", e => {
     if (rocketNear) openRocketPlaque(rocketNear);
     else showMsg("Walk up to a rocket plaque · press E");
   }
+  /* F9 / Shift+9 — QA dry-run: skip grind, play Starbase escape cutscene */
+  if (e.code === "F9" || (e.shiftKey && (e.code === "Digit9" || e.code === "Numpad9"))) {
+    e.preventDefault();
+    try { debugSkipToEscapeCutscene(); } catch (err) { console.error(err); }
+    return;
+  }
   if (socialReading && e.code === "Escape") {
     e.preventDefault();
     closeTweetReader();
@@ -14179,9 +14187,10 @@ function enableBoarding() {
 /* ————— ESCAPE CUTSCENE: cinematic director —————
  * Beats: close-up → slow walk down the crew platform → helmet on → turn back
  * over the battlefield → fist raise → middle finger → board → dusk blast-off
- * with Mars overhead → victory screen. */
+ * with Mars overhead → victory screen.
+ * Timings stretched for drama (total ~48s of director control). */
 let cine = null;
-const CINE = { walk: 3.2, helmet: 9.2, turn: 13.0, fist: 16.4, finger: 18.8, board: 22.0, launch: 25.0, victory: 36.5 };
+const CINE = { walk: 4.5, helmet: 12.0, turn: 16.8, fist: 20.8, finger: 23.6, board: 27.2, launch: 31.0, victory: 48.0 };
 function cineS(a, b, x) {
   const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return u * u * (3 - 2 * u);
@@ -14253,55 +14262,70 @@ function buildEscapeCineSet(R) {
   hatch.add(glow);
   set.add(hatch);
 
-  /* the battlefield: bots and spam lying shot and burnt across the lot */
+  /* the battlefield: bots and spam lying shot and burnt across the lot — denser
+     post-war field so the turn-back beat reads as a real victory aftermath */
   const corpses = [];
-  for (let i = 0; i < 13; i++) {
+  for (let i = 0; i < 22; i++) {
     const isBot = i % 2 === 0;
     const m = isBot ? buildBot(pick(BOT_VARIANTS)) : buildSpammer();
-    const d = rand(9, 46);
-    const lat = (Math.random() < 0.5 ? -1 : 1) * rand(2.6, 22);
+    const d = rand(7, 52);
+    const lat = (Math.random() < 0.5 ? -1 : 1) * rand(1.8, 26);
     const p = P1.clone().add(dir.clone().multiplyScalar(d)).add(right.clone().multiplyScalar(lat));
     p.y = 0;
     m.position.set(p.x, isBot ? 0.45 : 0.66, p.z);
     m.rotation.y = rand(0, Math.PI * 2);
-    m.rotation.z = (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 - rand(0.05, 0.2));
+    m.rotation.z = (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 - rand(0.05, 0.28));
+    m.rotation.x = (Math.random() < 0.35 ? 1 : 0) * rand(-0.35, 0.35);
     m.traverse(o => {
       if (o.isMesh && o.material && o.material.color && !o.material.map) {
         o.material = o.material.clone();
-        o.material.color.multiplyScalar(isBot ? 0.55 : 0.8);
+        o.material.color.multiplyScalar(isBot ? 0.48 : 0.72);
       }
     });
     if (m.userData && m.userData.blink && m.userData.blink.material)
       m.userData.blink.material.color.setHex(0x1a1d20); /* chest light dead */
     for (const s of [-1, 1]) if (m.userData && m.userData["arm" + s]) m.userData["arm" + s].rotation.z = s * 2.3;
     set.add(m);
-    /* scorch ring under bots, dark pool + spilled meat under spam */
-    const dr = isBot ? rand(1.2, 1.7) : rand(0.9, 1.3);
+    /* scorch ring under bots, dark blood pool + spilled meat under spam */
+    const dr = isBot ? rand(1.2, 2.0) : rand(0.95, 1.55);
     set.add(cyl(dr, dr, 0.02, isBot ? 0x16120e : 0x5c1414, p.x, 0.012, p.z, 12));
-    if (!isBot) for (let b = 0; b < 3; b++) {
-      const blob = sph(rand(0.1, 0.2), 0xd98f7e, p.x + rand(-0.9, 0.9), 0.07, p.z + rand(-0.9, 0.9), 7, 5);
-      blob.scale.y = 0.5;
+    if (!isBot) for (let b = 0; b < 4; b++) {
+      const blob = sph(rand(0.1, 0.22), pick([0xd98f7e, 0x8b1e1e, 0xc45a4a]),
+        p.x + rand(-1.0, 1.0), 0.07, p.z + rand(-1.0, 1.0), 7, 5);
+      blob.scale.y = 0.45;
       set.add(blob);
+    }
+    /* twisted scrap near some kills */
+    if (Math.random() < 0.45) {
+      set.add(box(rand(0.3, 0.9), rand(0.08, 0.22), rand(0.3, 0.7),
+        pick([0x3a3e44, 0x2a2e34, 0x555a62]),
+        p.x + rand(-1.4, 1.4), 0.12, p.z + rand(-1.4, 1.4)));
     }
     corpses.push(p);
   }
-  /* a few small fires still burning */
+  /* small fires still burning across the field */
   const flames = [];
-  for (let i = 0; i < 3; i++) {
-    const fp = P1.clone().add(dir.clone().multiplyScalar(rand(12, 34))).add(right.clone().multiplyScalar(rand(-14, 14)));
-    const f = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.4, 7),
-      new THREE.MeshBasicMaterial({ color: pick([0xff6a00, 0xffaa00]), transparent: true, opacity: 0.85 }));
-    f.position.set(fp.x, 0.7, fp.z);
+  for (let i = 0; i < 6; i++) {
+    const fp = P1.clone().add(dir.clone().multiplyScalar(rand(10, 40))).add(right.clone().multiplyScalar(rand(-18, 18)));
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.55, 7),
+      new THREE.MeshBasicMaterial({ color: pick([0xff6a00, 0xffaa00, 0xff3a00]), transparent: true, opacity: 0.88 }));
+    f.position.set(fp.x, 0.75, fp.z);
     set.add(f);
     flames.push(f);
+    /* ember point lights on a few fires for drama */
+    if (i < 3) {
+      const el = new THREE.PointLight(0xff6a20, 1.1, 18);
+      el.position.set(fp.x, 1.4, fp.z);
+      set.add(el);
+    }
   }
 
-  /* Mars, waiting overhead — fades in as dusk falls for the launch */
-  const mars = new THREE.Mesh(new THREE.SphereGeometry(11, 18, 14),
+  /* Mars, waiting overhead — larger and earlier so the launch sky reads as destiny */
+  const mars = new THREE.Mesh(new THREE.SphereGeometry(14, 20, 16),
     new THREE.MeshBasicMaterial({ color: 0xc9603c, fog: false, transparent: true, opacity: 0 }));
-  mars.position.copy(padP).add(dir.clone().multiplyScalar(-150)).add(right.clone().multiplyScalar(28));
-  mars.position.y = 175;
-  const marsGlow = new THREE.Mesh(new THREE.SphereGeometry(14.5, 18, 14),
+  mars.position.copy(padP).add(dir.clone().multiplyScalar(-130)).add(right.clone().multiplyScalar(22));
+  mars.position.y = 155;
+  const marsGlow = new THREE.Mesh(new THREE.SphereGeometry(18.5, 18, 14),
     new THREE.MeshBasicMaterial({ color: 0xff8a5c, fog: false, transparent: true, opacity: 0, depthWrite: false }));
   marsGlow.position.copy(mars.position);
   set.add(mars, marsGlow);
@@ -14341,13 +14365,17 @@ function dressAstroPig() {
   arm.rotation.z = -0.22;
   arm.rotation.x = -0.12;
   arm.add(cyl(0.1, 0.09, 0.6, WHITE, 0, -0.27, 0, 8));
-  arm.add(sph(0.145, GLOVE, 0, -0.62, 0, 8, 6));
-  const finger = box(0.055, 0.24, 0.055, GLOVE, 0, -0.8, 0.02);
+  arm.add(sph(0.155, GLOVE, 0, -0.62, 0, 8, 6));
+  /* bigger, readable middle finger for the farewell beat (hero low-angle shot) */
+  const finger = box(0.07, 0.36, 0.07, GLOVE, 0, -0.88, 0.04);
   finger.visible = false;
   arm.add(finger);
+  const knuckle = box(0.2, 0.09, 0.12, GLOVE, 0, -0.7, 0.0);
+  knuckle.visible = false;
+  arm.add(knuckle);
   /* glass bubble helmet, carried at his side */
-  const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 12),
-    new THREE.MeshPhongMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.3, specular: 0xffffff, shininess: 120 }));
+  const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.72, 18, 14),
+    new THREE.MeshPhongMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.32, specular: 0xffffff, shininess: 140 }));
   bubble.position.set(0.1, -0.95, 0.15);
   arm.add(bubble);
   suit.add(arm);
@@ -14360,7 +14388,7 @@ function dressAstroPig() {
     cuffs.push(cuff);
   }
   pig.add(suit);
-  return { suit, arm, finger, bubble, cuffs };
+  return { suit, arm, finger, knuckle, bubble, cuffs };
 }
 function teardownEscapeCine() {
   if (!cine) return;
@@ -14373,6 +14401,10 @@ function teardownEscapeCine() {
     pig.scale.set(1, 1, 1);
     pig.rotation.z = 0;
     pigParts.head.rotation.x = 0;
+  } catch (_) {}
+  try {
+    if (typeof cine.savedFov === "number") camera.fov = cine.savedFov;
+    camera.updateProjectionMatrix();
   } catch (_) {}
   try { document.body.classList.remove("cine"); } catch (_) {}
   cine = null;
@@ -14411,109 +14443,137 @@ function runEscapeCine(dt, M) {
     try { SFX.lock(); SFX.pill(); } catch (_) {}
     burst(pig.position.clone().add(new THREE.Vector3(0, 1.9, 0)), 0xcfefff, 8, 2.2, 2);
   }
-  if (!c.saidBye && T >= CINE.finger + 0.4) {
-    c.saidBye = true;
-    try { say("So long, losers.", { rate: 0.9 }); } catch (_) {}
-    floatText(pig.position.clone().add(new THREE.Vector3(0, 3.1, 0)), "🖕",
-      { size: 72, color: "#ffd0a0", strokeW: 6, life: 2.4 }, 0.9);
+  if (!c.saidFist && T >= CINE.fist + 0.35) {
+    c.saidFist = true;
+    try { say("For everyone still stuck in the timeline.", { rate: 0.92 }); } catch (_) {}
+    try { SFX.wave(); } catch (_) {}
+    shake = Math.max(shake, 0.35);
   }
-  if (!c.boarded && T >= CINE.launch - 0.7) {
+  if (!c.saidBye && T >= CINE.finger + 0.35) {
+    c.saidBye = true;
+    try { say("So long, losers.", { rate: 0.88 }); } catch (_) {}
+    floatText(pig.position.clone().add(new THREE.Vector3(0, 3.35, 0)), "🖕",
+      { size: 88, color: "#ffd0a0", strokeW: 7, life: 2.8 }, 1.05);
+    try { SFX.purge(); } catch (_) {}
+    shake = Math.max(shake, 0.55);
+  }
+  if (!c.boarded && T >= CINE.launch - 0.85) {
     c.boarded = true;
     pig.visible = false;
     try { SFX.vending(); } catch (_) {}
+    try { SFX.lock(); } catch (_) {}
   }
   if (!c.launched && T >= CINE.launch) {
     c.launched = true;
     rocketLift = null; /* free the launcher for rocket 2 */
     try { startRocketIgnition(R); } catch (_) {}
-    shake = Math.max(shake, 1.1);
+    shake = Math.max(shake, 1.85);
+    try { SFX.escape(); } catch (_) {}
+    /* ground-bloom flash at ignition */
+    burst(c.padP.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xffc070, 28, 9, 14);
+    burst(c.padP.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xff6a20, 18, 6, 8);
   }
   /* door slides shut behind him, cabin light dies */
-  const dcU = cineS(CINE.launch - 0.7, CINE.launch - 0.05, T);
+  const dcU = cineS(CINE.launch - 0.85, CINE.launch - 0.05, T);
   if (c.doorL) { c.doorL.position.x = -1.36 + 0.93 * dcU; c.doorR.position.x = 1.36 - 0.93 * dcU; }
   if (c.glow) c.glow.intensity = 1.6 * (1 - dcU);
-  /* harder climb than the stock launcher for the finale */
-  if (c.launched && rocketLift && rocketLift.phase === "lift" && rocketLift.mesh === R)
-    R.position.y += 2.6 * dt;
+  /* harder, faster climb than the stock launcher for the finale */
+  if (c.launched && rocketLift && rocketLift.phase === "lift" && rocketLift.mesh === R) {
+    R.position.y += 4.2 * dt;
+    shake = Math.max(shake, 0.55 + Math.min(1.2, (T - CINE.launch) * 0.08));
+  }
   /* dusk falls for the launch; Mars fades in overhead */
-  if (T > CINE.board) {
-    c.skyU = Math.min(1, c.skyU + dt * 0.12);
-    const sky = new THREE.Color(0x7eb0d8).lerp(new THREE.Color(0x241a30), c.skyU);
+  if (T > CINE.board - 1.2) {
+    c.skyU = Math.min(1, c.skyU + dt * 0.1);
+    const sky = new THREE.Color(0x7eb0d8).lerp(new THREE.Color(0x1a1228), c.skyU);
     scene.background = sky;
     if (scene.fog) {
       scene.fog.color.copy(sky);
-      scene.fog.near = 70 + 130 * c.skyU;
-      scene.fog.far = 150 + 500 * c.skyU;
+      scene.fog.near = 55 + 140 * c.skyU;
+      scene.fog.far = 140 + 520 * c.skyU;
     }
-    c.mars.material.opacity = Math.min(1, c.skyU * 1.4);
-    c.marsGlow.material.opacity = 0.18 * c.skyU;
+    c.mars.material.opacity = Math.min(1, c.skyU * 1.55);
+    c.marsGlow.material.opacity = 0.28 * c.skyU;
   }
-  /* — camera — */
+  /* — camera + FOV drama — */
   const camLook = new THREE.Vector3();
+  let wantFov = c.savedFov || 55;
   if (T < CINE.walk) {
-    /* BEAT 1 — CLOSE-UP: visor-level slow dolly on the hero's face */
+    /* BEAT 1 — CLOSE-UP: tight visor-level slow dolly on the hero's face */
     const u = cineS(0, CINE.walk, T);
+    wantFov = 38 + 4 * u;
     const head = pig.position.clone().add(fRocket.clone().multiplyScalar(0.55));
-    head.y = 1.78;
+    head.y = 1.82;
     camera.position.copy(head)
-      .add(fRocket.clone().multiplyScalar(2.7 - 0.9 * u))
-      .add(c.right.clone().multiplyScalar(0.7 - 0.35 * u));
-    camera.position.y = 1.95 - 0.12 * u;
+      .add(fRocket.clone().multiplyScalar(2.35 - 0.75 * u))
+      .add(c.right.clone().multiplyScalar(0.55 - 0.28 * u));
+    camera.position.y = 1.98 - 0.1 * u;
     camera.lookAt(head);
   } else if (T < CINE.helmet) {
     /* BEAT 2 — THE WALK: low tracking shot along the crew platform */
+    wantFov = 48;
     const desired = pig.position.clone()
-      .add(c.right.clone().multiplyScalar(5.6))
-      .add(fRocket.clone().multiplyScalar(1.4));
-    desired.y = 1.35;
+      .add(c.right.clone().multiplyScalar(5.9))
+      .add(fRocket.clone().multiplyScalar(1.15));
+    desired.y = 1.22;
     if (T - dt < CINE.walk) camera.position.copy(desired); /* hard cut, then follow */
-    camera.position.lerp(desired, Math.min(1, dt * 3.2));
-    camLook.copy(pig.position); camLook.y = 1.25;
+    camera.position.lerp(desired, Math.min(1, dt * 2.6));
+    camLook.copy(pig.position); camLook.y = 1.3;
     camera.lookAt(camLook);
   } else if (T < CINE.turn) {
     /* BEAT 3 — HELMET ON: three-quarter front angle (stays clear of the hull) */
     const u = cineS(CINE.helmet, CINE.turn, T);
+    wantFov = 46 - 4 * u;
     camera.position.copy(pig.position)
-      .add(fRocket.clone().multiplyScalar(1.2))
-      .add(c.right.clone().multiplyScalar(-2.6 + 0.4 * u));
-    camera.position.y = 1.35 + 0.5 * u;
-    camLook.copy(pig.position); camLook.y = 1.7;
+      .add(fRocket.clone().multiplyScalar(1.35))
+      .add(c.right.clone().multiplyScalar(-2.85 + 0.35 * u));
+    camera.position.y = 1.4 + 0.55 * u;
+    camLook.copy(pig.position); camLook.y = 1.75;
     camera.lookAt(camLook);
   } else if (T < CINE.fist) {
     /* BEAT 4 — TURN BACK: high over-shoulder, the whole battlefield in frame */
     const u = cineS(CINE.turn, CINE.fist, T);
+    wantFov = 58 + 6 * u;
     camera.position.copy(pig.position)
-      .add(fLot.clone().multiplyScalar(-2.2))
-      .add(c.right.clone().multiplyScalar(3.4));
-    camera.position.y = 5.2 - 0.7 * u;
-    camLook.copy(pig.position).add(fLot.clone().multiplyScalar(15));
-    camLook.y = 0.6;
+      .add(fLot.clone().multiplyScalar(-2.6))
+      .add(c.right.clone().multiplyScalar(3.8));
+    camera.position.y = 5.8 - 0.5 * u;
+    camLook.copy(pig.position).add(fLot.clone().multiplyScalar(18));
+    camLook.y = 0.45;
     camera.lookAt(camLook);
   } else if (T < CINE.board) {
-    /* BEATS 5+6 — FIST, THEN THE FINGER: low hero shot against the sky */
+    /* BEATS 5+6 — FIST, THEN THE FINGER: ultra-low hero shot against the sky */
     const u = cineS(CINE.fist, CINE.board, T);
+    wantFov = 42 - 3 * u;
     camera.position.copy(pig.position)
-      .add(fLot.clone().multiplyScalar(4.6 - 1.1 * u))
-      .add(c.right.clone().multiplyScalar(-0.6));
-    camera.position.y = 0.95;
-    camLook.copy(pig.position); camLook.y = 2.15;
+      .add(fLot.clone().multiplyScalar(4.9 - 1.35 * u))
+      .add(c.right.clone().multiplyScalar(-0.45));
+    camera.position.y = 0.72;
+    camLook.copy(pig.position); camLook.y = 2.35;
     camera.lookAt(camLook);
   } else if (T < CINE.launch) {
-    /* BEAT 7 — BOARDING: quiet side angle at the hatch */
+    /* BEAT 7 — BOARDING: quiet side angle at the hatch, hatch glow in frame */
+    wantFov = 50;
     camera.position.copy(c.hatchP)
-      .add(c.right.clone().multiplyScalar(4.4))
-      .add(fLot.clone().multiplyScalar(1.6));
-    camera.position.y = 1.7;
-    camLook.copy(c.hatchP); camLook.y = 1.5;
+      .add(c.right.clone().multiplyScalar(4.7))
+      .add(fLot.clone().multiplyScalar(1.9));
+    camera.position.y = 1.65;
+    camLook.copy(c.hatchP); camLook.y = 1.55;
     camera.lookAt(camLook);
   } else {
-    /* BEAT 8 — BLAST-OFF: long pull-back, Mars burning faint overhead */
-    const u = cineS(CINE.launch, CINE.victory - 1.5, T);
+    /* BEAT 8 — BLAST-OFF: long hard pull-back, Mars burning overhead */
+    const u = cineS(CINE.launch, CINE.victory - 2.0, T);
+    wantFov = 52 + 14 * u;
     camera.position.copy(c.padP)
-      .add(c.dir.clone().multiplyScalar(12 + 30 * u));
-    camera.position.y = 2.2 + 8.5 * u;
-    camLook.set(c.padP.x, Math.max(8, R.position.y + 16), c.padP.z);
+      .add(c.dir.clone().multiplyScalar(14 + 48 * u))
+      .add(c.right.clone().multiplyScalar(4 * u));
+    camera.position.y = 2.6 + 14 * u;
+    camLook.set(c.padP.x, Math.max(10, R.position.y + 20 + 8 * u), c.padP.z);
     camera.lookAt(camLook);
+  }
+  if (Math.abs((camera.fov || 55) - wantFov) > 0.05) {
+    camera.fov += (wantFov - camera.fov) * Math.min(1, dt * 3.5);
+    camera.updateProjectionMatrix();
   }
   if (T >= CINE.victory) marsVictory();
 }
@@ -14566,17 +14626,25 @@ function applyCinePigPose(dt) {
     pig.rotation.y = c.yawRocket + c.yawSpin * u;
     legAmp(0);
   } else if (T < CINE.board) {
-    /* BEATS 5+6 — fist snaps up, then the finger extends */
+    /* BEATS 5+6 — fist snaps up hard, then the finger extends and holds */
     pig.position.copy(c.P1);
     pig.rotation.y = c.yawLotFinal;
-    if (T >= CINE.fist + 0.2) {
-      const fu = Math.min(1, (T - (CINE.fist + 0.2)) / 0.45);
+    if (T >= CINE.fist + 0.15) {
+      const fu = Math.min(1, (T - (CINE.fist + 0.15)) / 0.4);
       armA = armRest + (-Math.PI - armRest) * cineBackOut(fu);
+      /* micro pump on the fist peak */
+      if (fu > 0.85 && fu < 1) armA -= 0.12 * Math.sin((fu - 0.85) * 40);
     }
     if (c.finger) {
-      c.finger.visible = T >= CINE.finger + 0.25;
-      if (c.finger.visible) c.finger.scale.setScalar(Math.min(1, (T - CINE.finger - 0.25) * 5));
+      c.finger.visible = T >= CINE.finger + 0.2;
+      if (c.finger.visible) c.finger.scale.setScalar(Math.min(1.15, (T - CINE.finger - 0.2) * 6));
     }
+    if (c.knuckle) {
+      c.knuckle.visible = T >= CINE.finger + 0.2;
+      if (c.knuckle.visible) c.knuckle.scale.setScalar(Math.min(1, (T - CINE.finger - 0.2) * 6));
+    }
+    /* slight lean into the insult */
+    if (T >= CINE.finger + 0.2) pig.rotation.z = -0.06;
     legAmp(0);
   } else {
     /* BEAT 7 — turn back and walk into the ship */
@@ -14588,6 +14656,7 @@ function applyCinePigPose(dt) {
     pig.position.y = c.deckY + Math.abs(stride) * 0.04;
     legAmp(stride * 0.4);
     if (c.finger) c.finger.visible = false;
+    if (c.knuckle) c.knuckle.visible = false;
   }
   if (c.arm) c.arm.rotation.x = armA;
 }
@@ -14655,16 +14724,91 @@ function startEscapeCutscene() {
   cine = buildEscapeCineSet(marsState.rocket);
   const dress = dressAstroPig();
   cine.suit = dress.suit; cine.arm = dress.arm; cine.finger = dress.finger;
-  cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
+  cine.knuckle = dress.knuckle; cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
+  cine.savedFov = camera.fov || 55;
+  cine.saidFist = false;
   pig.position.copy(cine.P0);
   pig.rotation.y = cine.yawRocket;
   ensureCineBars();
   document.body.classList.add("cine");
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-  try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
+  try { say("Suit up. We're done here.", { rate: 0.9 }); } catch (_) {}
   try { SFX.lock(); } catch (_) {}
+  try { SFX.wave(); } catch (_) {}
 }
+/**
+ * QA dry-run: skip the 100-kill grind / BOTZILLA / CEO exit and jump straight
+ * into the Starbase spacesuit escape cutscene (second rocket).
+ * Hotkey: F9  ·  URL: ?cutscene=1  ·  console: __skipEscapeCutscene()
+ */
+function debugSkipToEscapeCutscene() {
+  try {
+    /* bail out of UI overlays that would steal input */
+    try { if (rocketReading && typeof closeRocketPlaque === "function") closeRocketPlaque(); } catch (_) {}
+    try { if (socialReading && typeof closeTweetReader === "function") closeTweetReader(); } catch (_) {}
+    try { if (typeof quitActiveMiniGame === "function") quitActiveMiniGame(); } catch (_) {}
+    try { if (typeof teardownEscapeCine === "function") teardownEscapeCine(); } catch (_) {}
+    window.__camLock = false;
+    pig.visible = true;
+
+    /* ensure we're on a Starbase shift (not lounge / title) */
+    if (mode === "title" || mode === "over" || mode === "portal" || mode !== "play") {
+      try { startGame(); } catch (_) {}
+    }
+    if (socialActive) {
+      try { deactivateSocialLounge(); } catch (_) {}
+    }
+    if (!starbaseActive) {
+      try { previewLevel2(); } catch (_) {
+        try { activateStarbase(); } catch (__) {}
+      }
+    }
+
+    /* silence combat leftovers so the director owns the frame */
+    try {
+      for (const e of enemies.splice(0)) { try { scene.remove(e.mesh); } catch (_) {} }
+    } catch (_) {}
+    spawnQueue = 0;
+    rocketLift = null;
+    portalReady = false;
+    try { clearLevelPortal(); } catch (_) {}
+    invuln = 999;
+    mode = "play";
+
+    /* pretend BOTZILLA already fell so nothing re-summons mid-cutscene */
+    if (typeof bossFight !== "undefined") {
+      bossFight.dead = true;
+      bossFight.active = false;
+      bossFight.kills = Math.max(bossFight.kills || 0, 100);
+      try {
+        const wrap = $("bossBarWrap");
+        if (wrap) wrap.classList.add("hidden");
+      } catch (_) {}
+      if (bossFight.mesh) {
+        try { scene.remove(bossFight.mesh); } catch (_) {}
+        bossFight.mesh = null;
+      }
+    }
+
+    /* seat earned on rocket 2 → start the cinematic (no jump-in required) */
+    enableBoarding();
+    if (!marsState || marsState.phase !== "board") {
+      showMsg("DEBUG · no rocket to board — check Starbase rockets");
+      console.warn("debugSkipToEscapeCutscene: enableBoarding failed", marsState);
+      return false;
+    }
+    startEscapeCutscene();
+    showMsg("DEBUG · ESCAPE CUTSCENE DRY-RUN (F9)");
+    console.info("[QA] escape cutscene dry-run started — F9 / __skipEscapeCutscene()");
+    return true;
+  } catch (err) {
+    console.error("debugSkipToEscapeCutscene", err);
+    try { showMsg("DEBUG CUTSCENE FAILED — see console"); } catch (_) {}
+    return false;
+  }
+}
+window.__skipEscapeCutscene = debugSkipToEscapeCutscene;
 function marsVictory() {
   if (!marsState) marsState = { phase: "done", t: 0 };
   marsState.phase = "done";
@@ -14710,10 +14854,10 @@ function marsVictory() {
     const h1 = ov.querySelector("h1");
     const p = ov.querySelector("p");
     const go = $("overlayGo");
-    if (h1) h1.textContent = "LIFTOFF — YOU ESCAPED X";
+    if (h1) h1.textContent = "LIFTOFF";
     if (p) p.innerHTML =
-      `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the night off.</div>` +
-      `<div class="mars-line">🚀 We'll be landing on Mars shortly...</div>` +
+      `<div class="death-sub" style="font-size:clamp(22px,4vw,32px);letter-spacing:0.06em;margin-bottom:8px">YOU ESCAPED X</div>` +
+      `<div class="mars-line">🚀 Timeline Lounge · we'll be landing on Mars shortly</div>` +
       `<br>SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
       `RANK: <b style="color:#ffd94a">${rank}</b>`;
     if (go) go.textContent = "CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE";
@@ -18033,7 +18177,7 @@ window.__game = {
   previewLevel2, activateStarbase, levelUp,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
-  killBoss, enableBoarding, startEscapeCutscene, marsVictory,
+  killBoss, enableBoarding, startEscapeCutscene, marsVictory, debugSkipToEscapeCutscene,
   get marsState() { return marsState; },
   /* headless screenshot: force one render, downscale, return data URL */
   snap(w = 420) {
@@ -18046,10 +18190,12 @@ window.__game = {
     return c.toDataURL("image/jpeg", 0.65);
   },
 };
-/* deep-link: ?level=2 skips to Starbase for preview */
+/* deep-link: ?level=2 skips to Starbase; ?cutscene=1 / ?escape=1 plays finale dry-run */
 try {
   const q = new URLSearchParams(location.search);
-  if (q.get("level") === "2" || q.get("starbase") === "1") {
+  if (q.get("cutscene") === "1" || q.get("escape") === "1") {
+    setTimeout(() => { try { debugSkipToEscapeCutscene(); } catch (e) { console.error(e); } }, 500);
+  } else if (q.get("level") === "2" || q.get("starbase") === "1") {
     setTimeout(() => { try { previewLevel2(); } catch (e) { console.error(e); } }, 400);
   }
 } catch (_) {}

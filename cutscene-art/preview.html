@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Starbase Escape Cutscene — FA'TIDIOT</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #05060c; color: #e8eef8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  header {
+    width: min(1100px, 100%); padding: 18px 20px 8px;
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: baseline;
+    justify-content: space-between;
+  }
+  h1 { margin: 0; font-size: clamp(16px, 2.4vw, 22px); letter-spacing: 0.08em; color: #7cffb0; }
+  .meta { color: #8aa0b8; font-size: 12px; }
+  .stage {
+    position: relative; width: min(1100px, 100vw); aspect-ratio: 16/9;
+    background: #000; overflow: hidden; box-shadow: 0 20px 80px rgba(0,0,0,0.65);
+  }
+  .stage img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    opacity: 0; transition: opacity 0.7s ease, transform 6s ease;
+    transform: scale(1.06);
+  }
+  .stage img.on { opacity: 1; transform: scale(1); }
+  .bars { position: absolute; left: 0; right: 0; height: 11%; background: #000; z-index: 3; pointer-events: none; }
+  .bars.top { top: 0; } .bars.bot { bottom: 0; }
+  .caption {
+    position: absolute; left: 0; right: 0; bottom: 12%; z-index: 4;
+    text-align: center; padding: 0 16px;
+    text-shadow: 0 2px 16px #000, 0 0 24px #000;
+  }
+  .caption .beat { color: #7cffb0; font-size: 12px; letter-spacing: 0.2em; margin-bottom: 6px; }
+  .caption .line { font-size: clamp(18px, 3vw, 28px); font-weight: 700; }
+  .controls {
+    width: min(1100px, 100%); padding: 14px 16px 28px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center;
+  }
+  button {
+    appearance: none; border: 1px solid #2a3544; background: #121820; color: #e8eef8;
+    padding: 10px 14px; border-radius: 8px; cursor: pointer; font: inherit; font-size: 13px;
+  }
+  button:hover { border-color: #7cffb0; color: #7cffb0; }
+  button.primary { background: #163528; border-color: #2f8f6a; color: #7cffb0; }
+  .thumbs {
+    width: min(1100px, 100%); display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 0 12px 40px;
+  }
+  .thumbs button {
+    padding: 0; overflow: hidden; border-radius: 6px; aspect-ratio: 16/9; position: relative;
+  }
+  .thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumbs .n {
+    position: absolute; left: 6px; top: 4px; font-size: 10px; color: #fff;
+    text-shadow: 0 1px 4px #000; opacity: 0.9;
+  }
+  .thumbs button.active { outline: 2px solid #7cffb0; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>STARBASE ESCAPE · CUTSCENE STILLS</h1>
+    <div class="meta">FA'TIDIOT · Nikita Boar · post second-rocket board</div>
+  </header>
+  <div class="stage" id="stage">
+    <div class="bars top"></div>
+    <div class="bars bot"></div>
+    <div class="caption">
+      <div class="beat" id="beat">BEAT 1 / 9</div>
+      <div class="line" id="line">Close-up · spacesuit on, helmet at his side</div>
+    </div>
+  </div>
+  <div class="controls">
+    <button type="button" id="prev">◀ Prev</button>
+    <button type="button" class="primary" id="play">▶ Play sequence</button>
+    <button type="button" id="next">Next ▶</button>
+  </div>
+  <div class="thumbs" id="thumbs"></div>
+<script>
+const BEATS = [
+  { src: "01-closeup.jpg", title: "Close-up · spacesuit on, helmet held at the side" },
+  { src: "02-walk.jpg", title: "Slow walk along the crew access arm toward the hatch" },
+  { src: "03-helmet.jpg", title: "Helmet on · raised and sealed" },
+  { src: "04-battlefield.jpg", title: "Turn back · battlefield of bots & bloodied spam" },
+  { src: "05-fist.jpg", title: "Fist raise" },
+  { src: "06-finger.jpg", title: "Middle finger to the field" },
+  { src: "07-board.jpg", title: "Board · climbs in and vanishes into the ship" },
+  { src: "08-blastoff.jpg", title: "Blast-off · hard climb, Mars in the sky" },
+  { src: "09-victory.jpg", title: "LIFTOFF · YOU ESCAPED X · Timeline Lounge" },
+];
+const stage = document.getElementById("stage");
+const thumbs = document.getElementById("thumbs");
+const beatEl = document.getElementById("beat");
+const lineEl = document.getElementById("line");
+const imgs = BEATS.map((b, i) => {
+  const img = document.createElement("img");
+  img.src = b.src; img.alt = b.title; img.decoding = "async";
+  if (i === 0) img.classList.add("on");
+  stage.insertBefore(img, stage.firstChild);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.innerHTML = `<span class="n">${i + 1}</span><img src="${b.src}" alt="">`;
+  btn.addEventListener("click", () => go(i, true));
+  thumbs.appendChild(btn);
+  return img;
+});
+let idx = 0, timer = null;
+function go(i, stop) {
+  if (stop) stopPlay();
+  imgs[idx].classList.remove("on");
+  idx = (i + BEATS.length) % BEATS.length;
+  imgs[idx].classList.add("on");
+  beatEl.textContent = `BEAT ${idx + 1} / ${BEATS.length}`;
+  lineEl.textContent = BEATS[idx].title;
+  [...thumbs.children].forEach((el, n) => el.classList.toggle("active", n === idx));
+}
+function stopPlay() { if (timer) { clearInterval(timer); timer = null; } document.getElementById("play").textContent = "▶ Play sequence"; }
+function play() {
+  if (timer) { stopPlay(); return; }
+  document.getElementById("play").textContent = "❚❚ Pause";
+  timer = setInterval(() => {
+    if (idx >= BEATS.length - 1) { stopPlay(); return; }
+    go(idx + 1);
+  }, 3200);
+}
+document.getElementById("prev").onclick = () => go(idx - 1, true);
+document.getElementById("next").onclick = () => go(idx + 1, true);
+document.getElementById("play").onclick = play;
+go(0, true);
+</script>
+</body>
+</html>
