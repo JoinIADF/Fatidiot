@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- cutscene-source: Claude 1d3a359 + F9 skip -->
+<!-- cutscene-source: video final 20260808c -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -242,6 +242,16 @@
     transition: opacity 0.35s ease;
   }
   #marsCutscene.show { opacity: 1; pointer-events: auto; }
+  body.mars-film #hud, body.mars-film #mobileUI, body.mars-film .cine-bar { display: none !important; }
+  body.mars-film canvas { visibility: hidden !important; }
+  #marsCutscene .cine-tap {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    z-index: 3; font: 800 16px/1 system-ui, sans-serif; letter-spacing: 0.08em;
+    color: #041018; background: #7cffb0; border: 0; border-radius: 999px;
+    padding: 16px 28px; cursor: pointer; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  #marsCutscene { z-index: 20000 !important; }
+
   #marsCutscene video {
     width: 100%; height: 100%;
     object-fit: contain;
@@ -14499,8 +14509,7 @@ function teardownEscapeCine() {
 }
 function runEscapeCine(dt, M) {
   if (!cine) {
-    if (document.getElementById("marsCutscene")) return; /* film still playing */
-    marsVictory();
+    /* film path does not use engine director */
     return;
   }
   window.__camLock = true;
@@ -14763,35 +14772,58 @@ function updateMarsEscape(dt) {
     const d = Math.hypot(pig.position.x - M.rocket.position.x, pig.position.z - M.rocket.position.z);
     if (d < 5.5 && !onGround) startEscapeCutscene();
   } else if (M.phase === "cutscene") {
-    /* video cutscene owns the frame; engine cine only if fallback set was built */
-    if (document.getElementById("marsCutscene")) {
-      /* keep invuln / freeze combat while film plays */
-      invuln = 999;
-      pig.visible = false;
-      window.__camLock = true;
-    } else {
-      runEscapeCine(dt, M);
+    /* video film owns the finale — never resurrect the old 3D director */
+    invuln = 999;
+    pig.visible = false;
+    window.__camLock = true;
+    if (!document.getElementById("marsCutscene") && !marsVideoDone) {
+      /* element missing (race) — restart film once */
+      try { playMarsFinalCutscene(); } catch (_) {}
     }
   }
 }
 function startEscapeCutscene() {
-  if (!marsState || marsState.phase !== "board") return;
+  if (!marsState) return;
+  if (marsState.phase === "cutscene" && document.getElementById("marsCutscene")) return;
+  if (marsState.phase !== "board" && marsState.phase !== "cutscene") return;
   marsState.phase = "cutscene";
   marsState.t = 0;
   pigVy = 0; pigY = 0; onGround = true;
-  invuln = 999; /* nothing interrupts the exit */
+  invuln = 999;
   spawnQueue = 0;
   try { for (const e of enemies.splice(0)) scene.remove(e.mesh); } catch (_) {}
   if (marsState.tag) { try { scene.remove(marsState.tag); } catch (_) {} marsState.tag = null; }
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-  /* Final cutscene is the authored video; engine cine is fallback only */
+  /* ALWAYS the authored film — never the old 3D engine director */
   playMarsFinalCutscene();
 }
 
-/** Fullscreen Mars victory film → interactive end screen. Skip: click / Enter / Space / Esc. */
+/** Fullscreen Mars victory film → interactive end screen. */
 let marsVideoEl = null;
 let marsVideoDone = false;
+let marsVideoPreload = null;
+
+function preloadMarsCutscene() {
+  try {
+    if (marsVideoPreload) return marsVideoPreload;
+    const v = document.createElement("video");
+    v.preload = "auto";
+    v.playsInline = true;
+    v.muted = true;
+    v.src = marsCutsceneUrl();
+    v.load();
+    marsVideoPreload = v;
+    return v;
+  } catch (_) { return null; }
+}
+function marsCutsceneUrl() {
+  const base = (typeof MARS_CUTSCENE_URL !== "undefined" ? MARS_CUTSCENE_URL : "./mars-final-cutscene.mp4");
+  /* cache-bust so players never keep a 404 or stale empty response */
+  const bust = (typeof window !== "undefined" && window.__MARS_VID_V) ? window.__MARS_VID_V : "20260808c";
+  return base + (base.indexOf("?") >= 0 ? "&" : "?") + "v=" + bust;
+}
+
 function teardownMarsVideo() {
   try {
     const root = document.getElementById("marsCutscene");
@@ -14799,110 +14831,156 @@ function teardownMarsVideo() {
   } catch (_) {}
   try {
     if (marsVideoEl) {
+      marsVideoEl.onended = null;
+      marsVideoEl.onerror = null;
       marsVideoEl.pause();
-      marsVideoEl.removeAttribute("src");
-      marsVideoEl.load();
+      try { marsVideoEl.removeAttribute("src"); marsVideoEl.load(); } catch (_) {}
     }
   } catch (_) {}
   marsVideoEl = null;
-  try { document.body.classList.remove("cine"); } catch (_) {}
-  try { window.__camLock = false; } catch (_) {}
+  try { document.body.classList.remove("cine", "mars-film"); } catch (_) {}
 }
+
 function finishMarsVideoCutscene() {
   if (marsVideoDone) return;
   marsVideoDone = true;
-  try {
-    if (marsVideoEl && !marsVideoEl.paused) marsVideoEl.pause();
-  } catch (_) {}
+  try { if (marsVideoEl && !marsVideoEl.paused) marsVideoEl.pause(); } catch (_) {}
   teardownMarsVideo();
+  try { window.__camLock = false; } catch (_) {}
   marsVictory({ fromVideo: true });
 }
+
 function playMarsFinalCutscene() {
   marsVideoDone = false;
   try { teardownEscapeCine(); } catch (_) {}
   try { teardownMarsVideo(); } catch (_) {}
   window.__camLock = true;
   pig.visible = false;
-  document.body.classList.add("cine");
-  const url = (typeof MARS_CUTSCENE_URL !== "undefined" ? MARS_CUTSCENE_URL : "./mars-final-cutscene.mp4");
+  document.body.classList.add("cine", "mars-film");
+
+  const url = marsCutsceneUrl();
   const root = document.createElement("div");
   root.id = "marsCutscene";
   root.innerHTML =
-    `<video playsinline webkit-playsinline preload="auto"></video>` +
-    `<div class="cine-skip">CLICK / ENTER — SKIP</div>`;
+    `<video id="marsCutsceneVid" playsinline webkit-playsinline preload="auto"></video>` +
+    `<div class="cine-skip">ENTER / ESC — SKIP</div>` +
+    `<button type="button" class="cine-tap" style="display:none">▶ PLAY CUTSCENE</button>`;
   document.body.appendChild(root);
+  /* force visible immediately — don't wait a frame (avoids 3D flash) */
+  root.classList.add("show");
+
   const vid = root.querySelector("video");
   marsVideoEl = vid;
-  vid.src = url;
-  vid.muted = false;
+  vid.setAttribute("playsinline", "");
+  vid.setAttribute("webkit-playsinline", "");
+  vid.playsInline = true;
+  /* start MUTED so autoplay is allowed after F9/jump; unmute once playing */
+  vid.muted = true;
+  vid.defaultMuted = true;
   vid.volume = 1;
-  const failToEngine = (why) => {
-    console.warn("mars video cutscene fallback:", why);
-    teardownMarsVideo();
-    /* fall back to in-engine director cutscene */
-    try {
-      if (!marsState || !marsState.rocket) { marsVictory({ fromVideo: false }); return; }
-      cine = buildEscapeCineSet(marsState.rocket);
-      const dress = dressAstroPig();
-      cine.suit = dress.suit; cine.arm = dress.arm; cine.finger = dress.finger;
-      cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
-      pig.visible = true;
-      pig.position.copy(cine.P0);
-      pig.rotation.y = cine.yawRocket;
-      ensureCineBars();
-      document.body.classList.add("cine");
-      try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
-      try { SFX.lock(); } catch (_) {}
-    } catch (err) {
-      console.error(err);
-      marsVictory({ fromVideo: false });
-    }
-  };
+  vid.src = url;
+  vid.load();
+
+  let skipArmed = false;
+  const armSkip = () => { skipArmed = true; };
+  /* prevent accidental instant skip while play gesture settles */
+  setTimeout(armSkip, 900);
+
   const endIt = () => {
     try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
-    try { root.removeEventListener("click", onSkip); } catch (_) {}
     finishMarsVideoCutscene();
   };
-  const onSkip = (e) => {
-    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch (_) {} }
-    endIt();
-  };
   const keyHandler = (e) => {
-    if (e.code === "Enter" || e.code === "Space" || e.code === "Escape" || e.code === "KeyE") {
-      onSkip(e);
+    if (e.code === "Enter" || e.code === "Space" || e.code === "Escape") {
+      try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+      if (!skipArmed && e.code !== "Escape") return;
+      endIt();
     }
   };
-  root.addEventListener("click", onSkip);
   window.addEventListener("keydown", keyHandler, true);
+
+  /* tap skip button only — whole-screen click used to unmute / start, not skip */
+  const skipHint = root.querySelector(".cine-skip");
+  if (skipHint) {
+    skipHint.style.pointerEvents = "auto";
+    skipHint.style.cursor = "pointer";
+    skipHint.addEventListener("click", (e) => {
+      try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+      if (skipArmed) endIt();
+    });
+  }
+
+  const tapBtn = root.querySelector(".cine-tap");
+  const hideTap = () => { if (tapBtn) tapBtn.style.display = "none"; };
+  const showTap = () => { if (tapBtn) tapBtn.style.display = "block"; };
+
+  const unmute = () => {
+    try {
+      vid.muted = false;
+      vid.defaultMuted = false;
+      const p = vid.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch (_) {}
+  };
+
   vid.addEventListener("ended", () => endIt());
   vid.addEventListener("error", () => {
-    try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
-    failToEngine("load error");
+    console.error("mars cutscene video error", vid.error);
+    /* still don't use old 3D cutscene — jump to end card with art */
+    endIt();
   });
-  requestAnimationFrame(() => root.classList.add("show"));
+  vid.addEventListener("playing", () => {
+    hideTap();
+    /* unmute once playback is alive (F9/jump count as gesture if still in stack;
+       otherwise first pointer on film unmutes) */
+    setTimeout(unmute, 60);
+  });
+
+  root.addEventListener("pointerdown", (e) => {
+    /* first tap: unmute + ensure play. After armed, second tap anywhere also skips. */
+    unmute();
+    try { vid.play(); } catch (_) {}
+    if (skipArmed && e.target && e.target.classList && e.target.classList.contains("cine-skip")) {
+      endIt();
+    } else if (skipArmed && e.detail >= 2) {
+      endIt();
+    }
+  });
+  if (tapBtn) {
+    tapBtn.addEventListener("click", (e) => {
+      try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+      hideTap();
+      unmute();
+      vid.play().catch(() => {});
+    });
+  }
+
   const tryPlay = () => {
     const p = vid.play();
     if (p && typeof p.then === "function") {
-      p.then(() => {}).catch(() => {
-        /* autoplay with sound blocked — try muted then unmute on first click */
-        vid.muted = true;
-        vid.play().then(() => {
-          const unmute = () => { try { vid.muted = false; } catch (_) {} };
-          root.addEventListener("pointerdown", unmute, { once: true });
-        }).catch(() => {
-          try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
-          failToEngine("play blocked");
-        });
-      });
+      p.then(() => { hideTap(); setTimeout(unmute, 60); })
+       .catch(() => {
+         /* still show the film layer; user taps ▶ */
+         showTap();
+         console.warn("mars cutscene: waiting for tap to play");
+       });
     }
   };
   if (vid.readyState >= 2) tryPlay();
-  else vid.addEventListener("canplay", tryPlay, { once: true });
-  /* hard safety: if video never ends, finish after 90s */
+  else {
+    vid.addEventListener("canplay", tryPlay, { once: true });
+    /* if canplay is slow, still try */
+    setTimeout(tryPlay, 250);
+  }
+
+  /* hard safety */
   setTimeout(() => {
     if (!marsVideoDone && document.getElementById("marsCutscene")) endIt();
-  }, 90000);
+  }, 120000);
 }
+
+/* kick off preload as soon as script runs */
+try { setTimeout(preloadMarsCutscene, 800); } catch (_) {}
 /** QA / preview: jump straight into the Starbase escape cutscene (F9). */
 function skipToEscapeCutscene() {
   try {
