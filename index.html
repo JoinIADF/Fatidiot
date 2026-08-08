@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<!-- cutscene-source: Claude 1d3a359 -->
+<!-- cutscene-source: Claude 1d3a359 + F9 skip -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -13503,6 +13503,12 @@ addEventListener("keydown", e => {
     e.preventDefault();
     startGame({ social: true });
   }
+  /* F9 / Shift+9 — skip grind, play Starbase escape cutscene */
+  if (e.code === "F9" || (e.shiftKey && (e.code === "Digit9" || e.code === "Numpad9"))) {
+    e.preventDefault();
+    try { skipToEscapeCutscene(); } catch (err) { console.error(err); }
+    return;
+  }
   if (mode === "play" && socialActive && !socialReading && !miniGameActive() && typeof liveTV !== "undefined" && !liveTV.guideOpen && !liveTV.fullscreen && (e.code === "KeyE" || e.code === "KeyR")) {
     e.preventDefault();
     if (e.code === "KeyE") {
@@ -14666,6 +14672,66 @@ function startEscapeCutscene() {
   try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
   try { SFX.lock(); } catch (_) {}
 }
+/** QA / preview: jump straight into the Starbase escape cutscene (F9). */
+function skipToEscapeCutscene() {
+  try {
+    if (mode === "title" || mode === "over" || mode === "portal") {
+      if (typeof startGame === "function") startGame();
+    }
+  } catch (_) {}
+  /* tear down lounge / minigames so starbase can run */
+  try {
+    if (typeof socialActive !== "undefined" && socialActive) {
+      socialActive = false;
+      socialReading = false;
+      try { document.body.classList.remove("live-lounge", "lounge-ui"); } catch (_) {}
+      try { if (loungeDecor) loungeDecor.visible = false; } catch (_) {}
+      try { if (typeof closeLoungePanel === "function") closeLoungePanel(); } catch (_) {}
+      try { if (typeof liveTV !== "undefined" && liveTV) {
+        liveTV.guideOpen = false; liveTV.fullscreen = false;
+      } } catch (_) {}
+    }
+  } catch (_) {}
+  try { if (typeof quitActiveMiniGame === "function") quitActiveMiniGame(); } catch (_) {}
+  try {
+    if (!starbaseActive && typeof activateStarbase === "function") activateStarbase();
+  } catch (_) {}
+  /* clean leftover cine if re-triggered mid-scene */
+  try {
+    if (typeof teardownEscapeCine === "function") teardownEscapeCine();
+  } catch (_) {}
+  try {
+    document.body.classList.remove("cine");
+  } catch (_) {}
+  rocketLift = null;
+  portalReady = false;
+  try { if (typeof clearLevelPortal === "function") clearLevelPortal(); } catch (_) {}
+  wallQuota = 0;
+  wallTimerDirty = true;
+  try { updateHud(); } catch (_) {}
+  /* kill combat noise so the director owns the frame */
+  try {
+    spawnQueue = 0;
+    for (const e of enemies.splice(0)) {
+      try { scene.remove(e.mesh); } catch (_) {}
+    }
+  } catch (_) {}
+  invuln = 999;
+  pig.visible = true;
+  pigVy = 0; pigY = 0; onGround = true;
+  mode = "play";
+  /* set boarding on rocket 2, then fire cutscene immediately */
+  enableBoarding();
+  if (!marsState || !marsState.rocket) {
+    showMsg("No rocket ready — try again");
+    return false;
+  }
+  startEscapeCutscene();
+  showMsg("SKIP → escape cutscene (F9)");
+  try { console.info("[QA] skipToEscapeCutscene()"); } catch (_) {}
+  return true;
+}
+window.__skipEscapeCutscene = skipToEscapeCutscene;
 function marsVictory() {
   if (!marsState) marsState = { phase: "done", t: 0 };
   marsState.phase = "done";
@@ -18031,7 +18097,7 @@ function previewLevel2() {
 }
 window.__game = {
   startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
-  previewLevel2, activateStarbase, levelUp,
+  previewLevel2, activateStarbase, levelUp, skipToEscapeCutscene,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
   killBoss, enableBoarding, startEscapeCutscene, marsVictory,
@@ -18050,7 +18116,9 @@ window.__game = {
 /* deep-link: ?level=2 skips to Starbase for preview */
 try {
   const q = new URLSearchParams(location.search);
-  if (q.get("level") === "2" || q.get("starbase") === "1") {
+  if (q.get("cutscene") === "1" || q.get("escape") === "1") {
+    setTimeout(() => { try { skipToEscapeCutscene(); } catch (e) { console.error(e); } }, 500);
+  } else if (q.get("level") === "2" || q.get("starbase") === "1") {
     setTimeout(() => { try { previewLevel2(); } catch (e) { console.error(e); } }, 400);
   }
 } catch (_) {}
