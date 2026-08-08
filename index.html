@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- cutscene-source: Claude 1d3a359 + F9 skip -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
-<meta name="fatidiot-build" content="20260808-imagine-reel" />
-<!-- build 20260808-imagine-reel: escape cutscene plays cutscene-art Imagine stills (not low-poly 3D) -->
-<title>Fa'tidiot — Working at X · 20260808-imagine-reel</title>
+<meta name="fatidiot-build" content="20260805g" />
+<!-- build 20260805g: V-audio, SE arcade, discreet zones, portrait, dart markers -->
+<title>Fa'tidiot — Working at X · 20260805g</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #111;
@@ -317,56 +318,14 @@
   /* —— ESCAPE CUTSCENE: letterbox bars + HUD fade-out —— */
   .cine-bar {
     position: fixed; left: 0; right: 0; height: 11vh; background: #000;
-    z-index: 95; pointer-events: none;
+    z-index: 40; pointer-events: none;
     transform: scaleY(0);
-    transition: transform 1.1s cubic-bezier(0.7, 0, 0.3, 1);
-    box-shadow: inset 0 0 40px #000;
+    transition: transform 0.9s cubic-bezier(0.7, 0, 0.3, 1);
   }
   .cine-bar.top { top: 0; transform-origin: top; }
   .cine-bar.bot { bottom: 0; transform-origin: bottom; }
   body.cine .cine-bar { transform: scaleY(1); }
   body.cine #hud, body.cine #mobileUI { opacity: 0 !important; transition: opacity 0.5s ease; }
-  body.cine canvas { visibility: hidden !important; } /* Imagine reel is the picture, not low-poly 3D */
-  /* Full-screen Imagine still reel — the real escape cutscene */
-  #cineReel {
-    position: fixed; inset: 0; z-index: 90;
-    background: #000; display: none; overflow: hidden;
-    pointer-events: none;
-  }
-  body.cine #cineReel { display: block; }
-  #cineReel .cine-shot {
-    position: absolute; inset: 0;
-    opacity: 0; transition: opacity 0.85s ease;
-    background: #000;
-  }
-  #cineReel .cine-shot.on { opacity: 1; }
-  #cineReel .cine-shot img {
-    position: absolute; left: 50%; top: 50%;
-    width: 100%; height: 100%;
-    object-fit: cover; object-position: center center;
-    transform: translate(-50%, -50%) scale(1.08);
-    filter: contrast(1.05) saturate(1.08);
-  }
-  #cineReel .cine-shot.on img {
-    animation: cineKen 5.5s ease-out forwards;
-  }
-  @keyframes cineKen {
-    0%   { transform: translate(-50%, -50%) scale(1.1); }
-    100% { transform: translate(-50%, -50%) scale(1.0); }
-  }
-  #cineReel .cine-cap {
-    position: absolute; left: 0; right: 0; bottom: 14vh; z-index: 2;
-    text-align: center; padding: 0 18px;
-    color: #f2f6ff; font: 700 clamp(15px, 2.6vw, 24px)/1.35 system-ui, sans-serif;
-    letter-spacing: 0.04em;
-    text-shadow: 0 2px 16px #000, 0 0 28px #000;
-    opacity: 0; transition: opacity 0.5s ease;
-  }
-  #cineReel .cine-cap.on { opacity: 1; }
-  #cineReel .cine-beat {
-    display: block; font-size: 0.62em; letter-spacing: 0.22em;
-    color: #7cffb0; margin-bottom: 8px; font-weight: 800;
-  }
 
   @keyframes escapeTextIn {
     from { opacity: 0; transform: translateY(16px); }
@@ -2146,7 +2105,7 @@ window.__THREE = THREE;
 
 /* embedded freefall death art (path-independent) */
 const ESCAPE_ART_URL = "./pig-escape.jpg";
-const MARS_ART_URL = "./cutscene-art/09-victory.jpg";
+const MARS_ART_URL = "./pig-mars.jpg";
 
 /* ============================== RENDERER ============================== */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -13544,6 +13503,12 @@ addEventListener("keydown", e => {
     e.preventDefault();
     startGame({ social: true });
   }
+  /* F9 / Shift+9 — skip grind, play Starbase escape cutscene */
+  if (e.code === "F9" || (e.shiftKey && (e.code === "Digit9" || e.code === "Numpad9"))) {
+    e.preventDefault();
+    try { skipToEscapeCutscene(); } catch (err) { console.error(err); }
+    return;
+  }
   if (mode === "play" && socialActive && !socialReading && !miniGameActive() && typeof liveTV !== "undefined" && !liveTV.guideOpen && !liveTV.fullscreen && (e.code === "KeyE" || e.code === "KeyR")) {
     e.preventDefault();
     if (e.code === "KeyE") {
@@ -13588,12 +13553,6 @@ addEventListener("keydown", e => {
     e.preventDefault();
     if (rocketNear) openRocketPlaque(rocketNear);
     else showMsg("Walk up to a rocket plaque · press E");
-  }
-  /* F9 / Shift+9 — QA dry-run: skip grind, play Starbase escape cutscene */
-  if (e.code === "F9" || (e.shiftKey && (e.code === "Digit9" || e.code === "Numpad9"))) {
-    e.preventDefault();
-    try { debugSkipToEscapeCutscene(); } catch (err) { console.error(err); }
-    return;
   }
   if (socialReading && e.code === "Escape") {
     e.preventDefault();
@@ -14224,32 +14183,12 @@ function enableBoarding() {
   try { say("Your ride is fueled. Don't scratch it.", { rate: 0.95 }); } catch (_) {}
   try { SFX.wave(); } catch (_) {}
 }
-/* ————— ESCAPE CUTSCENE: Imagine still REEL (matches cutscene-art/preview) ————
- * The live finale is the photoreal Grok Imagine sequence — NOT the low-poly 3D
- * director (that was Claude's). Beats map 1:1 to cutscene-art/0N-*.jpg. */
+/* ————— ESCAPE CUTSCENE: cinematic director —————
+ * Beats: close-up → slow walk down the crew platform → helmet on → turn back
+ * over the battlefield → fist raise → middle finger → board → dusk blast-off
+ * with Mars overhead → victory screen. */
 let cine = null;
-/* beat end-times (seconds). Image i shows until CINE_REEL[i+1].at (or victory). */
-const CINE_REEL = [
-  { at: 0,    src: "./cutscene-art/01-closeup.jpg",     cap: "Spacesuit on · helmet at his side",            vo: "Suit up. We're done here." },
-  { at: 4.2,  src: "./cutscene-art/02-walk.jpg",        cap: "Slow walk along the crew access arm",          vo: null },
-  { at: 8.6,  src: "./cutscene-art/03-helmet.jpg",      cap: "Helmet on · raised and sealed",                vo: null },
-  { at: 13.0, src: "./cutscene-art/04-battlefield.jpg", cap: "Turn back · bots & spam left on the field",    vo: null },
-  { at: 17.2, src: "./cutscene-art/05-fist.jpg",        cap: "Fist raise",                                   vo: "For everyone still stuck in the timeline." },
-  { at: 20.4, src: "./cutscene-art/06-finger.jpg",      cap: "So long, losers.",                             vo: "So long, losers." },
-  { at: 23.8, src: "./cutscene-art/07-board.jpg",       cap: "Board · into the ship",                        vo: null },
-  { at: 27.4, src: "./cutscene-art/08-blastoff.jpg",    cap: "Blast-off · Mars overhead",                    vo: null },
-  { at: 32.8, src: "./cutscene-art/09-victory.jpg",     cap: "LIFTOFF · YOU ESCAPED X",                       vo: null },
-];
-const CINE = {
-  walk: CINE_REEL[1].at,
-  helmet: CINE_REEL[2].at,
-  turn: CINE_REEL[3].at,
-  fist: CINE_REEL[4].at,
-  finger: CINE_REEL[5].at,
-  board: CINE_REEL[6].at,
-  launch: CINE_REEL[7].at,
-  victory: 37.5,
-};
+const CINE = { walk: 3.2, helmet: 9.2, turn: 13.0, fist: 16.4, finger: 18.8, board: 22.0, launch: 25.0, victory: 36.5 };
 function cineS(a, b, x) {
   const u = Math.max(0, Math.min(1, (x - a) / (b - a)));
   return u * u * (3 - 2 * u);
@@ -14265,52 +14204,6 @@ function ensureCineBars() {
     d.className = "cine-bar " + k;
     document.body.appendChild(d);
   }
-}
-function ensureCineReel() {
-  let root = document.getElementById("cineReel");
-  if (root) return root;
-  root = document.createElement("div");
-  root.id = "cineReel";
-  root.setAttribute("aria-hidden", "true");
-  CINE_REEL.forEach((beat, i) => {
-    const shot = document.createElement("div");
-    shot.className = "cine-shot";
-    shot.dataset.i = String(i);
-    const img = document.createElement("img");
-    img.src = beat.src;
-    img.alt = beat.cap || ("Escape beat " + (i + 1));
-    img.decoding = "async";
-    img.loading = i < 2 ? "eager" : "lazy";
-    shot.appendChild(img);
-    root.appendChild(shot);
-  });
-  const cap = document.createElement("div");
-  cap.className = "cine-cap";
-  cap.id = "cineCap";
-  root.appendChild(cap);
-  document.body.appendChild(root);
-  /* warm the image cache so crossfades don't hitch */
-  try {
-    CINE_REEL.forEach(b => { const im = new Image(); im.src = b.src; });
-  } catch (_) {}
-  return root;
-}
-function setCineReelBeat(i) {
-  const root = ensureCineReel();
-  const shots = root.querySelectorAll(".cine-shot");
-  shots.forEach((s, n) => s.classList.toggle("on", n === i));
-  const cap = document.getElementById("cineCap");
-  if (cap && CINE_REEL[i]) {
-    const beat = CINE_REEL[i];
-    cap.innerHTML = `<span class="cine-beat">BEAT ${i + 1} / ${CINE_REEL.length}</span>${beat.cap || ""}`;
-    cap.classList.add("on");
-  }
-}
-function teardownCineReel() {
-  try {
-    const root = document.getElementById("cineReel");
-    if (root) root.remove();
-  } catch (_) {}
 }
 function buildEscapeCineSet(R) {
   /* the platform and the fallen always face the lot (the pads sit at the far
@@ -14367,70 +14260,55 @@ function buildEscapeCineSet(R) {
   hatch.add(glow);
   set.add(hatch);
 
-  /* the battlefield: bots and spam lying shot and burnt across the lot — denser
-     post-war field so the turn-back beat reads as a real victory aftermath */
+  /* the battlefield: bots and spam lying shot and burnt across the lot */
   const corpses = [];
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < 13; i++) {
     const isBot = i % 2 === 0;
     const m = isBot ? buildBot(pick(BOT_VARIANTS)) : buildSpammer();
-    const d = rand(7, 52);
-    const lat = (Math.random() < 0.5 ? -1 : 1) * rand(1.8, 26);
+    const d = rand(9, 46);
+    const lat = (Math.random() < 0.5 ? -1 : 1) * rand(2.6, 22);
     const p = P1.clone().add(dir.clone().multiplyScalar(d)).add(right.clone().multiplyScalar(lat));
     p.y = 0;
     m.position.set(p.x, isBot ? 0.45 : 0.66, p.z);
     m.rotation.y = rand(0, Math.PI * 2);
-    m.rotation.z = (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 - rand(0.05, 0.28));
-    m.rotation.x = (Math.random() < 0.35 ? 1 : 0) * rand(-0.35, 0.35);
+    m.rotation.z = (Math.random() < 0.5 ? 1 : -1) * (Math.PI / 2 - rand(0.05, 0.2));
     m.traverse(o => {
       if (o.isMesh && o.material && o.material.color && !o.material.map) {
         o.material = o.material.clone();
-        o.material.color.multiplyScalar(isBot ? 0.48 : 0.72);
+        o.material.color.multiplyScalar(isBot ? 0.55 : 0.8);
       }
     });
     if (m.userData && m.userData.blink && m.userData.blink.material)
       m.userData.blink.material.color.setHex(0x1a1d20); /* chest light dead */
     for (const s of [-1, 1]) if (m.userData && m.userData["arm" + s]) m.userData["arm" + s].rotation.z = s * 2.3;
     set.add(m);
-    /* scorch ring under bots, dark blood pool + spilled meat under spam */
-    const dr = isBot ? rand(1.2, 2.0) : rand(0.95, 1.55);
+    /* scorch ring under bots, dark pool + spilled meat under spam */
+    const dr = isBot ? rand(1.2, 1.7) : rand(0.9, 1.3);
     set.add(cyl(dr, dr, 0.02, isBot ? 0x16120e : 0x5c1414, p.x, 0.012, p.z, 12));
-    if (!isBot) for (let b = 0; b < 4; b++) {
-      const blob = sph(rand(0.1, 0.22), pick([0xd98f7e, 0x8b1e1e, 0xc45a4a]),
-        p.x + rand(-1.0, 1.0), 0.07, p.z + rand(-1.0, 1.0), 7, 5);
-      blob.scale.y = 0.45;
+    if (!isBot) for (let b = 0; b < 3; b++) {
+      const blob = sph(rand(0.1, 0.2), 0xd98f7e, p.x + rand(-0.9, 0.9), 0.07, p.z + rand(-0.9, 0.9), 7, 5);
+      blob.scale.y = 0.5;
       set.add(blob);
-    }
-    /* twisted scrap near some kills */
-    if (Math.random() < 0.45) {
-      set.add(box(rand(0.3, 0.9), rand(0.08, 0.22), rand(0.3, 0.7),
-        pick([0x3a3e44, 0x2a2e34, 0x555a62]),
-        p.x + rand(-1.4, 1.4), 0.12, p.z + rand(-1.4, 1.4)));
     }
     corpses.push(p);
   }
-  /* small fires still burning across the field */
+  /* a few small fires still burning */
   const flames = [];
-  for (let i = 0; i < 6; i++) {
-    const fp = P1.clone().add(dir.clone().multiplyScalar(rand(10, 40))).add(right.clone().multiplyScalar(rand(-18, 18)));
-    const f = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.55, 7),
-      new THREE.MeshBasicMaterial({ color: pick([0xff6a00, 0xffaa00, 0xff3a00]), transparent: true, opacity: 0.88 }));
-    f.position.set(fp.x, 0.75, fp.z);
+  for (let i = 0; i < 3; i++) {
+    const fp = P1.clone().add(dir.clone().multiplyScalar(rand(12, 34))).add(right.clone().multiplyScalar(rand(-14, 14)));
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.4, 7),
+      new THREE.MeshBasicMaterial({ color: pick([0xff6a00, 0xffaa00]), transparent: true, opacity: 0.85 }));
+    f.position.set(fp.x, 0.7, fp.z);
     set.add(f);
     flames.push(f);
-    /* ember point lights on a few fires for drama */
-    if (i < 3) {
-      const el = new THREE.PointLight(0xff6a20, 1.1, 18);
-      el.position.set(fp.x, 1.4, fp.z);
-      set.add(el);
-    }
   }
 
-  /* Mars, waiting overhead — larger and earlier so the launch sky reads as destiny */
-  const mars = new THREE.Mesh(new THREE.SphereGeometry(14, 20, 16),
+  /* Mars, waiting overhead — fades in as dusk falls for the launch */
+  const mars = new THREE.Mesh(new THREE.SphereGeometry(11, 18, 14),
     new THREE.MeshBasicMaterial({ color: 0xc9603c, fog: false, transparent: true, opacity: 0 }));
-  mars.position.copy(padP).add(dir.clone().multiplyScalar(-130)).add(right.clone().multiplyScalar(22));
-  mars.position.y = 155;
-  const marsGlow = new THREE.Mesh(new THREE.SphereGeometry(18.5, 18, 14),
+  mars.position.copy(padP).add(dir.clone().multiplyScalar(-150)).add(right.clone().multiplyScalar(28));
+  mars.position.y = 175;
+  const marsGlow = new THREE.Mesh(new THREE.SphereGeometry(14.5, 18, 14),
     new THREE.MeshBasicMaterial({ color: 0xff8a5c, fog: false, transparent: true, opacity: 0, depthWrite: false }));
   marsGlow.position.copy(mars.position);
   set.add(mars, marsGlow);
@@ -14470,17 +14348,13 @@ function dressAstroPig() {
   arm.rotation.z = -0.22;
   arm.rotation.x = -0.12;
   arm.add(cyl(0.1, 0.09, 0.6, WHITE, 0, -0.27, 0, 8));
-  arm.add(sph(0.155, GLOVE, 0, -0.62, 0, 8, 6));
-  /* bigger, readable middle finger for the farewell beat (hero low-angle shot) */
-  const finger = box(0.07, 0.36, 0.07, GLOVE, 0, -0.88, 0.04);
+  arm.add(sph(0.145, GLOVE, 0, -0.62, 0, 8, 6));
+  const finger = box(0.055, 0.24, 0.055, GLOVE, 0, -0.8, 0.02);
   finger.visible = false;
   arm.add(finger);
-  const knuckle = box(0.2, 0.09, 0.12, GLOVE, 0, -0.7, 0.0);
-  knuckle.visible = false;
-  arm.add(knuckle);
   /* glass bubble helmet, carried at his side */
-  const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.72, 18, 14),
-    new THREE.MeshPhongMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.32, specular: 0xffffff, shininess: 140 }));
+  const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 12),
+    new THREE.MeshPhongMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.3, specular: 0xffffff, shininess: 120 }));
   bubble.position.set(0.1, -0.95, 0.15);
   arm.add(bubble);
   suit.add(arm);
@@ -14493,82 +14367,236 @@ function dressAstroPig() {
     cuffs.push(cuff);
   }
   pig.add(suit);
-  return { suit, arm, finger, knuckle, bubble, cuffs };
+  return { suit, arm, finger, bubble, cuffs };
 }
 function teardownEscapeCine() {
-  if (!cine && !document.getElementById("cineReel") && !document.body.classList.contains("cine")) return;
-  try { if (cine && cine.set) scene.remove(cine.set); } catch (_) {}
-  try { if (cine && cine.bubble && cine.bubble.parent) cine.bubble.parent.remove(cine.bubble); } catch (_) {}
-  try { if (cine && cine.suit) pig.remove(cine.suit); } catch (_) {}
-  try { for (const c of (cine && cine.cuffs) || []) if (c.parent) c.parent.remove(c); } catch (_) {}
+  if (!cine) return;
+  try { if (cine.set) scene.remove(cine.set); } catch (_) {}
+  try { if (cine.bubble && cine.bubble.parent) cine.bubble.parent.remove(cine.bubble); } catch (_) {}
+  try { if (cine.suit) pig.remove(cine.suit); } catch (_) {}
+  try { for (const c of cine.cuffs || []) if (c.parent) c.parent.remove(c); } catch (_) {}
   try {
     for (const k of ["fl", "fr", "bl", "br"]) if (pigParts[k]) pigParts[k].rotation.x = 0;
     pig.scale.set(1, 1, 1);
     pig.rotation.z = 0;
-    if (pigParts.head) pigParts.head.rotation.x = 0;
+    pigParts.head.rotation.x = 0;
   } catch (_) {}
-  try {
-    if (cine && typeof cine.savedFov === "number") {
-      camera.fov = cine.savedFov;
-      camera.updateProjectionMatrix();
-    }
-  } catch (_) {}
-  try { teardownCineReel(); } catch (_) {}
   try { document.body.classList.remove("cine"); } catch (_) {}
-  try { pig.visible = true; } catch (_) {}
   cine = null;
 }
-/**
- * Drive the Imagine still reel. This is the live cutscene picture —
- * photoreal Nikita frames from cutscene-art/, same as the preview page.
- */
 function runEscapeCine(dt, M) {
   if (!cine) { marsVictory(); return; }
   window.__camLock = true;
-  pig.visible = false;
-  if (typeof rifleSlung !== "undefined" && rifleSlung) rifleSlung.visible = false;
-  if (typeof flameWpn !== "undefined" && flameWpn) flameWpn.visible = false;
-  const T = M.t;
-  /* pick active still by timeline */
-  let beat = 0;
-  for (let i = 0; i < CINE_REEL.length; i++) {
-    if (T >= CINE_REEL[i].at) beat = i;
+  const c = cine, T = M.t, R = M.rocket;
+  const fRocket = c.dir.clone().negate(); /* pig-forward when facing the ship */
+  const fLot = c.dir;                     /* pig-forward when facing the field */
+  /* ambient set dressing */
+  c.lights.forEach((L, i) => { L.material.opacity = 0.25 + 0.75 * Math.max(0, Math.sin(t * 5 - i * 1.1)); });
+  c.flames.forEach((f, i) => {
+    f.scale.set(1 + Math.sin(t * 17 + i * 2) * 0.25, 1 + Math.sin(t * 23 + i) * 0.35, 1);
+    f.material.opacity = 0.6 + Math.random() * 0.3;
+  });
+  c.smokeT -= dt;
+  if (c.smokeT <= 0 && T > CINE.turn - 1) {
+    /* the field smolders: rising wisps + the odd dying spark */
+    c.smokeT = 0.35;
+    burst(pick(c.corpses).clone().add(new THREE.Vector3(rand(-0.5, 0.5), 1.1, rand(-0.5, 0.5))),
+      pick([0x3a3a3a, 0x50504e, 0x2c2c2c]), 2, 1.1, -1.6);
+    if (Math.random() < 0.2)
+      burst(pick(c.corpses).clone().add(new THREE.Vector3(0, 0.8, 0)), 0x7ec8ff, 2, 3, 9);
   }
-  if (cine.reelBeat !== beat) {
-    cine.reelBeat = beat;
-    setCineReelBeat(beat);
-    const b = CINE_REEL[beat];
-    if (b && b.vo && !cine.voSaid[beat]) {
-      cine.voSaid[beat] = true;
-      try { say(b.vo, { rate: 0.9 }); } catch (_) {}
+  /* — beat events — */
+  if (!c.helmetOn && T >= CINE.helmet + 1.55) {
+    c.helmetOn = true;
+    /* seat the bubble over the army helmet — identity intact */
+    try {
+      c.bubble.parent.remove(c.bubble);
+      pigParts.head.add(c.bubble);
+      c.bubble.scale.setScalar(1 / 0.85);
+      c.bubble.position.set(0, 0.16, -0.02);
+    } catch (_) {}
+    try { SFX.lock(); SFX.pill(); } catch (_) {}
+    burst(pig.position.clone().add(new THREE.Vector3(0, 1.9, 0)), 0xcfefff, 8, 2.2, 2);
+  }
+  if (!c.saidBye && T >= CINE.finger + 0.4) {
+    c.saidBye = true;
+    try { say("So long, losers.", { rate: 0.9 }); } catch (_) {}
+    floatText(pig.position.clone().add(new THREE.Vector3(0, 3.1, 0)), "🖕",
+      { size: 72, color: "#ffd0a0", strokeW: 6, life: 2.4 }, 0.9);
+  }
+  if (!c.boarded && T >= CINE.launch - 0.7) {
+    c.boarded = true;
+    pig.visible = false;
+    try { SFX.vending(); } catch (_) {}
+  }
+  if (!c.launched && T >= CINE.launch) {
+    c.launched = true;
+    rocketLift = null; /* free the launcher for rocket 2 */
+    try { startRocketIgnition(R); } catch (_) {}
+    shake = Math.max(shake, 1.1);
+  }
+  /* door slides shut behind him, cabin light dies */
+  const dcU = cineS(CINE.launch - 0.7, CINE.launch - 0.05, T);
+  if (c.doorL) { c.doorL.position.x = -1.36 + 0.93 * dcU; c.doorR.position.x = 1.36 - 0.93 * dcU; }
+  if (c.glow) c.glow.intensity = 1.6 * (1 - dcU);
+  /* harder climb than the stock launcher for the finale */
+  if (c.launched && rocketLift && rocketLift.phase === "lift" && rocketLift.mesh === R)
+    R.position.y += 2.6 * dt;
+  /* dusk falls for the launch; Mars fades in overhead */
+  if (T > CINE.board) {
+    c.skyU = Math.min(1, c.skyU + dt * 0.12);
+    const sky = new THREE.Color(0x7eb0d8).lerp(new THREE.Color(0x241a30), c.skyU);
+    scene.background = sky;
+    if (scene.fog) {
+      scene.fog.color.copy(sky);
+      scene.fog.near = 70 + 130 * c.skyU;
+      scene.fog.far = 150 + 500 * c.skyU;
     }
-    /* juice on key beats */
-    if (beat === 2) { try { SFX.lock(); SFX.pill(); } catch (_) {} }
-    if (beat === 4) { try { SFX.wave(); } catch (_) {} shake = Math.max(shake, 0.35); }
-    if (beat === 5) { try { SFX.purge(); } catch (_) {} shake = Math.max(shake, 0.55); }
-    if (beat === 6) { try { SFX.vending(); SFX.lock(); } catch (_) {} }
-    if (beat === 7) {
-      try { SFX.escape(); SFX.purge(); } catch (_) {}
-      shake = Math.max(shake, 1.4);
-      /* optional: still launch the 3D rocket under the reel for audio/state */
-      try {
-        if (M.rocket && !cine.launched) {
-          cine.launched = true;
-          rocketLift = null;
-          startRocketIgnition(M.rocket);
-        }
-      } catch (_) {}
-    }
+    c.mars.material.opacity = Math.min(1, c.skyU * 1.4);
+    c.marsGlow.material.opacity = 0.18 * c.skyU;
+  }
+  /* — camera — */
+  const camLook = new THREE.Vector3();
+  if (T < CINE.walk) {
+    /* BEAT 1 — CLOSE-UP: visor-level slow dolly on the hero's face */
+    const u = cineS(0, CINE.walk, T);
+    const head = pig.position.clone().add(fRocket.clone().multiplyScalar(0.55));
+    head.y = 1.78;
+    camera.position.copy(head)
+      .add(fRocket.clone().multiplyScalar(2.7 - 0.9 * u))
+      .add(c.right.clone().multiplyScalar(0.7 - 0.35 * u));
+    camera.position.y = 1.95 - 0.12 * u;
+    camera.lookAt(head);
+  } else if (T < CINE.helmet) {
+    /* BEAT 2 — THE WALK: low tracking shot along the crew platform */
+    const desired = pig.position.clone()
+      .add(c.right.clone().multiplyScalar(5.6))
+      .add(fRocket.clone().multiplyScalar(1.4));
+    desired.y = 1.35;
+    if (T - dt < CINE.walk) camera.position.copy(desired); /* hard cut, then follow */
+    camera.position.lerp(desired, Math.min(1, dt * 3.2));
+    camLook.copy(pig.position); camLook.y = 1.25;
+    camera.lookAt(camLook);
+  } else if (T < CINE.turn) {
+    /* BEAT 3 — HELMET ON: three-quarter front angle (stays clear of the hull) */
+    const u = cineS(CINE.helmet, CINE.turn, T);
+    camera.position.copy(pig.position)
+      .add(fRocket.clone().multiplyScalar(1.2))
+      .add(c.right.clone().multiplyScalar(-2.6 + 0.4 * u));
+    camera.position.y = 1.35 + 0.5 * u;
+    camLook.copy(pig.position); camLook.y = 1.7;
+    camera.lookAt(camLook);
+  } else if (T < CINE.fist) {
+    /* BEAT 4 — TURN BACK: high over-shoulder, the whole battlefield in frame */
+    const u = cineS(CINE.turn, CINE.fist, T);
+    camera.position.copy(pig.position)
+      .add(fLot.clone().multiplyScalar(-2.2))
+      .add(c.right.clone().multiplyScalar(3.4));
+    camera.position.y = 5.2 - 0.7 * u;
+    camLook.copy(pig.position).add(fLot.clone().multiplyScalar(15));
+    camLook.y = 0.6;
+    camera.lookAt(camLook);
+  } else if (T < CINE.board) {
+    /* BEATS 5+6 — FIST, THEN THE FINGER: low hero shot against the sky */
+    const u = cineS(CINE.fist, CINE.board, T);
+    camera.position.copy(pig.position)
+      .add(fLot.clone().multiplyScalar(4.6 - 1.1 * u))
+      .add(c.right.clone().multiplyScalar(-0.6));
+    camera.position.y = 0.95;
+    camLook.copy(pig.position); camLook.y = 2.15;
+    camera.lookAt(camLook);
+  } else if (T < CINE.launch) {
+    /* BEAT 7 — BOARDING: quiet side angle at the hatch */
+    camera.position.copy(c.hatchP)
+      .add(c.right.clone().multiplyScalar(4.4))
+      .add(fLot.clone().multiplyScalar(1.6));
+    camera.position.y = 1.7;
+    camLook.copy(c.hatchP); camLook.y = 1.5;
+    camera.lookAt(camLook);
+  } else {
+    /* BEAT 8 — BLAST-OFF: long pull-back, Mars burning faint overhead */
+    const u = cineS(CINE.launch, CINE.victory - 1.5, T);
+    camera.position.copy(c.padP)
+      .add(c.dir.clone().multiplyScalar(12 + 30 * u));
+    camera.position.y = 2.2 + 8.5 * u;
+    camLook.set(c.padP.x, Math.max(8, R.position.y + 16), c.padP.z);
+    camera.lookAt(camLook);
   }
   if (T >= CINE.victory) marsVictory();
 }
 function applyCinePigPose(dt) {
-  /* Imagine reel owns the frame — freeze the low-poly actor off-screen */
-  if (!cine || !marsState || marsState.phase !== "cutscene") return;
-  pig.visible = false;
+  /* runs at the tail of the player update so it wins over stick input,
+     waddle and squash — the director owns the actor during the cutscene */
+  if (!cine || !marsState) return;
+  const c = cine, T = marsState.t;
+  pig.scale.set(1, 1, 1);
+  pig.rotation.z = 0;
   pigY = 0; pigVy = 0; onGround = true;
+  pig.visible = T < CINE.launch - 0.7; /* aboard the ship after that */
+  /* no weapons in the spacesuit — wins over the per-frame weapon toggles */
   if (typeof rifleSlung !== "undefined" && rifleSlung) rifleSlung.visible = false;
   if (typeof flameWpn !== "undefined" && flameWpn) flameWpn.visible = false;
+  const legAmp = w => {
+    for (const [k, d] of [["fl", 1], ["fr", -1], ["bl", -1], ["br", 1]])
+      if (pigParts[k]) pigParts[k].rotation.x = w * d;
+  };
+  const armRest = -0.12;
+  let armA = armRest;
+  if (T < CINE.walk) {
+    /* BEAT 1 — stand at the foot of the platform, helmet at his side */
+    pig.position.copy(c.P0);
+    pig.rotation.y = c.yawRocket;
+    pig.scale.multiplyScalar(1 + Math.sin(t * 2.2) * 0.012); /* breathing */
+    legAmp(0);
+  } else if (T < CINE.helmet) {
+    /* BEAT 2 — the slow walk toward the hatch */
+    const u = cineS(CINE.walk + 0.1, CINE.helmet - 0.2, T);
+    pig.position.lerpVectors(c.P0, c.P1, u);
+    const stride = u > 0 && u < 1 ? Math.sin(t * 6.5) : 0;
+    pig.position.y = c.deckY + Math.abs(stride) * 0.05;
+    pig.rotation.y = c.yawRocket;
+    pig.rotation.z = stride * 0.05;
+    legAmp(stride * 0.42);
+  } else if (T < CINE.turn) {
+    /* BEAT 3 — helmet raised, seated, sealed */
+    pig.position.copy(c.P1);
+    pig.rotation.y = c.yawRocket;
+    legAmp(0);
+    const upU = cineS(CINE.helmet + 0.3, CINE.helmet + 1.55, T);
+    const dnU = cineS(CINE.helmet + 1.75, CINE.helmet + 2.9, T);
+    armA = armRest + (-2.5 - armRest) * (upU - dnU);
+    pigParts.head.rotation.x = -0.22 * (upU - dnU); /* looks up as it seals */
+  } else if (T < CINE.fist) {
+    /* BEAT 4 — turn and take in the field */
+    pig.position.copy(c.P1);
+    const u = cineS(CINE.turn, CINE.turn + 1.3, T);
+    pig.rotation.y = c.yawRocket + c.yawSpin * u;
+    legAmp(0);
+  } else if (T < CINE.board) {
+    /* BEATS 5+6 — fist snaps up, then the finger extends */
+    pig.position.copy(c.P1);
+    pig.rotation.y = c.yawLotFinal;
+    if (T >= CINE.fist + 0.2) {
+      const fu = Math.min(1, (T - (CINE.fist + 0.2)) / 0.45);
+      armA = armRest + (-Math.PI - armRest) * cineBackOut(fu);
+    }
+    if (c.finger) {
+      c.finger.visible = T >= CINE.finger + 0.25;
+      if (c.finger.visible) c.finger.scale.setScalar(Math.min(1, (T - CINE.finger - 0.25) * 5));
+    }
+    legAmp(0);
+  } else {
+    /* BEAT 7 — turn back and walk into the ship */
+    const tu = cineS(CINE.board, CINE.board + 0.8, T);
+    pig.rotation.y = c.yawLotFinal - c.yawSpin * tu;
+    const wu = cineS(CINE.board + 0.8, CINE.launch - 0.75, T);
+    pig.position.lerpVectors(c.P1, c.hatchInside, wu);
+    const stride = wu > 0 && wu < 1 ? Math.sin(t * 6.5) : 0;
+    pig.position.y = c.deckY + Math.abs(stride) * 0.04;
+    legAmp(stride * 0.4);
+    if (c.finger) c.finger.visible = false;
+  }
+  if (c.arm) c.arm.rotation.x = armA;
 }
 function updateMarsEscape(dt) {
   if (!marsState || mode !== "play" || !starbaseActive) return;
@@ -14628,102 +14656,82 @@ function startEscapeCutscene() {
   pigVy = 0; pigY = 0; onGround = true;
   invuln = 999; /* nothing interrupts the exit */
   spawnQueue = 0;
-  /* the war is over — clear the last stragglers */
+  /* the war is over — clear the last stragglers; the set builder lays out the fallen */
   try { for (const e of enemies.splice(0)) scene.remove(e.mesh); } catch (_) {}
   if (marsState.tag) { try { scene.remove(marsState.tag); } catch (_) {} marsState.tag = null; }
-  /* Imagine still reel is the cutscene (matches cutscene-art/preview.html).
-     We keep a thin cine state object for teardown / rocket launch side-effects. */
-  cine = {
-    mode: "imagine-reel",
-    rocket: marsState.rocket,
-    reelBeat: -1,
-    voSaid: {},
-    launched: false,
-    savedFov: camera.fov || 55,
-  };
-  pig.visible = false;
+  cine = buildEscapeCineSet(marsState.rocket);
+  const dress = dressAstroPig();
+  cine.suit = dress.suit; cine.arm = dress.arm; cine.finger = dress.finger;
+  cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
+  pig.position.copy(cine.P0);
+  pig.rotation.y = cine.yawRocket;
   ensureCineBars();
-  ensureCineReel();
-  setCineReelBeat(0);
   document.body.classList.add("cine");
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-  try { say("Suit up. We're done here.", { rate: 0.9 }); } catch (_) {}
-  try { SFX.lock(); SFX.wave(); } catch (_) {}
-  console.info("[cutscene] Imagine reel — photoreal stills from cutscene-art/");
+  try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
+  try { SFX.lock(); } catch (_) {}
 }
-/**
- * QA dry-run: skip the 100-kill grind / BOTZILLA / CEO exit and jump straight
- * into the Starbase spacesuit escape cutscene (second rocket).
- * Hotkey: F9  ·  URL: ?cutscene=1  ·  console: __skipEscapeCutscene()
- */
-function debugSkipToEscapeCutscene() {
+/** QA / preview: jump straight into the Starbase escape cutscene (F9). */
+function skipToEscapeCutscene() {
   try {
-    /* bail out of UI overlays that would steal input */
-    try { if (rocketReading && typeof closeRocketPlaque === "function") closeRocketPlaque(); } catch (_) {}
-    try { if (socialReading && typeof closeTweetReader === "function") closeTweetReader(); } catch (_) {}
-    try { if (typeof quitActiveMiniGame === "function") quitActiveMiniGame(); } catch (_) {}
-    try { if (typeof teardownEscapeCine === "function") teardownEscapeCine(); } catch (_) {}
-    window.__camLock = false;
-    pig.visible = true;
-
-    /* ensure we're on a Starbase shift (not lounge / title) */
-    if (mode === "title" || mode === "over" || mode === "portal" || mode !== "play") {
-      try { startGame(); } catch (_) {}
+    if (mode === "title" || mode === "over" || mode === "portal") {
+      if (typeof startGame === "function") startGame();
     }
-    if (socialActive) {
-      try { deactivateSocialLounge(); } catch (_) {}
+  } catch (_) {}
+  /* tear down lounge / minigames so starbase can run */
+  try {
+    if (typeof socialActive !== "undefined" && socialActive) {
+      socialActive = false;
+      socialReading = false;
+      try { document.body.classList.remove("live-lounge", "lounge-ui"); } catch (_) {}
+      try { if (loungeDecor) loungeDecor.visible = false; } catch (_) {}
+      try { if (typeof closeLoungePanel === "function") closeLoungePanel(); } catch (_) {}
+      try { if (typeof liveTV !== "undefined" && liveTV) {
+        liveTV.guideOpen = false; liveTV.fullscreen = false;
+      } } catch (_) {}
     }
-    if (!starbaseActive) {
-      try { previewLevel2(); } catch (_) {
-        try { activateStarbase(); } catch (__) {}
-      }
-    }
-
-    /* silence combat leftovers so the director owns the frame */
-    try {
-      for (const e of enemies.splice(0)) { try { scene.remove(e.mesh); } catch (_) {} }
-    } catch (_) {}
+  } catch (_) {}
+  try { if (typeof quitActiveMiniGame === "function") quitActiveMiniGame(); } catch (_) {}
+  try {
+    if (!starbaseActive && typeof activateStarbase === "function") activateStarbase();
+  } catch (_) {}
+  /* clean leftover cine if re-triggered mid-scene */
+  try {
+    if (typeof teardownEscapeCine === "function") teardownEscapeCine();
+  } catch (_) {}
+  try {
+    document.body.classList.remove("cine");
+  } catch (_) {}
+  rocketLift = null;
+  portalReady = false;
+  try { if (typeof clearLevelPortal === "function") clearLevelPortal(); } catch (_) {}
+  wallQuota = 0;
+  wallTimerDirty = true;
+  try { updateHud(); } catch (_) {}
+  /* kill combat noise so the director owns the frame */
+  try {
     spawnQueue = 0;
-    rocketLift = null;
-    portalReady = false;
-    try { clearLevelPortal(); } catch (_) {}
-    invuln = 999;
-    mode = "play";
-
-    /* pretend BOTZILLA already fell so nothing re-summons mid-cutscene */
-    if (typeof bossFight !== "undefined") {
-      bossFight.dead = true;
-      bossFight.active = false;
-      bossFight.kills = Math.max(bossFight.kills || 0, 100);
-      try {
-        const wrap = $("bossBarWrap");
-        if (wrap) wrap.classList.add("hidden");
-      } catch (_) {}
-      if (bossFight.mesh) {
-        try { scene.remove(bossFight.mesh); } catch (_) {}
-        bossFight.mesh = null;
-      }
+    for (const e of enemies.splice(0)) {
+      try { scene.remove(e.mesh); } catch (_) {}
     }
-
-    /* seat earned on rocket 2 → start the cinematic (no jump-in required) */
-    enableBoarding();
-    if (!marsState || marsState.phase !== "board") {
-      showMsg("DEBUG · no rocket to board — check Starbase rockets");
-      console.warn("debugSkipToEscapeCutscene: enableBoarding failed", marsState);
-      return false;
-    }
-    startEscapeCutscene();
-    showMsg("DEBUG · ESCAPE CUTSCENE DRY-RUN (F9)");
-    console.info("[QA] escape cutscene dry-run started — F9 / __skipEscapeCutscene()");
-    return true;
-  } catch (err) {
-    console.error("debugSkipToEscapeCutscene", err);
-    try { showMsg("DEBUG CUTSCENE FAILED — see console"); } catch (_) {}
+  } catch (_) {}
+  invuln = 999;
+  pig.visible = true;
+  pigVy = 0; pigY = 0; onGround = true;
+  mode = "play";
+  /* set boarding on rocket 2, then fire cutscene immediately */
+  enableBoarding();
+  if (!marsState || !marsState.rocket) {
+    showMsg("No rocket ready — try again");
     return false;
   }
+  startEscapeCutscene();
+  showMsg("SKIP → escape cutscene (F9)");
+  try { console.info("[QA] skipToEscapeCutscene()"); } catch (_) {}
+  return true;
 }
-window.__skipEscapeCutscene = debugSkipToEscapeCutscene;
+window.__skipEscapeCutscene = skipToEscapeCutscene;
 function marsVictory() {
   if (!marsState) marsState = { phase: "done", t: 0 };
   marsState.phase = "done";
@@ -14747,7 +14755,7 @@ function marsVictory() {
     stage.className = "escape-stage";
     const img = document.createElement("img");
     img.alt = "Space pig hero celebrating as the rocket climbs toward Mars";
-    img.src = (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./cutscene-art/09-victory.jpg");
+    img.src = (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./pig-mars.jpg");
     img.decoding = "async";
     img.onerror = () => {
       img.style.display = "none";
@@ -14769,10 +14777,10 @@ function marsVictory() {
     const h1 = ov.querySelector("h1");
     const p = ov.querySelector("p");
     const go = $("overlayGo");
-    if (h1) h1.textContent = "LIFTOFF";
+    if (h1) h1.textContent = "LIFTOFF — YOU ESCAPED X";
     if (p) p.innerHTML =
-      `<div class="death-sub" style="font-size:clamp(22px,4vw,32px);letter-spacing:0.06em;margin-bottom:8px">YOU ESCAPED X</div>` +
-      `<div class="mars-line">🚀 Timeline Lounge · we'll be landing on Mars shortly</div>` +
+      `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the weekend off, on Earth.</div>` +
+      `<div class="mars-line">Boss has a new job assignment coming. You'll be landing on Mars shortly.</div>` +
       `<br>SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
       `RANK: <b style="color:#ffd94a">${rank}</b>`;
     if (go) go.textContent = "CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE";
@@ -14781,7 +14789,7 @@ function marsVictory() {
     console.error("marsVictory UI", err);
     try { ov.classList.remove("hidden"); } catch (_) {}
   }
-  try { say("Congratulations. You finally escaped X. Enjoy the night off. We will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
+  try { say("Congratulations. You finally escaped X. Enjoy the weekend off, on Earth. Boss has a new job assignment coming. You will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
   try { SFX.escape(); } catch (_) {}
   try { SFX.purge(); } catch (_) {}
 }
@@ -18089,10 +18097,10 @@ function previewLevel2() {
 }
 window.__game = {
   startGame, throwBoomerang, fireRifle, doPurge, gameOver, triggerEscape, keys, isMobile,
-  previewLevel2, activateStarbase, levelUp,
+  previewLevel2, activateStarbase, levelUp, skipToEscapeCutscene,
   get enemies() { return enemies; }, get pig() { return pig; }, get wave() { return wave; },
   dartGame, strikerGame, arcadeGame, bossFight, startBossFight, damageBoss, quitActiveMiniGame, startArcadeGame,
-  killBoss, enableBoarding, startEscapeCutscene, marsVictory, debugSkipToEscapeCutscene,
+  killBoss, enableBoarding, startEscapeCutscene, marsVictory,
   get marsState() { return marsState; },
   /* headless screenshot: force one render, downscale, return data URL */
   snap(w = 420) {
@@ -18105,11 +18113,11 @@ window.__game = {
     return c.toDataURL("image/jpeg", 0.65);
   },
 };
-/* deep-link: ?level=2 skips to Starbase; ?cutscene=1 / ?escape=1 plays finale dry-run */
+/* deep-link: ?level=2 skips to Starbase for preview */
 try {
   const q = new URLSearchParams(location.search);
   if (q.get("cutscene") === "1" || q.get("escape") === "1") {
-    setTimeout(() => { try { debugSkipToEscapeCutscene(); } catch (e) { console.error(e); } }, 500);
+    setTimeout(() => { try { skipToEscapeCutscene(); } catch (e) { console.error(e); } }, 500);
   } else if (q.get("level") === "2" || q.get("starbase") === "1") {
     setTimeout(() => { try { previewLevel2(); } catch (e) { console.error(e); } }, 400);
   }
