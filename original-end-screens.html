@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Original death / end screens — FA'TIDIOT</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #05060c; color: #e8eef8; font-family: system-ui, sans-serif; padding: 24px 16px 48px; }
+  h1 { font-size: 18px; letter-spacing: 0.08em; color: #7cffb0; margin-bottom: 8px; }
+  .sub { color: #8aa0b8; font-size: 13px; margin-bottom: 28px; max-width: 720px; line-height: 1.45; }
+  section { margin-bottom: 40px; max-width: 960px; }
+  h2 { font-size: 14px; color: #8fd1ff; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .note { font-size: 12px; color: #7a8a9c; margin-bottom: 12px; line-height: 1.4; }
+  .stage {
+    position: relative; width: 100%; aspect-ratio: 16/10;
+    background: #000; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  }
+  .stage img {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; object-position: center;
+    filter: contrast(1.05) saturate(1.08);
+  }
+  .stage .veil {
+    position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.35) 34%, rgba(0,0,0,0.1) 58%, rgba(0,0,0,0.25) 100%);
+  }
+  .stage.mars .veil {
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(8,12,28,0.45) 34%, rgba(0,0,0,0.08) 58%, rgba(20,8,0,0.25) 100%);
+  }
+  .copy {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+    text-align: center; padding: 0 4% 5%;
+    text-shadow: 0 2px 10px #000, 0 4px 0 #000;
+  }
+  .copy h3 { font-size: clamp(28px, 5vw, 48px); margin-bottom: 8px; letter-spacing: 0.04em; }
+  .escape h3 { color: #7cffb0; }
+  .mars h3 { color: #7cffb0; }
+  .copy .death-sub { color: #ffe08a; font-size: clamp(15px, 2.4vw, 22px); font-weight: 700; margin: 8px auto; max-width: 560px; line-height: 1.4; }
+  .copy .mars-line { color: #8fd1ff; font-size: clamp(15px, 2.2vw, 20px); font-weight: 700; margin-top: 6px; }
+  .copy .meta { color: #cfd6e0; font-size: 14px; margin-top: 10px; }
+  .copy .go { color: #ffd94a; font-size: 18px; margin-top: 14px; font-weight: 700; }
+  .raw { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .raw { grid-template-columns: 1fr; } }
+  .raw figure { background: #0c1018; border-radius: 10px; overflow: hidden; border: 1px solid #1c2430; }
+  .raw img { width: 100%; display: block; }
+  .raw figcaption { padding: 10px 12px; font-size: 12px; color: #8aa0b8; }
+  a { color: #8fd1ff; }
+</style>
+</head>
+<body>
+  <h1>Original death / end screens</h1>
+  <p class="sub">
+    These are the full-screen cinematic end screens compiled into the game
+    (not the later 3D Starbase boarding cutscene). Art files:
+    <code>pig-escape.jpg</code> (window jump death) and
+    <code>pig-mars.jpg</code> (Starbase Mars victory).
+  </p>
+
+  <section>
+    <h2>1 · Window escape death — “YOU ESCAPED”</h2>
+    <p class="note">Triggered when you jump out an office window (deathKind = escape). Full-bleed freefall art + green title + “Enjoy the night off.”</p>
+    <div class="stage escape">
+      <img src="./pig-escape.jpg" alt="Pig falling from high-rise" />
+      <div class="veil"></div>
+      <div class="copy">
+        <h3>YOU ESCAPED</h3>
+        <div class="death-sub">You jumped. The bots kept working.<br>Enjoy the night off.</div>
+        <div class="meta">SCORE: 1840 · HIGH: 4200<br>RANK: <b style="color:#ffd94a">SENIOR MODERATOR</b></div>
+        <div class="go">CLICK OR PRESS ENTER TO RESTART</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · Mars liftoff victory — “LIFTOFF — YOU ESCAPED X”</h2>
+    <p class="note">End of Starbase after boarding the second rocket (marsVictory). Same layout as window escape; art is pig-mars.jpg.</p>
+    <div class="stage mars">
+      <img src="./pig-mars.jpg" alt="Pig rocket Mars victory" />
+      <div class="veil"></div>
+      <div class="copy">
+        <h3>LIFTOFF — YOU ESCAPED X</h3>
+        <div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the night off.</div>
+        <div class="mars-line">🚀 We'll be landing on Mars shortly...</div>
+        <div class="meta">SCORE: 6120 · HIGH: 6120<br>RANK: <b style="color:#ffd94a">X COMMANDO ELITE</b></div>
+        <div class="go">CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Raw art files</h2>
+    <div class="raw">
+      <figure>
+        <img src="./pig-escape.jpg" alt="pig-escape.jpg" />
+        <figcaption>pig-escape.jpg — window freefall death art</figcaption>
+      </figure>
+      <figure>
+        <img src="./pig-mars.jpg" alt="pig-mars.jpg" />
+        <figcaption>pig-mars.jpg — Mars liftoff victory art</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <p class="sub" style="margin-top:8px">Also still in-game: plain “WEEKEND RUINED” (CEO phrase hit) and “REST & RECHARGE” (sleep) — text-only overlays, no hero art.</p>
+</body>
+</html>
