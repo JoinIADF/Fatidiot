@@ -233,6 +233,63 @@
     18% { opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
   }
+  /* —— MARS FINAL CUTSCENE (video) —— */
+  #marsCutscene {
+    position: fixed; inset: 0; z-index: 10050;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  #marsCutscene.show { opacity: 1; pointer-events: auto; }
+  #marsCutscene video {
+    width: 100%; height: 100%;
+    object-fit: contain;
+    background: #000;
+  }
+  #marsCutscene .cine-skip {
+    position: absolute;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
+    z-index: 2;
+    font: 700 12px/1.2 system-ui, sans-serif;
+    letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.72);
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 8px 12px;
+    text-shadow: 0 1px 4px #000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  #marsCutscene.show .cine-skip { opacity: 1; }
+  #overlay.death-mars.from-video .escape-stage img {
+    object-fit: cover;
+    object-position: center center;
+    top: 50%; height: 100%; width: 100%;
+    filter: none;
+    animation: none;
+  }
+  #overlay.death-mars.from-video .escape-veil {
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.92) 0%,
+      rgba(0,0,0,0.55) 22%,
+      rgba(0,0,0,0.15) 48%,
+      rgba(0,0,0,0.25) 100%
+    );
+  }
+  #overlay.death-mars.from-video .mars-stack {
+    background: rgba(4, 8, 16, 0.72);
+  }
+  #overlay.death-mars.from-video .mars-stack h1,
+  #overlay.death-mars.from-video .mars-stack .death-sub,
+  #overlay.death-mars.from-video .mars-stack .mars-line {
+    display: none !important;
+  }
+
   /* —— MARS LIFTOFF: compact bottom copy stack over hero art —— */
   #overlay.death-mars {
     background: #000 !important;
@@ -2160,7 +2217,8 @@ window.__THREE = THREE;
 
 /* embedded freefall death art (path-independent) */
 const ESCAPE_ART_URL = "./pig-escape.jpg";
-const MARS_ART_URL = "./pig-mars.jpg";
+const MARS_ART_URL = "./pig-mars-final.jpg";
+const MARS_CUTSCENE_URL = "./mars-final-cutscene.mp4";
 
 /* ============================== RENDERER ============================== */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14440,7 +14498,11 @@ function teardownEscapeCine() {
   cine = null;
 }
 function runEscapeCine(dt, M) {
-  if (!cine) { marsVictory(); return; }
+  if (!cine) {
+    if (document.getElementById("marsCutscene")) return; /* film still playing */
+    marsVictory();
+    return;
+  }
   window.__camLock = true;
   const c = cine, T = M.t, R = M.rocket;
   const fRocket = c.dir.clone().negate(); /* pig-forward when facing the ship */
@@ -14701,7 +14763,15 @@ function updateMarsEscape(dt) {
     const d = Math.hypot(pig.position.x - M.rocket.position.x, pig.position.z - M.rocket.position.z);
     if (d < 5.5 && !onGround) startEscapeCutscene();
   } else if (M.phase === "cutscene") {
-    runEscapeCine(dt, M);
+    /* video cutscene owns the frame; engine cine only if fallback set was built */
+    if (document.getElementById("marsCutscene")) {
+      /* keep invuln / freeze combat while film plays */
+      invuln = 999;
+      pig.visible = false;
+      window.__camLock = true;
+    } else {
+      runEscapeCine(dt, M);
+    }
   }
 }
 function startEscapeCutscene() {
@@ -14711,21 +14781,127 @@ function startEscapeCutscene() {
   pigVy = 0; pigY = 0; onGround = true;
   invuln = 999; /* nothing interrupts the exit */
   spawnQueue = 0;
-  /* the war is over — clear the last stragglers; the set builder lays out the fallen */
   try { for (const e of enemies.splice(0)) scene.remove(e.mesh); } catch (_) {}
   if (marsState.tag) { try { scene.remove(marsState.tag); } catch (_) {} marsState.tag = null; }
-  cine = buildEscapeCineSet(marsState.rocket);
-  const dress = dressAstroPig();
-  cine.suit = dress.suit; cine.arm = dress.arm; cine.finger = dress.finger;
-  cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
-  pig.position.copy(cine.P0);
-  pig.rotation.y = cine.yawRocket;
-  ensureCineBars();
-  document.body.classList.add("cine");
   try { if (typeof showMobileUI === "function") showMobileUI(false); } catch (_) {}
   try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
-  try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
-  try { SFX.lock(); } catch (_) {}
+  /* Final cutscene is the authored video; engine cine is fallback only */
+  playMarsFinalCutscene();
+}
+
+/** Fullscreen Mars victory film → interactive end screen. Skip: click / Enter / Space / Esc. */
+let marsVideoEl = null;
+let marsVideoDone = false;
+function teardownMarsVideo() {
+  try {
+    const root = document.getElementById("marsCutscene");
+    if (root) root.remove();
+  } catch (_) {}
+  try {
+    if (marsVideoEl) {
+      marsVideoEl.pause();
+      marsVideoEl.removeAttribute("src");
+      marsVideoEl.load();
+    }
+  } catch (_) {}
+  marsVideoEl = null;
+  try { document.body.classList.remove("cine"); } catch (_) {}
+  try { window.__camLock = false; } catch (_) {}
+}
+function finishMarsVideoCutscene() {
+  if (marsVideoDone) return;
+  marsVideoDone = true;
+  try {
+    if (marsVideoEl && !marsVideoEl.paused) marsVideoEl.pause();
+  } catch (_) {}
+  teardownMarsVideo();
+  marsVictory({ fromVideo: true });
+}
+function playMarsFinalCutscene() {
+  marsVideoDone = false;
+  try { teardownEscapeCine(); } catch (_) {}
+  try { teardownMarsVideo(); } catch (_) {}
+  window.__camLock = true;
+  pig.visible = false;
+  document.body.classList.add("cine");
+  const url = (typeof MARS_CUTSCENE_URL !== "undefined" ? MARS_CUTSCENE_URL : "./mars-final-cutscene.mp4");
+  const root = document.createElement("div");
+  root.id = "marsCutscene";
+  root.innerHTML =
+    `<video playsinline webkit-playsinline preload="auto"></video>` +
+    `<div class="cine-skip">CLICK / ENTER — SKIP</div>`;
+  document.body.appendChild(root);
+  const vid = root.querySelector("video");
+  marsVideoEl = vid;
+  vid.src = url;
+  vid.muted = false;
+  vid.volume = 1;
+  const failToEngine = (why) => {
+    console.warn("mars video cutscene fallback:", why);
+    teardownMarsVideo();
+    /* fall back to in-engine director cutscene */
+    try {
+      if (!marsState || !marsState.rocket) { marsVictory({ fromVideo: false }); return; }
+      cine = buildEscapeCineSet(marsState.rocket);
+      const dress = dressAstroPig();
+      cine.suit = dress.suit; cine.arm = dress.arm; cine.finger = dress.finger;
+      cine.bubble = dress.bubble; cine.cuffs = dress.cuffs;
+      pig.visible = true;
+      pig.position.copy(cine.P0);
+      pig.rotation.y = cine.yawRocket;
+      ensureCineBars();
+      document.body.classList.add("cine");
+      try { say("Suit up. We're done here.", { rate: 0.92 }); } catch (_) {}
+      try { SFX.lock(); } catch (_) {}
+    } catch (err) {
+      console.error(err);
+      marsVictory({ fromVideo: false });
+    }
+  };
+  const endIt = () => {
+    try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
+    try { root.removeEventListener("click", onSkip); } catch (_) {}
+    finishMarsVideoCutscene();
+  };
+  const onSkip = (e) => {
+    if (e) { try { e.preventDefault(); e.stopPropagation(); } catch (_) {} }
+    endIt();
+  };
+  const keyHandler = (e) => {
+    if (e.code === "Enter" || e.code === "Space" || e.code === "Escape" || e.code === "KeyE") {
+      onSkip(e);
+    }
+  };
+  root.addEventListener("click", onSkip);
+  window.addEventListener("keydown", keyHandler, true);
+  vid.addEventListener("ended", () => endIt());
+  vid.addEventListener("error", () => {
+    try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
+    failToEngine("load error");
+  });
+  requestAnimationFrame(() => root.classList.add("show"));
+  const tryPlay = () => {
+    const p = vid.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {}).catch(() => {
+        /* autoplay with sound blocked — try muted then unmute on first click */
+        vid.muted = true;
+        vid.play().then(() => {
+          const unmute = () => { try { vid.muted = false; } catch (_) {} };
+          root.addEventListener("pointerdown", unmute, { once: true });
+        }).catch(() => {
+          try { window.removeEventListener("keydown", keyHandler, true); } catch (_) {}
+          failToEngine("play blocked");
+        });
+      });
+    }
+  };
+  if (vid.readyState >= 2) tryPlay();
+  else vid.addEventListener("canplay", tryPlay, { once: true });
+  /* hard safety: if video never ends, finish after 90s */
+  setTimeout(() => {
+    if (!marsVideoDone && document.getElementById("marsCutscene")) endIt();
+  }, 90000);
 }
 /** QA / preview: jump straight into the Starbase escape cutscene (F9). */
 function skipToEscapeCutscene() {
@@ -14787,10 +14963,13 @@ function skipToEscapeCutscene() {
   return true;
 }
 window.__skipEscapeCutscene = skipToEscapeCutscene;
-function marsVictory() {
+function marsVictory(opts) {
+  opts = opts || {};
+  const fromVideo = !!opts.fromVideo;
   if (!marsState) marsState = { phase: "done", t: 0 };
   marsState.phase = "done";
   try { teardownEscapeCine(); } catch (_) {}
+  try { teardownMarsVideo(); } catch (_) {}
   window.__camLock = false;
   mode = "over";
   deathKind = "mars";
@@ -14803,18 +14982,20 @@ function marsVictory() {
                score >= 1200 ? "SENIOR MODERATOR" : "INTERN JANITOR";
   const ov = overlay;
   try {
-    ov.classList.remove("death-weekend", "death-escape", "death-sleep", "death-portal", "death-mars");
+    ov.classList.remove("death-weekend", "death-escape", "death-sleep", "death-portal", "death-mars", "from-video");
     ov.classList.add("hidden-tagline", "death-mars");
+    if (fromVideo) ov.classList.add("from-video");
     ov.querySelectorAll(".escape-stage, .escape-bg, .escape-flash, .escape-veil, .mars-stack").forEach(n => n.remove());
     const stage = document.createElement("div");
     stage.className = "escape-stage";
     const img = document.createElement("img");
-    img.alt = "Space pig hero celebrating as the rocket climbs toward Mars";
-    img.src = (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./pig-mars.jpg");
+    img.alt = "Liftoff — you escaped X";
+    img.src = fromVideo
+      ? (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./pig-mars-final.jpg")
+      : (typeof MARS_ART_URL !== "undefined" ? MARS_ART_URL : "./pig-mars-final.jpg");
     img.decoding = "async";
     img.onerror = () => {
-      img.style.display = "none";
-      stage.style.background = "radial-gradient(ellipse at 40% 30%, #1a3060 0%, #05060c 70%)";
+      img.src = "./pig-mars.jpg";
     };
     const veil = document.createElement("div");
     veil.className = "escape-veil";
@@ -14829,7 +15010,6 @@ function marsVictory() {
       ov.appendChild(flash);
       ov.appendChild(stage);
     }
-    /* hide default overlay text nodes; one compact stack holds all copy */
     ov.querySelectorAll(".mars-stack").forEach(n => n.remove());
     const h1 = ov.querySelector("h1");
     const p = ov.querySelector("p");
@@ -14839,20 +15019,32 @@ function marsVictory() {
     if (go) go.textContent = "";
     const stack = document.createElement("div");
     stack.className = "mars-stack";
-    stack.innerHTML =
-      `<h1>LIFTOFF — YOU ESCAPED X</h1>` +
-      `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the weekend off, on Earth.</div>` +
-      `<div class="mars-line">Boss has a new job assignment coming. You'll be landing on Mars shortly.</div>` +
-      `<div class="mars-meta">SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
-      `RANK: <b style="color:#ffd94a">${rank}</b></div>` +
-      `<div class="go">CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE</div>`;
+    /* After the film, title/sub already played on-screen — show live score + CTA.
+       Direct/fallback path still shows the full card. */
+    if (fromVideo) {
+      stack.innerHTML =
+        `<div class="mars-meta">SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
+        `RANK: <b style="color:#ffd94a">${rank}</b></div>` +
+        `<div class="go">CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE</div>`;
+    } else {
+      stack.innerHTML =
+        `<h1>LIFTOFF — YOU ESCAPED X</h1>` +
+        `<div class="death-sub">CONGRATULATIONS — you finally escaped X.<br>Enjoy the weekend off, on Earth.</div>` +
+        `<div class="mars-line">Boss has a new job assignment coming. You'll be landing on Mars shortly.</div>` +
+        `<div class="mars-meta">SCORE: ${score} &nbsp;·&nbsp; HIGH: ${high}<br>` +
+        `RANK: <b style="color:#ffd94a">${rank}</b></div>` +
+        `<div class="go">CLICK OR PRESS ENTER — ENTER THE TIMELINE LOUNGE</div>`;
+    }
     ov.appendChild(stack);
     ov.classList.remove("hidden");
   } catch (err) {
     console.error("marsVictory UI", err);
     try { ov.classList.remove("hidden"); } catch (_) {}
   }
-  try { say("Congratulations. You finally escaped X. Enjoy the weekend off, on Earth. Boss has a new job assignment coming. You will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
+  /* Video already carries voice-over — don't re-narrate after film */
+  if (!fromVideo) {
+    try { say("Congratulations. You finally escaped X. Enjoy the weekend off, on Earth. Boss has a new job assignment coming. You will be landing on Mars shortly.", { rate: 0.9 }); } catch (_) {}
+  }
   try { SFX.escape(); } catch (_) {}
   try { SFX.purge(); } catch (_) {}
 }
@@ -14861,9 +15053,10 @@ function marsVictory() {
 function enterLoungeAfterMars() {
   if (mode !== "over" || deathKind !== "mars") return false;
   /* clean victory overlay */
+  try { teardownMarsVideo(); } catch (_) {}
   try {
     overlay.classList.add("hidden");
-    overlay.classList.remove("death-mars", "death-escape", "death-weekend", "death-sleep", "death-portal");
+    overlay.classList.remove("death-mars", "death-escape", "death-weekend", "death-sleep", "death-portal", "from-video");
     overlay.querySelectorAll(".escape-stage, .escape-bg, .escape-flash, .escape-veil, .mars-stack").forEach(n => n.remove());
   } catch (_) {}
   deathKind = null;
